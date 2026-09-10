@@ -56,7 +56,6 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
       }
       return `ip:${req.ip}`;
     },
-    errorResponseBuilder: () => ({ error: 'too_many_requests', message: 'Слишком много запросов. Подождите минуту.' }),
   });
 
   app.decorate('authenticate', async (req: FastifyRequest, reply: FastifyReply) => {

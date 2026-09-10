@@ -12,12 +12,29 @@ type Screen = { name: 'chat'; ticketId?: string } | { name: 'history' } | { name
 
 export function App() {
   const platform = useMemo<PlatformAdapter>(() => detectPlatform(), []);
-  const api = useMemo(() => new ApiClient(''), []);
+  const api = useMemo(() => new ApiClient('', platform.kind === 'web'), [platform]);
+  const urlTenant = useMemo(() => new URLSearchParams(window.location.search).get('tenant') ?? undefined, []);
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>({ name: 'chat' });
   const [sphere, setSphere] = useState('');
-  const [currentTicket, setCurrentTicket] = useState<string | undefined>(undefined);
+  const [currentTicket, setCurrentTicketState] = useState<string | undefined>(() => {
+    try {
+      return localStorage.getItem('helpdesk.ticket') ?? undefined;
+    } catch {
+      return undefined;
+    }
+  });
+  const setCurrentTicket = (id: string | undefined) => {
+    setCurrentTicketState(id);
+    try {
+      if (id) localStorage.setItem('helpdesk.ticket', id);
+      else localStorage.removeItem('helpdesk.ticket');
+    } catch {
+      /* ignore */
+    }
+  };
+  const [restoring, setRestoring] = useState(platform.kind === 'web' && api.authenticated);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -31,6 +48,16 @@ export function App() {
     platform.ready();
     platform.expand();
   }, [platform]);
+
+  // Website: a stored session survives page refresh - validate it once, then continue where the user was.
+  useEffect(() => {
+    if (!restoring) return;
+    api
+      .me()
+      .then(() => setAuthed(true))
+      .catch(() => api.logout())
+      .finally(() => setRestoring(false));
+  }, [api, restoring]);
 
   // SSO callback: the token arrives in the URL fragment (never hits server logs).
   useEffect(() => {
@@ -48,7 +75,7 @@ export function App() {
     if (!payload) return;
     const login =
       platform.kind === 'telegram'
-        ? api.loginTelegram(payload)
+        ? api.loginTelegram(payload, urlTenant)
         : platform.kind === 'vk' || platform.kind === 'max'
           ? api.loginPlatform(platform.kind, payload)
           : null;
@@ -76,6 +103,14 @@ export function App() {
     api.me().then((m) => setIsAdmin(m.isAdmin)).catch(() => {});
   }, [api, authed]);
 
+  if (restoring) {
+    return (
+      <div className="app">
+        <div className="empty">Загрузка…</div>
+      </div>
+    );
+  }
+
   if (!authed && platform.kind === 'web' && showLanding && !window.location.hash.includes('token=')) {
     return <LandingScreen sphere={sphere} botUrl={botUrl} onStart={() => setShowLanding(false)} />;
   }
@@ -86,6 +121,7 @@ export function App() {
         <LoginScreen
           api={api}
           platform={platform}
+          tenant={urlTenant}
           error={authError}
           onLoggedIn={() => {
             setAuthError(null);

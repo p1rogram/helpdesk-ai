@@ -10,13 +10,18 @@ const MODES = ['sso', 'ldap', 'email', 'guest'] as const;
  * Browser login. Inside a messenger the login is silent; here the user picks what the
  * organisation enabled: SSO (redirect), domain login/password (LDAP), e-mail code, or guest demo.
  */
-export function LoginScreen(props: { api: ApiClient; platform: PlatformAdapter; error: string | null; onLoggedIn: () => void }) {
+export function LoginScreen(props: {
+  api: ApiClient;
+  platform: PlatformAdapter;
+  /** Sphere override from the URL (?tenant=...); default sphere otherwise. */
+  tenant?: string;
+  error: string | null;
+  onLoggedIn: () => void;
+}) {
   const { api } = props;
   const [providers, setProviders] = useState<Providers | null>(null);
   const [ssoLabel, setSsoLabel] = useState('Войти через учётную запись');
   const [domains, setDomains] = useState<string[]>([]);
-  const [tenants, setTenants] = useState<Array<{ id: string; sphere: string }>>([]);
-  const [tenant, setTenant] = useState('');
   const [mode, setMode] = useState<Mode>('menu');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(props.error);
@@ -40,13 +45,6 @@ export function LoginScreen(props: { api: ApiClient; platform: PlatformAdapter; 
         if (only && only !== 'sso') setMode(only);
       })
       .catch(() => setProviders({ guest: true, sso: false, ldap: false, email: false }));
-    api
-      .tenants()
-      .then((r) => {
-        setTenants(r.tenants);
-        setTenant(r.default);
-      })
-      .catch(() => {});
   }, [api]);
 
   if (props.platform.kind !== 'web') {
@@ -176,20 +174,11 @@ export function LoginScreen(props: { api: ApiClient; platform: PlatformAdapter; 
             Демо-режим без проверки личности.
           </div>
           <input placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)} />
-          {tenants.length > 1 && (
-            <select value={tenant} onChange={(e) => setTenant(e.target.value)}>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.sphere}
-                </option>
-              ))}
-            </select>
-          )}
           <button
             disabled={busy}
             onClick={() =>
               run(async () => {
-                await api.loginDev(name || 'Гость', tenant || undefined);
+                await api.loginDev(name || 'Гость', props.tenant);
                 props.onLoggedIn();
               }, 'Гостевой вход отключён на сервере.')
             }

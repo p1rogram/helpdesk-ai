@@ -29,8 +29,11 @@ export async function buildApp(config: AppConfig): Promise<{ app: FastifyInstanc
   ctx.app = app;
   await registerSecurity(app, config);
 
-  app.setErrorHandler((err: Error & { statusCode?: number }, req, reply) => {
+  app.setErrorHandler((err: Error & { statusCode?: number; code?: string }, req, reply) => {
     if (err instanceof ZodError) return reply.code(400).send({ error: 'bad_request', issues: err.issues });
+    if (err.statusCode === 429 || err.code === 'FST_ERR_RATE_LIMIT') {
+      return reply.code(429).send({ error: 'too_many_requests', message: 'Слишком много запросов. Подождите минуту.' });
+    }
     if (err.statusCode && err.statusCode < 500) {
       return reply.code(err.statusCode).send({ error: err.message });
     }

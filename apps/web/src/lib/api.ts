@@ -6,11 +6,43 @@ import type {
   TicketCard,
 } from '@helpdesk/shared';
 
-/** Thin typed client. The JWT lives in memory only (not localStorage) - closing the app logs out. */
+const TOKEN_KEY = 'helpdesk.token';
+
+/**
+ * Thin typed client. On the website the JWT is kept in localStorage so a page refresh keeps the
+ * session (the token itself is short-lived and verified server-side); inside a messenger the
+ * platform re-authenticates on every open, so nothing is persisted there.
+ */
 export class ApiClient {
   private token: string | null = null;
 
-  constructor(private readonly base = '') {}
+  constructor(
+    private readonly base = '',
+    private readonly persist = false,
+  ) {
+    if (persist) {
+      try {
+        this.token = localStorage.getItem(TOKEN_KEY);
+      } catch {
+        this.token = null;
+      }
+    }
+  }
+
+  private remember() {
+    if (!this.persist) return;
+    try {
+      if (this.token) localStorage.setItem(TOKEN_KEY, this.token);
+      else localStorage.removeItem(TOKEN_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  logout() {
+    this.token = null;
+    this.remember();
+  }
 
   get authenticated() {
     return this.token !== null;
@@ -19,6 +51,7 @@ export class ApiClient {
   /** Adopt a token issued out-of-band (SSO callback puts it in the URL fragment). */
   setToken(token: string) {
     this.token = token;
+    this.remember();
   }
 
   providers() {
@@ -32,6 +65,7 @@ export class ApiClient {
   async loginLdap(login: string, password: string) {
     const r = await this.post<{ token: string }>('/api/auth/ldap', { login, password });
     this.token = r.token;
+    this.remember();
   }
 
   requestEmailCode(email: string) {
@@ -41,11 +75,13 @@ export class ApiClient {
   async verifyEmailCode(email: string, code: string) {
     const r = await this.post<{ token: string }>('/api/auth/email/verify', { email, code });
     this.token = r.token;
+    this.remember();
   }
 
   async loginTelegram(initData: string, tenant?: string): Promise<AuthResponse> {
     const r = await this.post<AuthResponse>(`/api/auth/telegram${tenant ? `?tenant=${tenant}` : ''}`, { initData });
     this.token = r.token;
+    this.remember();
     return r;
   }
 
@@ -53,12 +89,14 @@ export class ApiClient {
   async loginPlatform(platform: 'vk' | 'max', payload: string, tenant?: string): Promise<AuthResponse> {
     const r = await this.post<AuthResponse>(`/api/auth/${platform}${tenant ? `?tenant=${tenant}` : ''}`, { payload });
     this.token = r.token;
+    this.remember();
     return r;
   }
 
   async loginDev(name: string, tenant?: string): Promise<AuthResponse> {
     const r = await this.post<AuthResponse>(`/api/auth/dev${tenant ? `?tenant=${tenant}` : ''}`, { name });
     this.token = r.token;
+    this.remember();
     return r;
   }
 
@@ -150,6 +188,7 @@ export class ApiClient {
 
   private async get<T>(path: string): Promise<T> {
     const r = await fetch(this.base + path, { headers: this.headers() });
+    if (r.status === 401) this.logout();
     if (!r.ok) throw new ApiError(r.status, await safeText(r));
     return (await r.json()) as T;
   }
