@@ -117,6 +117,7 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   if (config.MAX_BOT_TOKEN) verifiers.set('max', maxVerifier(config.MAX_BOT_TOKEN, config.MAX_SECRET_LABEL));
   if (config.AUTH_DEV_BYPASS) verifiers.set('web', devVerifier());
   log.info(`auth platforms: ${[...verifiers.keys()].join(', ') || 'none'}`);
+  if (config.OPERATOR_OPEN_ACCESS) log.warn('OPERATOR_OPEN_ACCESS=true - the operator console is open to every user (demo mode)');
 
   const corporate = {
     oidc:

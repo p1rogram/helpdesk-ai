@@ -61,7 +61,10 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
     platform: req.user.platform,
     displayName: req.user.name,
     tenant: req.user.tenant,
-    isAdmin: ctx.config.adminUsers.has(`${req.user.platform}:${req.user.puid}`) || (req.user.roles?.includes('operator') ?? false),
+    isAdmin:
+      ctx.config.OPERATOR_OPEN_ACCESS ||
+      ctx.config.adminUsers.has(`${req.user.platform}:${req.user.puid}`) ||
+      (req.user.roles?.includes('operator') ?? false),
   }));
 }
 

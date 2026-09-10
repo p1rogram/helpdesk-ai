@@ -73,6 +73,7 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
       reply.code(401).send({ error: 'unauthorized' });
       return;
     }
+    if (cfg.OPERATOR_OPEN_ACCESS) return; // demo mode: the console is open to everyone
     const key = `${req.user.platform}:${req.user.puid}`;
     const byGroup = req.user.roles?.includes('operator') ?? false;
     if (!cfg.adminUsers.has(key) && !byGroup) reply.code(403).send({ error: 'forbidden' });

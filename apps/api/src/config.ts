@@ -104,6 +104,14 @@ const EnvSchema = z.object({
   NAUMEN_DEFAULT_SERVICE: z.string().optional(),
   /** JSON object: { "network": "slmService$4550406", ... } */
   NAUMEN_SERVICE_BY_CATEGORY: z.string().optional(),
+  /**
+   * Demo mode: every authenticated user gets the operator console. For the hackathon demo and
+   * team testing only - refused when NODE_ENV=production.
+   */
+  OPERATOR_OPEN_ACCESS: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
   /** Comma-separated admin user ids (platform:platformUserId) allowed to call /api/admin/*. */
   ADMIN_USERS: z.string().default(''),
   MAX_CLARIFICATIONS: z.coerce.number().int().min(0).max(5).default(2),
@@ -127,6 +135,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const cfg = parsed.data;
   if (cfg.NODE_ENV === 'production' && cfg.AUTH_DEV_BYPASS) {
     throw new Error('AUTH_DEV_BYPASS must be false in production');
+  }
+  if (cfg.NODE_ENV === 'production' && cfg.OPERATOR_OPEN_ACCESS) {
+    throw new Error('OPERATOR_OPEN_ACCESS must be false in production');
   }
   return {
     ...cfg,
