@@ -193,6 +193,41 @@ describe('DialogEngine', () => {
     }
   });
 
+  it('stays silent while an operator owns the ticket, and only acknowledges', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Проблема с доступом' });
+    const r = await collect(engine.handle(ticket, user, 'Позовите специалиста'));
+    expect(r.ticket.state).toBe('escalated');
+    expect(r.ticket.handledBy).toBe('operator');
+
+    // A follow-up message must NOT produce an assistant answer - it belongs to the operator.
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const events: ChatStreamEvent[] = [];
+    for await (const e of engine.handle(t2, user, 'Ещё деталь: логин ivanov')) events.push(e);
+    expect(events.some((e) => e.type === 'ack')).toBe(true);
+    expect(events.some((e) => e.type === 'done')).toBe(false);
+    expect(llm.queue.length).toBe(0); // the model was never called
+    const msgs = await tickets.listMessages(ticket.id, 50);
+    expect(msgs[msgs.length - 1]!.role).toBe('user'); // last word is the user's, no bot reply after it
+  });
+
+  it('never escalates again once the operator handed the ticket back', async () => {
+    const { user, ticket } = await fresh();
+    // Operator hand-back: assistant resumes, escalation forbidden for this ticket.
+    await tickets.update(ticket.id, { handledBy: 'ai', escalationBlocked: true, state: 'intake' });
+    const t1 = (await tickets.get(ticket.id, user.id))!;
+    const r1 = await collect(engine.handle(t1, user, CMD.human));
+    expect(r1.ticket.state).not.toBe('escalated');
+    expect(r1.ticket.escalated).toBe(false);
+    expect(r1.text).toMatch(/специалист уже принял решение/i);
+
+    // Even an explicit "I want a human" from the analysis is refused.
+    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'x' });
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t2, user, 'Хочу живого человека'));
+    expect(r2.ticket.escalated).toBe(false);
+  });
+
   it('uses the model-written smalltalk reply for off-topic messages', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push({ offTopic: true, categoryId: 'unknown', confidence: 0, summary: '', smalltalkReply: 'Хех, стихи — не мой профиль. Что сломалось?' });

@@ -22,6 +22,14 @@ export const QR_AFTER_SOLUTION: QuickReply[] = [
 
 export const QR_CLOSED: QuickReply[] = [{ label: 'Новое обращение', value: CMD.newTicket }];
 
+/** Escalation is blocked for this ticket: the only way out is a fresh request. */
+export const QR_NEW_ONLY: QuickReply[] = [{ label: 'Новое обращение', value: CMD.newTicket }];
+
+export const QR_HELPED_ONLY: QuickReply[] = [
+  { label: 'Помогло', value: CMD.helped },
+  { label: 'Не помогло', value: CMD.notHelped },
+];
+
 export const QR_OFFER_ESCALATION: QuickReply[] = [
   { label: 'Создать заявку специалисту', value: CMD.escalate },
   { label: 'Не нужно', value: CMD.dismiss },
@@ -116,7 +124,19 @@ export const T = {
       .filter(Boolean)
       .join('\n'),
 
-  forwardedToOperator: () => `Передал специалисту — он увидит это сообщение в заявке и ответит здесь.`,
+
+  /** The operator returned the ticket and asked to solve it here. */
+  handedBackToAi: (operator: string) =>
+    [
+      `Специалист ${operator} посмотрел обращение и передал его мне — по этому вопросу помощь специалиста не требуется.`,
+      `Давайте разберёмся здесь: уточните, что именно не получается, и я подскажу по шагам.`,
+    ].join('\n'),
+
+  escalationBlocked: () =>
+    [
+      `По этому обращению специалист уже принял решение: его нужно решать здесь, без передачи.`,
+      `Опишите подробнее, что не получается — попробуем вместе. Если проблема другая, создайте новое обращение.`,
+    ].join('\n'),
 
   closedHint: () => `Это обращение уже закрыто. Нажмите «Новое обращение», чтобы описать другую проблему.`,
 

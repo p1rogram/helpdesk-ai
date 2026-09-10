@@ -109,6 +109,10 @@ export const tickets = pgTable(
     resolved: boolean('resolved').notNull().default(false),
     escalated: boolean('escalated').notNull().default(false),
     escalationReason: text('escalation_reason'),
+    /** 'ai' | 'operator' - while 'operator' the assistant does not answer in this ticket. */
+    handledBy: text('handled_by').notNull().default('ai'),
+    /** Operator returned the ticket to the assistant and forbade escalating it again. */
+    escalationBlocked: boolean('escalation_blocked').notNull().default(false),
     /** Request number / link in the external helpdesk after escalation. */
     externalId: text('external_id'),
     externalUrl: text('external_url'),

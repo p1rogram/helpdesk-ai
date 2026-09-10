@@ -65,6 +65,10 @@ export const TicketCardSchema = z.object({
   resolved: z.boolean(),
   escalated: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
+  /** Who owns the dialogue right now. While 'operator', the assistant stays silent. */
+  handledBy: z.enum(['ai', 'operator']),
+  /** The operator handed this ticket back to the assistant and declined further escalation. */
+  escalationBlocked: z.boolean(),
   /** Request number in the external helpdesk (help.tpu.ru), once created. */
   externalId: z.string().nullable(),
   externalUrl: z.string().nullable(),

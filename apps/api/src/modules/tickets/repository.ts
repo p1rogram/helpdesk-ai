@@ -75,30 +75,54 @@ export class TicketRepository {
     return row;
   }
 
-  /** Operator queue: escalated tickets of a tenant with user info and "waiting for reply" flag. */
-  async listEscalated(
+  /**
+   * Operator work list: everything that reached a specialist. Grouped for the console:
+   *   0 - in progress: the operator already replied (their conversations come first)
+   *   1 - waiting: escalated but no operator reply yet (oldest waiting first - SLA order)
+   *   2 - closed: finished, newest first
+   */
+  async listForOperator(
     tenantId: string,
     limit = 100,
-  ): Promise<Array<{ ticket: TicketRow; user: UserRow; lastMessageAt: Date | null; unanswered: boolean }>> {
+  ): Promise<
+    Array<{ ticket: TicketRow; user: UserRow; lastMessageAt: Date | null; unanswered: boolean; group: 0 | 1 | 2 }>
+  > {
     const rows = await this.db
       .select({ ticket: tickets, user: users })
       .from(tickets)
       .innerJoin(users, eq(users.id, tickets.userId))
-      .where(and(eq(tickets.tenantId, tenantId), eq(tickets.state, 'escalated')))
+      .where(
+        and(
+          eq(tickets.tenantId, tenantId),
+          eq(tickets.escalated, true),
+          inArray(tickets.state, ['escalated', 'closed']),
+        ),
+      )
       .orderBy(desc(tickets.updatedAt))
       .limit(limit);
-    const out = [];
+
+    const out: Array<{ ticket: TicketRow; user: UserRow; lastMessageAt: Date | null; unanswered: boolean; group: 0 | 1 | 2 }> = [];
     for (const r of rows) {
-      const [last] = await this.db
+      const recent = await this.db
         .select({ role: messages.role, createdAt: messages.createdAt, meta: messages.meta })
         .from(messages)
         .where(eq(messages.ticketId, r.ticket.id))
         .orderBy(desc(messages.createdAt))
-        .limit(1);
-      const unanswered = !last || last.role === 'user' || !(last.meta as { operator?: string }).operator;
-      out.push({ ticket: r.ticket, user: r.user, lastMessageAt: last?.createdAt ?? null, unanswered });
+        .limit(50);
+      const operatorReplied = recent.some((m) => Boolean((m.meta as { operator?: string }).operator));
+      const last = recent[0];
+      const unanswered = !operatorReplied || !last || last.role === 'user';
+      const group: 0 | 1 | 2 = r.ticket.state === 'closed' ? 2 : operatorReplied ? 0 : 1;
+      out.push({ ticket: r.ticket, user: r.user, lastMessageAt: last?.createdAt ?? null, unanswered, group });
     }
-    return out;
+
+    const time = (d: Date | null | undefined) => (d ? d.getTime() : 0);
+    return out.sort((a, b) => {
+      if (a.group !== b.group) return a.group - b.group;
+      // In progress and closed: latest activity first. Waiting: longest wait first.
+      if (a.group === 1) return time(a.ticket.updatedAt) - time(b.ticket.updatedAt);
+      return time(b.lastMessageAt ?? b.ticket.updatedAt) - time(a.lastMessageAt ?? a.ticket.updatedAt);
+    });
   }
 
   async listForUser(userId: string, limit = 20): Promise<TicketRow[]> {
@@ -162,6 +186,8 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     resolved: t.resolved,
     escalated: t.escalated,
     rating: t.rating,
+    handledBy: t.handledBy as 'ai' | 'operator',
+    escalationBlocked: t.escalationBlocked,
     externalId: t.externalId,
     externalUrl: t.externalUrl,
     createdAt: t.createdAt.toISOString(),

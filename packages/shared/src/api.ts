@@ -44,6 +44,8 @@ export const ChatStreamEventSchema = z.discriminatedUnion('type', [
   /** Progress hint shown while the model works ("Определяю категорию…"). */
   z.object({ type: z.literal('status'), text: z.string() }),
   z.object({ type: z.literal('delta'), text: z.string() }),
+  /** Message accepted, but the assistant deliberately says nothing (an operator owns the chat). */
+  z.object({ type: z.literal('ack'), ticket: TicketCardSchema }),
   z.object({
     type: z.literal('done'),
     message: ChatMessageSchema,

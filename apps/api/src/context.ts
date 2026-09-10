@@ -12,6 +12,7 @@ import { LlmService } from './modules/llm/index.js';
 import { TicketRepository } from './modules/tickets/repository.js';
 import { NaumenHelpdesk, NoopHelpdesk, type HelpdeskConnector } from './modules/helpdesk/index.js';
 import { EmailCodeProvider, LdapProvider, OidcProvider } from './modules/auth/corporate.js';
+import { OperatorHub } from './modules/operator/hub.js';
 import type { FastifyInstance } from 'fastify';
 
 /** Composition root: every dependency is built once here and injected explicitly. */
@@ -26,6 +27,7 @@ export interface AppContext {
   engine: DialogEngine;
   verifiers: Map<string, PlatformVerifier>;
   helpdesk: HelpdeskConnector;
+  operatorHub: OperatorHub;
   corporate: { oidc: OidcProvider | null; ldap: LdapProvider | null; email: EmailCodeProvider | null };
   /** Set by buildApp - needed to sign tokens from route modules. */
   app: FastifyInstance;
@@ -76,6 +78,10 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   log.info(`llm: ${llm.enabled ? `${config.LLM_MODEL} (effort=${config.LLM_EFFORT}) via ${config.LLM_BASE_URL}` : 'DISABLED - deterministic fallback mode'}`);
 
   const tickets = new TicketRepository(dbHandle.db);
+
+  // Live channel for operator consoles, fed by the event bus (works across API replicas on Kafka).
+  const operatorHub = new OperatorHub();
+  await operatorHub.attach(events, async (ticketId) => (await tickets.getAny(ticketId))?.tenantId ?? null);
 
   let helpdesk: HelpdeskConnector = new NoopHelpdesk();
   if (config.HELPDESK_KIND === 'naumen') {
@@ -158,6 +164,7 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     engine,
     verifiers,
     helpdesk,
+    operatorHub,
     corporate,
     app: null as unknown as FastifyInstance,
     async close() {

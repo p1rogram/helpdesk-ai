@@ -21,6 +21,8 @@ const base = {
 
 export const TicketEventSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('ticket.created'), ticket: TicketCardSchema }),
+  /** Anything that changes what an operator should see (new user message, hand-back, reply). */
+  z.object({ ...base, type: z.literal('ticket.updated'), tenantId: z.string() }),
   z.object({
     ...base,
     type: z.literal('ticket.classified'),

@@ -88,7 +88,12 @@ export function ChatScreen(props: {
     try {
       for await (const ev of api.sendMessage(ticket.id, text, ac.signal)) {
         if (ev.type === 'meta') setTicket(ev.ticket);
-        else if (ev.type === 'status') setStatus(ev.text);
+        else if (ev.type === 'ack') {
+          // A specialist owns the chat: the message was delivered, the assistant stays silent.
+          setStreaming(null);
+          setStatus(null);
+          setTicket(ev.ticket);
+        } else if (ev.type === 'status') setStatus(ev.text);
         else if (ev.type === 'delta') {
           setStatus(null);
           setStreaming((s) => (s ?? '') + ev.text);

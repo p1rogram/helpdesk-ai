@@ -12,6 +12,8 @@ import {
   QR_AFTER_SOLUTION,
   QR_CLOSED,
   QR_CLOSED_OR_NEW,
+  QR_HELPED_ONLY,
+  QR_NEW_ONLY,
   QR_OFFER_ESCALATION,
   T,
   type EscalationReason,
@@ -52,14 +54,20 @@ export class DialogEngine {
     // Persist what the user said (commands are stored with a readable label).
     await this.d.tickets.addMessage(ticket.id, 'user', isCmd ? labelFor(text, catalog) : text, isCmd ? { command: text } : {});
 
-    // Escalated: the conversation now belongs to the operator; the bot only acknowledges.
+    // A specialist owns this dialogue: the assistant must not speak over them. The message is
+    // stored and pushed to the operator console; the client gets a silent acknowledgement.
     if (ticket.state === 'escalated') {
-      if (text === CMD.newTicket || isCmd) {
+      if (isCmd) {
         yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
         return;
       }
-      await this.d.tickets.update(ticket.id, { updatedAt: new Date() });
-      yield* this.reply(ticket, catalog, T.forwardedToOperator());
+      const touched = await this.d.tickets.update(ticket.id, { updatedAt: new Date() });
+      await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
+        ...eventBase(ticket.id, user.id),
+        type: 'ticket.updated',
+        tenantId: ticket.tenantId,
+      });
+      yield { type: 'ack', ticket: toCard(touched, catalog) };
       return;
     }
     // Closed tickets do not continue - the client offers "new ticket".
@@ -89,12 +97,15 @@ export class DialogEngine {
       yield* this.nextSolution(ticket, user, catalog);
       return;
     }
-    if (text === CMD.human) {
-      yield* this.escalate(ticket, user, catalog, 'user_request');
-      return;
-    }
-    if (text === CMD.escalate) {
-      yield* this.escalate(ticket, user, catalog, (ticket.pendingEscalation as EscalationReason | null) ?? 'user_request');
+    if (text === CMD.human || text === CMD.escalate) {
+      if (ticket.escalationBlocked) {
+        // The operator already reviewed this ticket and sent it back - do not re-queue it.
+        yield* this.reply(ticket, catalog, T.escalationBlocked(), ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY);
+        return;
+      }
+      const reason: EscalationReason =
+        text === CMD.escalate ? ((ticket.pendingEscalation as EscalationReason | null) ?? 'user_request') : 'user_request';
+      yield* this.escalate(ticket, user, catalog, reason);
       return;
     }
     if (text === CMD.dismiss) {
@@ -174,6 +185,10 @@ export class DialogEngine {
     });
 
     if (analysis.asksForHuman) {
+      if (ticket.escalationBlocked) {
+        yield* this.reply(ticket, catalog, T.escalationBlocked(), ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY);
+        return;
+      }
       yield* this.escalate(ticket, user, catalog, 'user_request');
       return;
     }
@@ -397,6 +412,11 @@ export class DialogEngine {
     catalog: LoadedCatalog,
     reason: EscalationReason,
   ): AsyncGenerator<ChatStreamEvent> {
+    if (ticket.escalationBlocked) {
+      // A specialist decided this ticket stays with the assistant; never offer to escalate again.
+      yield* this.reply(ticket, catalog, T.escalationBlocked(), ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY);
+      return;
+    }
     ticket = await this.d.tickets.update(ticket.id, { state: 'offer_escalation', pendingEscalation: reason });
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
     yield* this.reply(ticket, catalog, T.offerEscalation(reason), QR_OFFER_ESCALATION);
@@ -426,6 +446,7 @@ export class DialogEngine {
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'escalated',
       escalated: true,
+      handledBy: 'operator',
       escalationReason: reason,
       pendingEscalation: null,
       externalId: external?.externalId ?? null,

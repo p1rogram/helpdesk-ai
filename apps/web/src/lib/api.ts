@@ -105,9 +105,61 @@ export class ApiClient {
   }
 
   operatorTickets() {
-    return this.get<{ tickets: Array<TicketCard & { user: { displayName: string; platform: string }; lastMessageAt: string | null; unanswered: boolean }> }>(
-      '/api/operator/tickets',
-    );
+    return this.get<{
+      tickets: Array<
+        TicketCard & {
+          user: { displayName: string; platform: string };
+          lastMessageAt: string | null;
+          unanswered: boolean;
+          /** 0 - in progress, 1 - waiting for first reply, 2 - closed. */
+          group: 0 | 1 | 2;
+        }
+      >;
+    }>('/api/operator/tickets');
+  }
+
+  /** Hand the ticket back to the assistant (no specialist needed). */
+  operatorHandback(id: string) {
+    return this.post<{ ticket: TicketCard }>(`/api/operator/tickets/${id}/handback`, {});
+  }
+
+  /** Live queue updates. Calls `onChange` whenever anything in this tenant's queue changes. */
+  operatorStream(onChange: (ticketId: string | null) => void, signal: AbortSignal): void {
+    const run = async () => {
+      while (!signal.aborted) {
+        try {
+          const res = await fetch(`${this.base}/api/operator/stream`, {
+            headers: this.headers({ accept: 'text/event-stream' }),
+            signal,
+          });
+          if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = '';
+          while (!signal.aborted) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            let idx: number;
+            while ((idx = buf.indexOf('\n\n')) >= 0) {
+              const frame = buf.slice(0, idx);
+              buf = buf.slice(idx + 2);
+              for (const line of frame.split('\n')) {
+                if (!line.startsWith('data:')) continue;
+                const ev = JSON.parse(line.slice(5)) as { type: string; ticketId?: string | null };
+                if (ev.type === 'queue') onChange(ev.ticketId ?? null);
+              }
+            }
+          }
+        } catch {
+          /* connection dropped - retry below */
+        }
+        if (signal.aborted) return;
+        // Reconnect after a short pause (server restart, proxy timeout, sleeping laptop).
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    };
+    void run();
   }
 
   operatorTicket(id: string) {
