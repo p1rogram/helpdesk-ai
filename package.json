@@ -1,0 +1,33 @@
+{
+  "name": "helpdesk-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Virtual technical support assistant (Claude) — Telegram/VK/MAX Mini App + Kafka event bus",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm run dev -w @helpdesk/api",
+    "dev:web": "npm run dev -w @helpdesk/web",
+    "dev:worker": "npm run dev -w @helpdesk/worker",
+    "build": "npm run build -w @helpdesk/shared && npm run build -w @helpdesk/api && npm run build -w @helpdesk/worker && npm run build -w @helpdesk/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "db:seed": "npm run db:seed -w @helpdesk/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "eslint": "^9.30.0",
+    "prettier": "^3.6.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.35.0"
+  }
+}

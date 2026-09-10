@@ -1,0 +1,195 @@
+import { readdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { CatalogSchema, type Catalog, type Category, type KbArticle } from '@helpdesk/shared';
+import type { Db } from '../../db/client.js';
+import { categories, kbArticles, tenants } from '../../db/schema.js';
+
+export interface LoadedCatalog extends Catalog {
+  version: number;
+  categoryById: Map<string, Category>;
+  articleById: Map<string, KbArticle>;
+}
+
+/**
+ * Catalog lives in the database (editable via admin API at runtime); this repository
+ * keeps a per-tenant in-memory copy keyed by `tenants.version` so the hot path never
+ * touches the DB. A catalog change bumps the version -> cache refreshes on next read.
+ */
+export class CatalogRepository {
+  private readonly cache = new Map<string, LoadedCatalog>();
+
+  constructor(private readonly db: Db) {}
+
+  async listTenants(): Promise<Array<{ id: string; sphere: string; version: number }>> {
+    return this.db
+      .select({ id: tenants.id, sphere: tenants.sphere, version: tenants.version })
+      .from(tenants)
+      .orderBy(asc(tenants.id));
+  }
+
+  async get(tenantId: string): Promise<LoadedCatalog | null> {
+    const [t] = await this.db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+    if (!t) return null;
+    const cached = this.cache.get(tenantId);
+    if (cached && cached.version === t.version) return cached;
+
+    const cats = await this.db
+      .select()
+      .from(categories)
+      .where(eq(categories.tenantId, tenantId))
+      .orderBy(asc(categories.sortOrder));
+    const arts = await this.db.select().from(kbArticles).where(eq(kbArticles.tenantId, tenantId));
+
+    const catalog: Catalog = {
+      id: t.id,
+      sphere: t.sphere,
+      organisation: t.organisation,
+      language: t.language,
+      categories: cats.map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        priority: c.priority as Category['priority'],
+        clarify: c.clarify,
+      })),
+      articles: arts.map((a) => ({
+        id: a.id,
+        categoryId: a.categoryId,
+        title: a.title,
+        symptoms: a.symptoms,
+        steps: a.steps,
+        notApplicableWhen: a.notApplicableWhen ?? undefined,
+        escalateAfter: a.escalateAfter,
+        source: a.source ?? undefined,
+      })),
+    };
+    const loaded: LoadedCatalog = {
+      ...catalog,
+      version: t.version,
+      categoryById: new Map(catalog.categories.map((c) => [c.id, c])),
+      articleById: new Map(catalog.articles.map((a) => [a.id, a])),
+    };
+    this.cache.set(tenantId, loaded);
+    return loaded;
+  }
+
+  /** Full replace of a tenant catalog (import). Transactional; bumps version. */
+  async upsert(input: unknown): Promise<LoadedCatalog> {
+    const catalog = CatalogSchema.parse(input);
+    validateCatalog(catalog);
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(tenants)
+        .values({
+          id: catalog.id,
+          sphere: catalog.sphere,
+          organisation: catalog.organisation,
+          language: catalog.language,
+        })
+        .onConflictDoUpdate({
+          target: tenants.id,
+          set: {
+            sphere: catalog.sphere,
+            organisation: catalog.organisation,
+            language: catalog.language,
+            version: sql`${tenants.version} + 1`,
+            updatedAt: new Date(),
+          },
+        });
+      await tx.delete(categories).where(eq(categories.tenantId, catalog.id));
+      await tx.delete(kbArticles).where(eq(kbArticles.tenantId, catalog.id));
+      await tx.insert(categories).values(
+        catalog.categories.map((c, i) => ({
+          tenantId: catalog.id,
+          id: c.id,
+          name: c.name,
+          description: c.description,
+          priority: c.priority,
+          clarify: c.clarify,
+          sortOrder: i,
+        })),
+      );
+      await tx.insert(kbArticles).values(
+        catalog.articles.map((a) => ({
+          tenantId: catalog.id,
+          id: a.id,
+          categoryId: a.categoryId,
+          title: a.title,
+          symptoms: a.symptoms,
+          steps: a.steps,
+          notApplicableWhen: a.notApplicableWhen ?? null,
+          escalateAfter: a.escalateAfter,
+          source: a.source ?? null,
+        })),
+      );
+    });
+    this.cache.delete(catalog.id);
+    return (await this.get(catalog.id))!;
+  }
+
+  /** Upsert a single article (admin edit) - bumps tenant version. */
+  async upsertArticle(tenantId: string, article: KbArticle): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(kbArticles)
+        .values({ tenantId, ...article, notApplicableWhen: article.notApplicableWhen ?? null, source: article.source ?? null })
+        .onConflictDoUpdate({
+          target: [kbArticles.tenantId, kbArticles.id],
+          set: {
+            categoryId: article.categoryId,
+            title: article.title,
+            symptoms: article.symptoms,
+            steps: article.steps,
+            notApplicableWhen: article.notApplicableWhen ?? null,
+            escalateAfter: article.escalateAfter,
+            source: article.source ?? null,
+            updatedAt: new Date(),
+          },
+        });
+      await tx
+        .update(tenants)
+        .set({ version: sql`${tenants.version} + 1`, updatedAt: new Date() })
+        .where(eq(tenants.id, tenantId));
+    });
+    this.cache.delete(tenantId);
+  }
+
+  async deleteArticle(tenantId: string, articleId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.delete(kbArticles).where(and(eq(kbArticles.tenantId, tenantId), eq(kbArticles.id, articleId)));
+      await tx
+        .update(tenants)
+        .set({ version: sql`${tenants.version} + 1`, updatedAt: new Date() })
+        .where(eq(tenants.id, tenantId));
+    });
+    this.cache.delete(tenantId);
+  }
+
+  /** Import every data/catalog/*.json that is not yet in the DB. Existing tenants are untouched. */
+  async seedFromDir(dir: string, log: { info(msg: string): void }, force = false): Promise<void> {
+    const existing = new Set((await this.listTenants()).map((t) => t.id));
+    let files: string[] = [];
+    try {
+      files = (await readdir(dir)).filter((f) => f.endsWith('.json'));
+    } catch {
+      log.info(`catalog seed dir ${dir} not found - skipping`);
+      return;
+    }
+    for (const f of files) {
+      const raw = JSON.parse(await readFile(path.join(dir, f), 'utf8')) as { id?: string };
+      if (!force && raw.id && existing.has(raw.id)) continue;
+      const loaded = await this.upsert(raw);
+      log.info(`catalog seeded: ${loaded.id} (${loaded.categories.length} categories, ${loaded.articles.length} articles)`);
+    }
+  }
+}
+
+function validateCatalog(c: Catalog): void {
+  const ids = new Set(c.categories.map((x) => x.id));
+  for (const a of c.articles) {
+    if (!ids.has(a.categoryId)) {
+      throw new Error(`article "${a.id}" references unknown category "${a.categoryId}"`);
+    }
+  }
+}

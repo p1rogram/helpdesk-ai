@@ -1,0 +1,534 @@
+import type { Analysis, ChatStreamEvent, QuickReply, TicketCard, Tone } from '@helpdesk/shared';
+import { TOPICS } from '@helpdesk/shared';
+import type { TicketRow, UserRow } from '../../db/schema.js';
+import { eventBase, type EventBus } from '../events/index.js';
+import type { KnowledgeService, LoadedCatalog } from '../knowledge/index.js';
+import { LlmUnavailableError, type LlmService } from '../llm/index.js';
+import { inspectMessage, strongerTone } from '../safety/index.js';
+import { toCard, type TicketRepository } from '../tickets/repository.js';
+import { CMD, QR_AFTER_SOLUTION, QR_CLOSED, T, type EscalationReason } from './templates.js';
+
+export interface EngineConfig {
+  maxClarifications: number;
+  confidenceThreshold: number;
+  historyTurns: number;
+}
+
+export interface EngineDeps {
+  knowledge: KnowledgeService;
+  llm: LlmService;
+  tickets: TicketRepository;
+  events: EventBus;
+  config: EngineConfig;
+  log: { info(obj: unknown, msg?: string): void; warn(obj: unknown, msg?: string): void };
+}
+
+/**
+ * The dialog engine is a deterministic state machine. The LLM is consulted for exactly two
+ * things - understanding the message (structured) and phrasing a grounded solution - and
+ * every decision (ask / solve / escalate / close) is made here, in code. That makes the
+ * behaviour testable, cheap and impossible to talk out of its role.
+ *
+ * States: intake -> clarifying* -> solving -> closed | escalated  (choosing_category on low confidence)
+ */
+export class DialogEngine {
+  constructor(private readonly d: EngineDeps) {}
+
+  async *handle(ticket: TicketRow, user: UserRow, rawText: string): AsyncGenerator<ChatStreamEvent> {
+    const catalog = await this.d.knowledge.catalog(ticket.tenantId);
+    const text = rawText.trim();
+    const isCmd = text.startsWith('__');
+
+    // Persist what the user said (commands are stored with a readable label).
+    await this.d.tickets.addMessage(ticket.id, 'user', isCmd ? labelFor(text, catalog) : text, isCmd ? { command: text } : {});
+
+    // Closed tickets do not continue - the client offers "new ticket".
+    if (ticket.state === 'closed' || ticket.state === 'escalated') {
+      yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
+      return;
+    }
+
+    yield { type: 'meta', ticket: toCard(ticket, catalog) };
+
+    // ---------- engine commands (buttons) ----------
+    if (text.startsWith(CMD.category)) {
+      const categoryId = text.slice(CMD.category.length);
+      if (!catalog.categoryById.has(categoryId)) {
+        yield* this.reply(ticket, catalog, T.chooseCategory(), T.categoryButtons(catalog.categories));
+        return;
+      }
+      ticket = await this.setCategory(ticket, user, catalog, categoryId, 1);
+      yield* this.advance(ticket, user, catalog, ticket.summary ?? '');
+      return;
+    }
+    if (text === CMD.helped && ticket.state === 'solving') {
+      yield* this.resolve(ticket, user, catalog);
+      return;
+    }
+    if (text === CMD.notHelped && ticket.state === 'solving') {
+      yield* this.nextSolution(ticket, user, catalog);
+      return;
+    }
+    if (text === CMD.human) {
+      yield* this.escalate(ticket, user, catalog, 'user_request');
+      return;
+    }
+    if (isCmd) {
+      // Unknown / stale command - ignore politely.
+      yield* this.reply(ticket, catalog, T.afterSolution(), ticket.state === 'solving' ? QR_AFTER_SOLUTION : undefined);
+      return;
+    }
+
+    // ---------- quick-reply answer to a clarifying question: no LLM needed ----------
+    if (ticket.state === 'clarifying' && ticket.pendingField && ticket.categoryId) {
+      const field = catalog.categoryById.get(ticket.categoryId)?.clarify.find((f) => f.id === ticket.pendingField);
+      const option = field?.options?.find((o) => o.toLowerCase() === text.toLowerCase());
+      if (option) {
+        ticket = await this.d.tickets.update(ticket.id, {
+          fields: { ...ticket.fields, [field!.id]: option },
+          pendingField: null,
+        });
+        yield* this.advance(ticket, user, catalog, text);
+        return;
+      }
+    }
+
+    // ---------- free text ----------
+    // Greetings / "are you there?" / thanks never need the model - answer instantly and warmly.
+    if (isSmalltalk(text)) {
+      const solving = ticket.state === 'solving';
+      yield* this.reply(ticket, catalog, T.smalltalk(text, solving), solving ? QR_AFTER_SOLUTION : undefined);
+      return;
+    }
+    const safety = inspectMessage(text);
+    if (safety.injectionAttempt) this.d.log.warn({ ticketId: ticket.id }, 'prompt injection markers in user message');
+
+    yield { type: 'status', text: ticket.categoryId ? 'Анализирую ответ…' : 'Определяю суть обращения…' };
+    const history = await this.history(ticket.id);
+    let analysis: Analysis;
+    let llmDown = false;
+    try {
+      analysis = await this.d.llm.analyze(catalog, {
+        history,
+        message: text,
+        knownFields: ticket.fields,
+        fixedCategoryId: ticket.categoryId ?? undefined,
+      });
+    } catch (err) {
+      if (!(err instanceof LlmUnavailableError)) throw err;
+      llmDown = true;
+      analysis = await this.fallbackAnalyze(catalog, ticket, text);
+    }
+
+    // Merge what we learned into the ticket.
+    const tone = strongerTone(safety.toneHint, analysis.tone);
+    const fields = { ...ticket.fields, ...cleanFields(analysis.fields) };
+    if (ticket.state === 'clarifying' && ticket.pendingField && !fields[ticket.pendingField]) {
+      // The user answered our question in free form - keep the raw answer.
+      fields[ticket.pendingField] = text.slice(0, 200);
+    }
+    // Summary: never from chit-chat; refine while the problem is still being understood, freeze once solving.
+    const keepSummary = analysis.offTopic || ticket.state === 'solving';
+    ticket = await this.d.tickets.update(ticket.id, {
+      fields,
+      tone,
+      pendingField: null,
+      priority: bumpPriority(ticket.priority, tone),
+      summary: keepSummary ? ticket.summary : analysis.summary?.trim() || ticket.summary,
+    });
+
+    if (analysis.asksForHuman) {
+      yield* this.escalate(ticket, user, catalog, 'user_request');
+      return;
+    }
+    if (analysis.reportsResolved && ticket.state === 'solving') {
+      yield* this.resolve(ticket, user, catalog);
+      return;
+    }
+    if (analysis.offTopic && (!ticket.categoryId || ticket.state === 'clarifying')) {
+      yield* this.reply(ticket, catalog, analysis.smalltalkReply?.trim() || T.offTopic());
+      return;
+    }
+
+    // Category decision (only while not yet decided).
+    if (!ticket.categoryId) {
+      const known = catalog.categoryById.has(analysis.categoryId);
+      if (known && analysis.confidence >= this.d.config.confidenceThreshold) {
+        ticket = await this.setCategory(ticket, user, catalog, analysis.categoryId, analysis.confidence);
+      } else if (ticket.state === 'choosing_category') {
+        // Second miss in a row: do not loop, hand over with what we have.
+        yield* this.escalate(ticket, user, catalog, 'low_confidence');
+        return;
+      } else {
+        ticket = await this.d.tickets.update(ticket.id, {
+          state: 'choosing_category',
+          confidence: analysis.confidence,
+          categoryId: null,
+        });
+        yield { type: 'meta', ticket: toCard(ticket, catalog) };
+        yield* this.reply(ticket, catalog, T.chooseCategory(), T.categoryButtons(catalog.categories));
+        return;
+      }
+    }
+
+    // In "solving" state: a complaint means the steps did not help; anything else is a detail we note.
+    if (ticket.state === 'solving') {
+      if (NEGATIVE.test(text.toLowerCase()) || text.length > 80) {
+        yield* this.nextSolution(ticket, user, catalog, text);
+      } else {
+        yield* this.reply(ticket, catalog, T.noted(), QR_AFTER_SOLUTION);
+      }
+      return;
+    }
+
+    yield* this.advance(ticket, user, catalog, text, llmDown);
+  }
+
+  // ---------- transitions ----------
+
+  /** Ask the next required clarification or search for a solution. */
+  private async *advance(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+    lastText: string,
+    llmDown = false,
+  ): AsyncGenerator<ChatStreamEvent> {
+    const category = catalog.categoryById.get(ticket.categoryId!)!;
+    const missing = category.clarify.filter((f) => f.required && !ticket.fields[f.id]);
+    if (missing.length && ticket.clarificationsAsked < this.d.config.maxClarifications) {
+      const field = missing[0]!;
+      ticket = await this.d.tickets.update(ticket.id, {
+        state: 'clarifying',
+        pendingField: field.id,
+        clarificationsAsked: ticket.clarificationsAsked + 1,
+      });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      yield* this.reply(ticket, catalog, T.clarify(field.question), T.clarifyButtons(field.options));
+      return;
+    }
+    yield* this.solve(ticket, user, catalog, lastText, llmDown);
+  }
+
+  private async *solve(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+    lastText: string,
+    llmDown = false,
+    lead?: string,
+  ): AsyncGenerator<ChatStreamEvent> {
+    const category = catalog.categoryById.get(ticket.categoryId!)!;
+    const query = [ticket.summary ?? '', lastText, ...Object.values(ticket.fields)].join(' ');
+    const [best] = await this.d.knowledge.search(ticket.tenantId, query, {
+      categoryId: category.id,
+      limit: 1,
+      exclude: new Set(ticket.triedArticles),
+    });
+    if (!best || best.score < MIN_SOLUTION_SCORE) {
+      yield* this.escalate(ticket, user, catalog, ticket.triedArticles.length ? 'solution_failed' : 'no_solution');
+      return;
+    }
+    const article = best.article;
+    ticket = await this.d.tickets.update(ticket.id, { state: 'solving', articleId: article.id, pendingField: null });
+    yield { type: 'meta', ticket: toCard(ticket, catalog) };
+    yield { type: 'status', text: `Подбираю решение: «${article.title}»…` };
+    await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
+      ...eventBase(ticket.id, user.id),
+      type: 'ticket.solution_shown',
+      articleId: article.id,
+    });
+
+    let text = '';
+    if (lead) {
+      text += lead + '\n\n';
+      yield { type: 'delta', text: lead + '\n\n' };
+    }
+    if (llmDown) {
+      const note = T.llmDown() + '\n\n';
+      text += note;
+      yield { type: 'delta', text: note };
+    }
+
+    let streamed = '';
+    let failed = llmDown;
+    let noSolution = false;
+    if (!failed) {
+      try {
+        // Buffer the first few characters: the model may open with [NO_SOLUTION] (article does not fit).
+        let head = '';
+        let decided = false;
+        for await (const chunk of this.d.llm.solve(catalog, {
+          summary: ticket.summary ?? lastText,
+          category,
+          fields: ticket.fields,
+          article,
+          tone: ticket.tone as Tone,
+          lastMessage: lastText,
+        })) {
+          if (!decided) {
+            head += chunk;
+            if (head.trimStart().startsWith(NO_SOLUTION) || head.length >= NO_SOLUTION.length + 2 || head.includes('\n')) {
+              decided = true;
+              if (head.trimStart().startsWith(NO_SOLUTION)) {
+                noSolution = true;
+                break;
+              }
+              streamed += head;
+              yield { type: 'delta', text: head };
+            }
+            continue;
+          }
+          streamed += chunk;
+          yield { type: 'delta', text: chunk };
+        }
+        if (!decided && !noSolution) {
+          if (head.trimStart().startsWith(NO_SOLUTION)) noSolution = true;
+          else {
+            streamed += head;
+            if (head) yield { type: 'delta', text: head };
+          }
+        }
+      } catch (err) {
+        if (!(err instanceof LlmUnavailableError)) throw err;
+        failed = true;
+      }
+    }
+    if (noSolution) {
+      // The model judged the best article irrelevant: do not show it, hand over honestly.
+      await this.d.tickets.update(ticket.id, { articleId: null, state: 'intake' });
+      yield* this.escalate(ticket, user, catalog, 'no_solution');
+      return;
+    }
+    if (failed || !streamed.trim()) {
+      // Deterministic fallback: article steps verbatim. The chat never dies with the LLM.
+      const fb = (streamed.trim() ? '\n\n' : '') + T.solutionFallback(article);
+      streamed += fb;
+      yield { type: 'delta', text: fb };
+    }
+    text += streamed.trim();
+
+    if (article.escalateAfter) {
+      // The article itself says a specialist finishes the job: deliver the steps as their own
+      // message, then hand over with the ticket card (two `done` events; the client appends both).
+      yield* this.finish(ticket, catalog, text, undefined, { articleId: article.id });
+      yield* this.escalate(ticket, user, catalog, 'article_requires_specialist');
+      return;
+    }
+    const tail = '\n\n' + T.afterSolution();
+    yield { type: 'delta', text: tail };
+    yield* this.finish(ticket, catalog, text + tail, QR_AFTER_SOLUTION, { articleId: article.id });
+  }
+
+  private async *nextSolution(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+    lastText = '',
+  ): AsyncGenerator<ChatStreamEvent> {
+    const tried = ticket.articleId ? [...new Set([...ticket.triedArticles, ticket.articleId])] : ticket.triedArticles;
+    ticket = await this.d.tickets.update(ticket.id, { triedArticles: tried });
+    const query = [ticket.summary ?? '', lastText, ...Object.values(ticket.fields)].join(' ');
+    const ranked = await this.d.knowledge.search(ticket.tenantId, query, { categoryId: ticket.categoryId!, limit: 5 });
+    const top = ranked[0]?.score ?? 0;
+    const next = ranked.find((r) => !tried.includes(r.article.id));
+    // Only offer a second article when it is a comparable match to the best one; otherwise stop guessing.
+    if (!next || next.score < 0.6 * top || tried.length >= 2) {
+      yield* this.escalate(ticket, user, catalog, 'solution_failed');
+      return;
+    }
+    yield* this.solve(ticket, user, catalog, lastText, false, T.nextArticle(next.article));
+  }
+
+  private async *resolve(ticket: TicketRow, user: UserRow, catalog: LoadedCatalog): AsyncGenerator<ChatStreamEvent> {
+    ticket = await this.d.tickets.update(ticket.id, { state: 'closed', resolved: true, closedAt: new Date() });
+    const card = toCard(ticket, catalog);
+    await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
+      ...eventBase(ticket.id, user.id),
+      type: 'ticket.resolved',
+      ticket: card,
+    });
+    yield { type: 'meta', ticket: card };
+    yield* this.reply(ticket, catalog, T.resolved(card), QR_CLOSED);
+  }
+
+  private async *escalate(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+    reason: EscalationReason,
+  ): AsyncGenerator<ChatStreamEvent> {
+    ticket = await this.d.tickets.update(ticket.id, {
+      state: 'escalated',
+      escalated: true,
+      escalationReason: reason,
+      closedAt: new Date(),
+      priority: reason === 'user_request' ? bumpPriority(ticket.priority, 'frustrated') : ticket.priority,
+    });
+    const card = toCard(ticket, catalog);
+    await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
+      ...eventBase(ticket.id, user.id),
+      type: 'ticket.escalated',
+      reason,
+      ticket: card,
+    });
+    await this.d.events.publish(TOPICS.notifications, ticket.id, {
+      eventId: eventBase(ticket.id, user.id).eventId,
+      occurredAt: new Date().toISOString(),
+      ticketId: ticket.id,
+      platform: user.platform as 'telegram' | 'vk' | 'max' | 'web',
+      platformUserId: user.platformUserId,
+      text: `Обращение №${ticket.id.slice(0, 8).toUpperCase()} передано специалисту. Мы напишем вам в этот чат.`,
+    });
+    yield { type: 'meta', ticket: card };
+    yield* this.reply(ticket, catalog, T.escalated(card, reason), QR_CLOSED);
+  }
+
+  private async setCategory(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+    categoryId: string,
+    confidence: number,
+  ): Promise<TicketRow> {
+    const category = catalog.categoryById.get(categoryId)!;
+    const updated = await this.d.tickets.update(ticket.id, {
+      categoryId,
+      confidence,
+      state: 'intake',
+      priority: maxPriority(ticket.priority, category.priority),
+    });
+    await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
+      ...eventBase(ticket.id, user.id),
+      type: 'ticket.classified',
+      categoryId,
+      confidence,
+      tone: updated.tone as Tone,
+    });
+    return updated;
+  }
+
+  // ---------- helpers ----------
+
+  /** Save an assistant message and emit `done`. */
+  private async *reply(
+    ticket: TicketRow,
+    catalog: LoadedCatalog,
+    text: string,
+    quickReplies?: QuickReply[],
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'delta', text };
+    yield* this.finish(ticket, catalog, text, quickReplies);
+  }
+
+  private async *finish(
+    ticket: TicketRow,
+    catalog: LoadedCatalog,
+    text: string,
+    quickReplies?: QuickReply[],
+    meta: Record<string, unknown> = {},
+  ): AsyncGenerator<ChatStreamEvent> {
+    const saved = await this.d.tickets.addMessage(ticket.id, 'assistant', text, { ...meta, quickReplies: quickReplies ?? [] });
+    const fresh = (await this.d.tickets.get(ticket.id, ticket.userId)) ?? ticket;
+    yield {
+      type: 'done',
+      message: {
+        id: saved.id,
+        role: 'assistant',
+        content: text,
+        createdAt: saved.createdAt.toISOString(),
+        ...(quickReplies?.length ? { quickReplies } : {}),
+      },
+      ticket: toCard(fresh, catalog),
+    };
+  }
+
+  private async history(ticketId: string): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
+    const rows = await this.d.tickets.listMessages(ticketId, this.d.config.historyTurns * 2 + 1);
+    return rows
+      .filter((m) => m.role !== 'system')
+      .slice(0, -1) // the last row is the message being processed now
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+  }
+
+  /** LLM-less understanding: lexical match against the KB decides category and confidence. */
+  private async fallbackAnalyze(catalog: LoadedCatalog, ticket: TicketRow, text: string): Promise<Analysis> {
+    const hits = await this.d.knowledge.search(ticket.tenantId, text, { limit: 3 });
+    const best = hits[0];
+    const categoryId = ticket.categoryId ?? best?.article.categoryId ?? 'unknown';
+    const confidence = ticket.categoryId ? 1 : best ? Math.min(0.95, 0.5 + best.score / 10) : 0;
+    const lower = text.toLowerCase();
+    const offTopic = isSmalltalk(text) || (!ticket.categoryId && !best);
+    // Fill clarifying fields whose options are literally mentioned ("из дома" -> location).
+    const fields: Record<string, string> = {};
+    const category = catalog.categoryById.get(categoryId);
+    for (const f of category?.clarify ?? []) {
+      const hit = f.options?.find((o) => optionMentioned(o, lower));
+      if (hit) fields[f.id] = hit;
+    }
+    return {
+      categoryId,
+      confidence,
+      summary: offTopic ? (ticket.summary ?? '') : (ticket.summary ?? text.slice(0, 160)),
+      fields,
+      tone: 'neutral',
+      offTopic,
+      smalltalkReply: offTopic ? T.smalltalk(text) : undefined,
+      reportsResolved: /помогло|заработал|решилось|всё работает|все работает|спасибо, работает/.test(lower),
+      asksForHuman: /оператор|специалист|живой человек|человека/.test(lower),
+    };
+  }
+}
+
+const SMALLTALK =
+  /^(привет|приветствую|здравствуй(те)?|добрый (день|вечер|утро)|доброе утро|хай|hi|hello|hey|ты тут|ты здесь|есть кто|ау|эй|как дела|кто ты|ты кто|что ты умеешь|спасибо|спс|благодарю|ок|окей|ok|понял|пон|ясно|хорошо|ладно|пока|до свидания|тест|test|проверка)[\s!?.)]*$/i;
+
+function isSmalltalk(text: string): boolean {
+  return text.trim().length <= 40 && SMALLTALK.test(text.trim());
+}
+
+/** "Из дома / удалённо" is mentioned when any of its meaningful words appears in the text. */
+function optionMentioned(option: string, lowerText: string): boolean {
+  const words = option
+    .toLowerCase()
+    .split(/[^a-zа-яё0-9]+/)
+    .filter((w) => w.length >= 3 && !['или', 'для', 'при', 'нет'].includes(w));
+  return words.some((w) => lowerText.includes(w));
+}
+
+/** Marker the model emits when the retrieved article does not fit the problem. */
+const NO_SOLUTION = '[NO_SOLUTION]';
+/** Below this BM25 score the best article is noise, not a match. */
+const MIN_SOLUTION_SCORE = 1.5;
+
+const NEGATIVE =
+  /не помог|не работает|не получ|не подключ|не заход|не откр|не вход|всё равно|все равно|по-прежнему|опять|снова|ошибк|та же|тоже самое|то же самое|ничего/;
+
+function cleanFields(fields: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(fields)) {
+    const val = String(v ?? '').trim();
+    if (val && val.toLowerCase() !== 'null' && val !== '-' && val !== '—') out[k] = val.slice(0, 200);
+  }
+  return out;
+}
+
+function bumpPriority(current: string, tone: Tone): string {
+  if (tone === 'neutral') return current;
+  return 'high';
+}
+
+function maxPriority(a: string, b: string): string {
+  const rank: Record<string, number> = { low: 0, normal: 1, high: 2 };
+  return (rank[a] ?? 1) >= (rank[b] ?? 1) ? a : b;
+}
+
+function labelFor(cmd: string, catalog: LoadedCatalog): string {
+  if (cmd === CMD.helped) return 'Помогло ✅';
+  if (cmd === CMD.notHelped) return 'Не помогло';
+  if (cmd === CMD.human) return 'Нужен специалист';
+  if (cmd.startsWith(CMD.category)) return catalog.categoryById.get(cmd.slice(CMD.category.length))?.name ?? cmd;
+  return cmd;
+}
+
+export type { TicketCard };

@@ -1,0 +1,91 @@
+# Production-like stack: Postgres + Kafka (KRaft, no ZooKeeper) + API + worker + Caddy (auto-HTTPS).
+# Scale: `docker compose up -d --scale api=3 --scale worker=2` - Kafka consumer groups rebalance automatically.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: helpdesk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk}
+      POSTGRES_DB: helpdesk
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U helpdesk']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: helpdesk-kraft-cluster-0001
+    volumes: [kafkadata:/var/lib/kafka/data]
+    healthcheck:
+      test: ['CMD-SHELL', '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1']
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    profiles: [tools]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: helpdesk
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports: ['8090:8080']
+    depends_on: { kafka: { condition: service_healthy } }
+
+  api:
+    build: { context: ., dockerfile: deploy/api.Dockerfile }
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://helpdesk:${POSTGRES_PASSWORD:-helpdesk}@postgres:5432/helpdesk
+      EVENT_BUS: kafka
+      KAFKA_BROKERS: kafka:9092
+      AUTH_DEV_BYPASS: 'false'
+      HOST: 0.0.0.0
+      PORT: 8080
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 512M } } }
+
+  worker:
+    build: { context: ., dockerfile: deploy/worker.Dockerfile }
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://helpdesk:${POSTGRES_PASSWORD:-helpdesk}@postgres:5432/helpdesk
+      EVENT_BUS: kafka
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+
+  caddy:
+    image: caddy:2-alpine
+    ports: ['80:80', '443:443']
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./apps/web/dist:/srv/web:ro
+      - caddydata:/data
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  kafkadata:
+  caddydata:

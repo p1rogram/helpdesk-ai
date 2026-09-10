@@ -1,0 +1,29 @@
+# Auto-HTTPS (Let's Encrypt) for DOMAIN. Mini Apps require HTTPS.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Security headers for the SPA. frame-ancestors lets Telegram embed the Mini App.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors https://web.telegram.org https://*.telegram.org 'self'"
+		-Server
+	}
+
+	# API is same-origin -> no CORS at all in production. SSE needs flush_interval -1.
+	handle /api/* {
+		reverse_proxy api:8080 {
+			flush_interval -1
+		}
+	}
+	handle /health {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv/web
+		try_files {path} /index.html
+		file_server
+	}
+}
