@@ -1,5 +1,7 @@
 import type { Platform } from '@helpdesk/shared';
 import { AuthError, displayNameOf, verifyTelegramInitData } from './telegram.js';
+import { verifyVkLaunchParams } from './vk.js';
+import { verifyMaxInitData } from './max.js';
 
 export { AuthError } from './telegram.js';
 
@@ -25,6 +27,30 @@ export function telegramVerifier(botToken: string): PlatformVerifier {
   };
 }
 
+/** VK Mini Apps: the client posts window.location.search (vk_* params + sign). */
+export function vkVerifier(appSecret: string, appId?: string): PlatformVerifier {
+  return {
+    platform: 'vk',
+    verify(launchParams) {
+      const v = verifyVkLaunchParams(launchParams, appSecret, { expectedAppId: appId });
+      // VK does not include the name in launch params; the client may pass it separately later.
+      return { platform: 'vk', platformUserId: v.userId, displayName: `vk:${v.userId}` };
+    },
+  };
+}
+
+/** MAX Mini Apps: same init-data model as Telegram. */
+export function maxVerifier(botToken: string, secretLabel?: string): PlatformVerifier {
+  return {
+    platform: 'max',
+    verify(initData) {
+      const v = verifyMaxInitData(initData, botToken, { secretLabel });
+      const name = [v.user.first_name, v.user.last_name].filter(Boolean).join(' ') || v.user.username || `max:${v.user.id}`;
+      return { platform: 'max', platformUserId: String(v.user.id), displayName: name };
+    },
+  };
+}
+
 /** Guest identity for the plain-web demo. Enabled only with AUTH_DEV_BYPASS=true. */
 export function devVerifier(): PlatformVerifier {
   return {
@@ -44,4 +70,6 @@ export interface SessionClaims {
   puid: string; // platform user id
   name: string;
   tenant: string;
+  /** App roles derived from organisation groups (corporate login) - e.g. 'operator'. */
+  roles?: string[];
 }

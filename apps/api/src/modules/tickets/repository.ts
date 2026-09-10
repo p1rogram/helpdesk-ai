@@ -69,6 +69,38 @@ export class TicketRepository {
     }
   }
 
+  /** Any ticket by id (operator access - not scoped to the requesting user). */
+  async getAny(id: string): Promise<TicketRow | undefined> {
+    const [row] = await this.db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+    return row;
+  }
+
+  /** Operator queue: escalated tickets of a tenant with user info and "waiting for reply" flag. */
+  async listEscalated(
+    tenantId: string,
+    limit = 100,
+  ): Promise<Array<{ ticket: TicketRow; user: UserRow; lastMessageAt: Date | null; unanswered: boolean }>> {
+    const rows = await this.db
+      .select({ ticket: tickets, user: users })
+      .from(tickets)
+      .innerJoin(users, eq(users.id, tickets.userId))
+      .where(and(eq(tickets.tenantId, tenantId), eq(tickets.state, 'escalated')))
+      .orderBy(desc(tickets.updatedAt))
+      .limit(limit);
+    const out = [];
+    for (const r of rows) {
+      const [last] = await this.db
+        .select({ role: messages.role, createdAt: messages.createdAt, meta: messages.meta })
+        .from(messages)
+        .where(eq(messages.ticketId, r.ticket.id))
+        .orderBy(desc(messages.createdAt))
+        .limit(1);
+      const unanswered = !last || last.role === 'user' || !(last.meta as { operator?: string }).operator;
+      out.push({ ticket: r.ticket, user: r.user, lastMessageAt: last?.createdAt ?? null, unanswered });
+    }
+    return out;
+  }
+
   async listForUser(userId: string, limit = 20): Promise<TicketRow[]> {
     return this.db
       .select()
@@ -130,18 +162,21 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     resolved: t.resolved,
     escalated: t.escalated,
     rating: t.rating,
+    externalId: t.externalId,
+    externalUrl: t.externalUrl,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };
 }
 
 export function toChatMessage(m: MessageRow): ChatMessage {
-  const qr = (m.meta as { quickReplies?: QuickReply[] }).quickReplies;
+  const meta = m.meta as { quickReplies?: QuickReply[]; operator?: string };
   return {
     id: m.id,
     role: m.role as ChatMessage['role'],
     content: m.content,
     createdAt: m.createdAt.toISOString(),
-    ...(qr?.length ? { quickReplies: qr } : {}),
+    ...(meta.quickReplies?.length ? { quickReplies: meta.quickReplies } : {}),
+    ...(meta.operator ? { author: meta.operator } : {}),
   };
 }

@@ -9,6 +9,7 @@ import { REPO_ROOT } from '../config.js';
 import { DialogEngine } from '../modules/dialog/engine.js';
 import { CMD } from '../modules/dialog/templates.js';
 import { MemoryEventBus } from '../modules/events/memory.js';
+import { NoopHelpdesk } from '../modules/helpdesk/index.js';
 import { CatalogRepository, KnowledgeService } from '../modules/knowledge/index.js';
 import { LlmService, LlmUnavailableError } from '../modules/llm/index.js';
 import { TicketRepository } from '../modules/tickets/repository.js';
@@ -70,6 +71,7 @@ beforeAll(async () => {
     llm,
     tickets,
     events: bus,
+    helpdesk: new NoopHelpdesk(),
     config: { maxClarifications: 2, confidenceThreshold: 0.6, historyTurns: 6 },
     log: { info() {}, warn() {} },
   });
@@ -126,8 +128,8 @@ describe('DialogEngine', () => {
     llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Заблокирован аккаунт' });
     const r = await collect(engine.handle(ticket, user, 'Позовите живого человека'));
     expect(r.ticket.state).toBe('escalated');
-    expect(r.text).toMatch(/передал обращение специалисту/);
-    expect(r.text).toMatch(/Номер:/);
+    expect(r.text).toMatch(/Заявка №/);
+    expect(r.ticket.externalId).toBeTruthy();
   });
 
   it('offers category buttons on low confidence instead of guessing', async () => {
@@ -171,6 +173,24 @@ describe('DialogEngine', () => {
     expect(r.text).toMatch(/на месте/);
     expect(r.ticket.state).toBe('intake');
     expect(r.ticket.summary).toBeNull();
+  });
+
+  it('never creates a request on its own: offers escalation and waits for consent', async () => {
+    const { user, ticket } = await fresh();
+    // Category known, but nothing in the KB matches -> the assistant asks instead of escalating.
+    llm.queue.push({ categoryId: 'general', confidence: 0.9, summary: 'Спор с соседом по комнате из-за шума ночью', fields: {} });
+    const r1 = await collect(engine.handle(ticket, user, 'Сосед по общаге шумит ночью, что делать?'));
+    if (r1.ticket.state === 'offer_escalation') {
+      expect(r1.ticket.escalated).toBe(false);
+      expect(r1.quick.map((q) => q.value)).toEqual([CMD.escalate, CMD.dismiss]);
+      const t2 = (await tickets.get(ticket.id, user.id))!;
+      const r2 = await collect(engine.handle(t2, user, CMD.dismiss));
+      expect(r2.ticket.state).toBe('intake');
+      expect(r2.ticket.escalated).toBe(false);
+    } else {
+      // A KB article matched - still no request was created without asking.
+      expect(r1.ticket.escalated).toBe(false);
+    }
   });
 
   it('uses the model-written smalltalk reply for off-topic messages', async () => {

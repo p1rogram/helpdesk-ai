@@ -5,6 +5,7 @@ export const TicketStateSchema = z.enum([
   'clarifying', // engine asked a clarifying question
   'choosing_category', // low confidence - user picks category from buttons
   'solving', // solution has been shown, waiting for "helped / not helped"
+  'offer_escalation', // assistant cannot help further and asks whether to create a request
   'closed', // resolved
   'escalated', // handed over to a specialist
 ]);
@@ -64,6 +65,9 @@ export const TicketCardSchema = z.object({
   resolved: z.boolean(),
   escalated: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
+  /** Request number in the external helpdesk (help.tpu.ru), once created. */
+  externalId: z.string().nullable(),
+  externalUrl: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

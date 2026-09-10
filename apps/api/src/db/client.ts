@@ -38,6 +38,10 @@ export async function ensureSchema(db: Db): Promise<void> {
   for (const stmt of DDL) {
     await db.execute(sql.raw(stmt));
   }
+  // Additive migrations for databases created before these columns existed.
+  for (const col of ['external_id TEXT', 'external_url TEXT', 'pending_escalation TEXT']) {
+    await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
+  }
 }
 
 const DDL: string[] = [
@@ -99,6 +103,9 @@ const DDL: string[] = [
       resolved BOOLEAN NOT NULL DEFAULT false,
       escalated BOOLEAN NOT NULL DEFAULT false,
       escalation_reason TEXT,
+      external_id TEXT,
+      external_url TEXT,
+      pending_escalation TEXT,
       rating INTEGER,
       rating_comment TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

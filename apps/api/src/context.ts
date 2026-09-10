@@ -3,13 +3,16 @@ import { TOPICS } from '@helpdesk/shared';
 import { randomUUID } from 'node:crypto';
 import type { AppConfig } from './config.js';
 import { connectDb, ensureSchema, type DbHandle } from './db/client.js';
-import { devVerifier, telegramVerifier, type PlatformVerifier } from './modules/auth/index.js';
+import { devVerifier, maxVerifier, telegramVerifier, vkVerifier, type PlatformVerifier } from './modules/auth/index.js';
 import { DialogEngine } from './modules/dialog/engine.js';
 import { createEventBus, type EventBus } from './modules/events/index.js';
 import { attachDevTelegramNotifier } from './modules/events/dev-notifier.js';
 import { CatalogRepository, KnowledgeService } from './modules/knowledge/index.js';
 import { LlmService } from './modules/llm/index.js';
 import { TicketRepository } from './modules/tickets/repository.js';
+import { NaumenHelpdesk, NoopHelpdesk, type HelpdeskConnector } from './modules/helpdesk/index.js';
+import { EmailCodeProvider, LdapProvider, OidcProvider } from './modules/auth/corporate.js';
+import type { FastifyInstance } from 'fastify';
 
 /** Composition root: every dependency is built once here and injected explicitly. */
 export interface AppContext {
@@ -22,6 +25,10 @@ export interface AppContext {
   tickets: TicketRepository;
   engine: DialogEngine;
   verifiers: Map<string, PlatformVerifier>;
+  helpdesk: HelpdeskConnector;
+  corporate: { oidc: OidcProvider | null; ldap: LdapProvider | null; email: EmailCodeProvider | null };
+  /** Set by buildApp - needed to sign tokens from route modules. */
+  app: FastifyInstance;
   close(): Promise<void>;
 }
 
@@ -69,11 +76,27 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   log.info(`llm: ${llm.enabled ? `${config.LLM_MODEL} (effort=${config.LLM_EFFORT}) via ${config.LLM_BASE_URL}` : 'DISABLED - deterministic fallback mode'}`);
 
   const tickets = new TicketRepository(dbHandle.db);
+
+  let helpdesk: HelpdeskConnector = new NoopHelpdesk();
+  if (config.HELPDESK_KIND === 'naumen') {
+    if (!config.NAUMEN_URL || !config.NAUMEN_ACCESS_KEY || !config.NAUMEN_DEFAULT_SERVICE) {
+      throw new Error('HELPDESK_KIND=naumen requires NAUMEN_URL, NAUMEN_ACCESS_KEY, NAUMEN_DEFAULT_SERVICE');
+    }
+    helpdesk = new NaumenHelpdesk({
+      baseUrl: config.NAUMEN_URL,
+      accessKey: config.NAUMEN_ACCESS_KEY,
+      defaultServiceId: config.NAUMEN_DEFAULT_SERVICE,
+      serviceByCategory: config.NAUMEN_SERVICE_BY_CATEGORY ? (JSON.parse(config.NAUMEN_SERVICE_BY_CATEGORY) as Record<string, string>) : undefined,
+    });
+  }
+  log.info(`helpdesk connector: ${helpdesk.kind}`);
+
   const engine = new DialogEngine({
     knowledge,
     llm,
     tickets,
     events,
+    helpdesk,
     config: {
       maxClarifications: config.MAX_CLARIFICATIONS,
       confidenceThreshold: config.CONFIDENCE_THRESHOLD,
@@ -84,8 +107,45 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
 
   const verifiers = new Map<string, PlatformVerifier>();
   if (config.TELEGRAM_BOT_TOKEN) verifiers.set('telegram', telegramVerifier(config.TELEGRAM_BOT_TOKEN));
+  if (config.VK_APP_SECRET) verifiers.set('vk', vkVerifier(config.VK_APP_SECRET, config.VK_APP_ID));
+  if (config.MAX_BOT_TOKEN) verifiers.set('max', maxVerifier(config.MAX_BOT_TOKEN, config.MAX_SECRET_LABEL));
   if (config.AUTH_DEV_BYPASS) verifiers.set('web', devVerifier());
   log.info(`auth platforms: ${[...verifiers.keys()].join(', ') || 'none'}`);
+
+  const corporate = {
+    oidc:
+      config.OIDC_ISSUER && config.OIDC_CLIENT_ID && config.OIDC_REDIRECT_URI
+        ? new OidcProvider({
+            issuer: config.OIDC_ISSUER,
+            clientId: config.OIDC_CLIENT_ID,
+            clientSecret: config.OIDC_CLIENT_SECRET,
+            redirectUri: config.OIDC_REDIRECT_URI,
+            scopes: config.OIDC_SCOPES,
+            claims: { id: config.OIDC_CLAIM_ID, name: config.OIDC_CLAIM_NAME, email: config.OIDC_CLAIM_EMAIL, groups: config.OIDC_CLAIM_GROUPS },
+          })
+        : null,
+    ldap:
+      config.LDAP_URL && config.LDAP_BASE_DN
+        ? new LdapProvider({
+            url: config.LDAP_URL,
+            bindTemplate: config.LDAP_BIND_TEMPLATE,
+            baseDn: config.LDAP_BASE_DN,
+            searchFilter: config.LDAP_SEARCH_FILTER,
+            attributes: { name: config.LDAP_ATTR_NAME, email: config.LDAP_ATTR_EMAIL, groups: config.LDAP_ATTR_GROUPS },
+            tlsRejectUnauthorized: config.LDAP_TLS_REJECT_UNAUTHORIZED,
+          })
+        : null,
+    email:
+      config.EMAIL_AUTH_DOMAINS && config.SMTP_HOST
+        ? new EmailCodeProvider({
+            domains: config.EMAIL_AUTH_DOMAINS.split(',').map((s) => s.trim().toLowerCase()),
+            smtp: { host: config.SMTP_HOST, port: config.SMTP_PORT, secure: config.SMTP_SECURE, user: config.SMTP_USER, pass: config.SMTP_PASS, from: config.SMTP_FROM },
+          })
+        : null,
+  };
+  log.info(
+    `corporate auth: ${[corporate.oidc && 'oidc', corporate.ldap && 'ldap', corporate.email && 'email'].filter(Boolean).join(', ') || 'none (socket ready)'}`,
+  );
 
   return {
     config,
@@ -97,6 +157,9 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     tickets,
     engine,
     verifiers,
+    helpdesk,
+    corporate,
+    app: null as unknown as FastifyInstance,
     async close() {
       await events.close();
       await dbHandle.close();

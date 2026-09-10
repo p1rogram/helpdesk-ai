@@ -11,5 +11,9 @@ export async function healthRoutes(app: FastifyInstance, ctx: AppContext): Promi
   }));
 
   /** Public tenant info for the client bootstrap (no auth: only non-sensitive data). */
-  app.get('/api/tenants', async () => ({ tenants: await ctx.catalogs.listTenants(), default: ctx.config.DEFAULT_TENANT }));
+  app.get('/api/tenants', async () => ({
+    tenants: await ctx.catalogs.listTenants(),
+    default: ctx.config.DEFAULT_TENANT,
+    botUrl: ctx.config.TELEGRAM_BOT_USERNAME ? `https://t.me/${ctx.config.TELEGRAM_BOT_USERNAME}` : undefined,
+  }));
 }

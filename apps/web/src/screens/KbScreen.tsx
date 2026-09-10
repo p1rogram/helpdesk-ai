@@ -25,7 +25,7 @@ export function KbScreen(props: { api: ApiClient }) {
   return (
     <>
       <div className="search">
-        <input placeholder="Например: не работает VPN" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        <input placeholder="Поиск по базе знаний: например, VPN" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
       </div>
       <div className="list">
         {q.trim().length >= 1 && !results.length && <div className="empty">Ничего не найдено. Опишите проблему в чате.</div>}

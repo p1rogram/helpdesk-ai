@@ -6,7 +6,16 @@ import type { KnowledgeService, LoadedCatalog } from '../knowledge/index.js';
 import { LlmUnavailableError, type LlmService } from '../llm/index.js';
 import { inspectMessage, strongerTone } from '../safety/index.js';
 import { toCard, type TicketRepository } from '../tickets/repository.js';
-import { CMD, QR_AFTER_SOLUTION, QR_CLOSED, T, type EscalationReason } from './templates.js';
+import type { HelpdeskConnector } from '../helpdesk/index.js';
+import {
+  CMD,
+  QR_AFTER_SOLUTION,
+  QR_CLOSED,
+  QR_CLOSED_OR_NEW,
+  QR_OFFER_ESCALATION,
+  T,
+  type EscalationReason,
+} from './templates.js';
 
 export interface EngineConfig {
   maxClarifications: number;
@@ -19,6 +28,7 @@ export interface EngineDeps {
   llm: LlmService;
   tickets: TicketRepository;
   events: EventBus;
+  helpdesk: HelpdeskConnector;
   config: EngineConfig;
   log: { info(obj: unknown, msg?: string): void; warn(obj: unknown, msg?: string): void };
 }
@@ -42,8 +52,18 @@ export class DialogEngine {
     // Persist what the user said (commands are stored with a readable label).
     await this.d.tickets.addMessage(ticket.id, 'user', isCmd ? labelFor(text, catalog) : text, isCmd ? { command: text } : {});
 
+    // Escalated: the conversation now belongs to the operator; the bot only acknowledges.
+    if (ticket.state === 'escalated') {
+      if (text === CMD.newTicket || isCmd) {
+        yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
+        return;
+      }
+      await this.d.tickets.update(ticket.id, { updatedAt: new Date() });
+      yield* this.reply(ticket, catalog, T.forwardedToOperator());
+      return;
+    }
     // Closed tickets do not continue - the client offers "new ticket".
-    if (ticket.state === 'closed' || ticket.state === 'escalated') {
+    if (ticket.state === 'closed') {
       yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
       return;
     }
@@ -73,6 +93,17 @@ export class DialogEngine {
       yield* this.escalate(ticket, user, catalog, 'user_request');
       return;
     }
+    if (text === CMD.escalate) {
+      yield* this.escalate(ticket, user, catalog, (ticket.pendingEscalation as EscalationReason | null) ?? 'user_request');
+      return;
+    }
+    if (text === CMD.dismiss) {
+      const back = ticket.articleId ? 'solving' : 'intake';
+      ticket = await this.d.tickets.update(ticket.id, { state: back, pendingEscalation: null });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      yield* this.reply(ticket, catalog, T.dismissed(back === 'solving'), back === 'solving' ? QR_AFTER_SOLUTION : QR_CLOSED_OR_NEW);
+      return;
+    }
     if (isCmd) {
       // Unknown / stale command - ignore politely.
       yield* this.reply(ticket, catalog, T.afterSolution(), ticket.state === 'solving' ? QR_AFTER_SOLUTION : undefined);
@@ -91,6 +122,11 @@ export class DialogEngine {
         yield* this.advance(ticket, user, catalog, text);
         return;
       }
+    }
+
+    if (ticket.state === 'offer_escalation' && !isCmd) {
+      // The user kept typing instead of choosing: treat it as new information about the problem.
+      ticket = await this.d.tickets.update(ticket.id, { state: ticket.articleId ? 'solving' : 'intake', pendingEscalation: null });
     }
 
     // ---------- free text ----------
@@ -156,8 +192,8 @@ export class DialogEngine {
       if (known && analysis.confidence >= this.d.config.confidenceThreshold) {
         ticket = await this.setCategory(ticket, user, catalog, analysis.categoryId, analysis.confidence);
       } else if (ticket.state === 'choosing_category') {
-        // Second miss in a row: do not loop, hand over with what we have.
-        yield* this.escalate(ticket, user, catalog, 'low_confidence');
+        // Second miss in a row: do not loop, offer a hand-over with what we have.
+        yield* this.offerEscalation(ticket, catalog, 'low_confidence');
         return;
       } else {
         ticket = await this.d.tickets.update(ticket.id, {
@@ -226,7 +262,7 @@ export class DialogEngine {
       exclude: new Set(ticket.triedArticles),
     });
     if (!best || best.score < MIN_SOLUTION_SCORE) {
-      yield* this.escalate(ticket, user, catalog, ticket.triedArticles.length ? 'solution_failed' : 'no_solution');
+      yield* this.offerEscalation(ticket, catalog, ticket.triedArticles.length ? 'solution_failed' : 'no_solution');
       return;
     }
     const article = best.article;
@@ -295,9 +331,9 @@ export class DialogEngine {
       }
     }
     if (noSolution) {
-      // The model judged the best article irrelevant: do not show it, hand over honestly.
-      await this.d.tickets.update(ticket.id, { articleId: null, state: 'intake' });
-      yield* this.escalate(ticket, user, catalog, 'no_solution');
+      // The model judged the best article irrelevant: do not show it, offer a hand-over honestly.
+      ticket = await this.d.tickets.update(ticket.id, { articleId: null, state: 'intake' });
+      yield* this.offerEscalation(ticket, catalog, 'no_solution');
       return;
     }
     if (failed || !streamed.trim()) {
@@ -309,10 +345,10 @@ export class DialogEngine {
     text += streamed.trim();
 
     if (article.escalateAfter) {
-      // The article itself says a specialist finishes the job: deliver the steps as their own
-      // message, then hand over with the ticket card (two `done` events; the client appends both).
+      // The article itself says a specialist finishes the job: deliver the steps, then ask
+      // whether to create the request (two `done` events; the client appends both).
       yield* this.finish(ticket, catalog, text, undefined, { articleId: article.id });
-      yield* this.escalate(ticket, user, catalog, 'article_requires_specialist');
+      yield* this.offerEscalation(ticket, catalog, 'article_requires_specialist');
       return;
     }
     const tail = '\n\n' + T.afterSolution();
@@ -334,7 +370,7 @@ export class DialogEngine {
     const next = ranked.find((r) => !tried.includes(r.article.id));
     // Only offer a second article when it is a comparable match to the best one; otherwise stop guessing.
     if (!next || next.score < 0.6 * top || tried.length >= 2) {
-      yield* this.escalate(ticket, user, catalog, 'solution_failed');
+      yield* this.offerEscalation(ticket, catalog, 'solution_failed');
       return;
     }
     yield* this.solve(ticket, user, catalog, lastText, false, T.nextArticle(next.article));
@@ -352,16 +388,48 @@ export class DialogEngine {
     yield* this.reply(ticket, catalog, T.resolved(card), QR_CLOSED);
   }
 
+  /**
+   * The assistant never creates a request on its own: it explains why it cannot go further and
+   * asks. Only an explicit "yes" (or the user asking for a human) creates the external request.
+   */
+  private async *offerEscalation(
+    ticket: TicketRow,
+    catalog: LoadedCatalog,
+    reason: EscalationReason,
+  ): AsyncGenerator<ChatStreamEvent> {
+    ticket = await this.d.tickets.update(ticket.id, { state: 'offer_escalation', pendingEscalation: reason });
+    yield { type: 'meta', ticket: toCard(ticket, catalog) };
+    yield* this.reply(ticket, catalog, T.offerEscalation(reason), QR_OFFER_ESCALATION);
+  }
+
   private async *escalate(
     ticket: TicketRow,
     user: UserRow,
     catalog: LoadedCatalog,
     reason: EscalationReason,
   ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'status', text: 'Создаю заявку…' };
+    // Create the request in the external helpdesk first, so the card shows the real number.
+    let external: { externalId: string; url?: string } | null = null;
+    try {
+      const transcript = (await this.d.tickets.listMessages(ticket.id, 60))
+        .map((m) => `${m.role === 'user' ? 'Пользователь' : 'Помощник'}: ${m.content}`)
+        .join('\n');
+      external = await this.d.helpdesk.createRequest(toCard(ticket, catalog), {
+        userDisplayName: user.displayName,
+        transcript,
+      });
+    } catch (err) {
+      // The chat must not fail because the helpdesk is down: keep the internal id, retry later via events.
+      this.d.log.warn({ ticketId: ticket.id, err: (err as Error).message }, 'helpdesk request creation failed');
+    }
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'escalated',
       escalated: true,
       escalationReason: reason,
+      pendingEscalation: null,
+      externalId: external?.externalId ?? null,
+      externalUrl: external?.url ?? null,
       closedAt: new Date(),
       priority: reason === 'user_request' ? bumpPriority(ticket.priority, 'frustrated') : ticket.priority,
     });
@@ -378,7 +446,7 @@ export class DialogEngine {
       ticketId: ticket.id,
       platform: user.platform as 'telegram' | 'vk' | 'max' | 'web',
       platformUserId: user.platformUserId,
-      text: `Обращение №${ticket.id.slice(0, 8).toUpperCase()} передано специалисту. Мы напишем вам в этот чат.`,
+      text: `Заявка №${card.externalId ?? ticket.id.slice(0, 8).toUpperCase()} создана и передана специалисту. Ответ придёт в этот чат.`,
     });
     yield { type: 'meta', ticket: card };
     yield* this.reply(ticket, catalog, T.escalated(card, reason), QR_CLOSED);
@@ -524,7 +592,7 @@ function maxPriority(a: string, b: string): string {
 }
 
 function labelFor(cmd: string, catalog: LoadedCatalog): string {
-  if (cmd === CMD.helped) return 'Помогло ✅';
+  if (cmd === CMD.helped) return 'Помогло';
   if (cmd === CMD.notHelped) return 'Не помогло';
   if (cmd === CMD.human) return 'Нужен специалист';
   if (cmd.startsWith(CMD.category)) return catalog.categoryById.get(cmd.slice(CMD.category.length))?.name ?? cmd;

@@ -10,15 +10,27 @@ export const CMD = {
   human: '__human',
   category: '__cat:',
   newTicket: '__new',
+  escalate: '__escalate',
+  dismiss: '__dismiss',
 } as const;
 
 export const QR_AFTER_SOLUTION: QuickReply[] = [
-  { label: 'Помогло ✅', value: CMD.helped },
+  { label: 'Помогло', value: CMD.helped },
   { label: 'Не помогло', value: CMD.notHelped },
   { label: 'Нужен специалист', value: CMD.human },
 ];
 
 export const QR_CLOSED: QuickReply[] = [{ label: 'Новое обращение', value: CMD.newTicket }];
+
+export const QR_OFFER_ESCALATION: QuickReply[] = [
+  { label: 'Создать заявку специалисту', value: CMD.escalate },
+  { label: 'Не нужно', value: CMD.dismiss },
+];
+
+export const QR_CLOSED_OR_NEW: QuickReply[] = [
+  { label: 'Нужен специалист', value: CMD.human },
+  { label: 'Новое обращение', value: CMD.newTicket },
+];
 
 export const T = {
   greeting: (sphere: string) =>
@@ -33,7 +45,7 @@ export const T = {
     if (solving && /ты тут|ты здесь|есть кто|ау|эй/.test(t)) return `Да, здесь. Получилось выполнить шаги? Нажмите «Помогло» или «Не помогло».`;
     if (/пока|до свидания/.test(t)) return `Хорошего дня! Обращайтесь, если понадобится помощь.`;
     if (/кто ты|ты кто|что ты умеешь/.test(t))
-      return `Я помощник техподдержки: помогаю разобраться с учётной записью, Moodle, VPN, Wi-Fi, почтой, принтерами и бытовыми вопросами. Опишите проблему — подскажу, что делать.`;
+      return `Я помощник поддержки ТПУ: учётная запись и сервисы, Moodle, VPN и Wi-Fi, почта, принтеры, общежития и бытовые проблемы, справки, стипендии, пропуска, библиотека, контакты. Опишите проблему — подскажу, что делать.`;
     if (/ты тут|ты здесь|есть кто|ау|эй/.test(t)) return `Да, на месте! Расскажите, что случилось.`;
     if (/как дела/.test(t)) return `Всё в порядке, спасибо! Чем помочь?`;
     if (/^(ок|окей|ok|понял|пон|ясно|хорошо|ладно)/.test(t)) return `Отлично. Если появится вопрос — я здесь.`;
@@ -66,15 +78,30 @@ export const T = {
   resolved: (card: TicketCard) =>
     [
       `Отлично, рад, что помогло!`,
-      `Коротко, что было: ${card.summary ?? '—'} (${card.categoryName ?? '—'}) — решено ✅`,
+      `Коротко, что было: ${card.summary ?? '—'} (${card.categoryName ?? '—'}) — решено.`,
       ``,
       `Если не сложно, оцените ответ — это помогает делать помощника лучше.`,
     ].join('\n'),
 
-  escalated: (card: TicketCard, reason: EscalationReason) =>
+  /** Asked before any request is created - the user decides. */
+  offerEscalation: (reason: EscalationReason) =>
     [
       escalationLead[reason],
-      `Я передал обращение специалисту — вот что он получит:`,
+      `Могу создать заявку специалисту — он получит описание проблемы и всё, что мы уже выяснили, и ответит в этот чат. Создать?`,
+    ].join('\n'),
+
+  dismissed: (solving: boolean) =>
+    solving
+      ? `Хорошо, заявку не создаю. Если передумаете — нажмите «Нужен специалист».`
+      : `Хорошо, заявку не создаю. Если захотите — нажмите «Нужен специалист» или опишите проблему подробнее.`,
+
+  escalated: (card: TicketCard, reason: EscalationReason) =>
+    [
+      reason === 'user_request' ? `Хорошо, подключаю специалиста.` : `Готово.`,
+      card.externalId && card.externalUrl
+        ? `Заявка №${card.externalId} создана: ${card.externalUrl}`
+        : `Заявка №${card.externalId ?? card.id.slice(0, 8).toUpperCase()} создана.`,
+      `Специалист получит:`,
       `• Проблема: ${card.summary ?? 'уточняется'}`,
       `• Категория: ${card.categoryName ?? 'не определена'}`,
       `• Приоритет: ${priorityLabel[card.priority]}`,
@@ -83,12 +110,13 @@ export const T = {
             .map(([k, v]) => `${k} — ${v}`)
             .join('; ')}`
         : '',
-      `• Номер: ${card.id.slice(0, 8).toUpperCase()}`,
       ``,
       `Делать ничего не нужно: специалист напишет сюда, уведомление придёт автоматически.`,
     ]
       .filter(Boolean)
       .join('\n'),
+
+  forwardedToOperator: () => `Передал специалисту — он увидит это сообщение в заявке и ответит здесь.`,
 
   closedHint: () => `Это обращение уже закрыто. Нажмите «Новое обращение», чтобы описать другую проблему.`,
 
@@ -102,7 +130,7 @@ const escalationLead: Record<EscalationReason, string> = {
   user_request: `Хорошо, подключаю специалиста.`,
   no_solution: `Для этой ситуации у меня нет проверенного решения — гадать не буду. Возможно, ответ есть на официальном сайте https://tpu.ru или на портале поддержки https://help.tpu.ru.`,
   solution_failed: `Стандартные шаги не помогли — дальше нужна диагностика специалиста.`,
-  article_requires_specialist: `Чтобы ситуацию взяли на контроль, я также передал обращение специалисту.`,
+  article_requires_specialist: `Дальше это оформляется через специалиста.`,
   low_confidence: `Я не смог уверенно понять, в чём проблема, поэтому передаю её человеку. Пока ждёте, загляните на https://tpu.ru — там может быть нужная информация.`,
 };
 

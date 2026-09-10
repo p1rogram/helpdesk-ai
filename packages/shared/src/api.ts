@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { QuickReplySchema, TicketCardSchema } from './dialog.js';
 
-export const PlatformSchema = z.enum(['telegram', 'vk', 'max', 'web']);
+export const PlatformSchema = z.enum(['telegram', 'vk', 'max', 'web', 'corp']);
 export type Platform = z.infer<typeof PlatformSchema>;
 
 export const TelegramAuthRequestSchema = z.object({
@@ -33,6 +33,8 @@ export const ChatMessageSchema = z.object({
   content: z.string(),
   createdAt: z.string(),
   quickReplies: z.array(QuickReplySchema).optional(),
+  /** Set when a human operator wrote the message (name shown in the chat). */
+  author: z.string().optional(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 

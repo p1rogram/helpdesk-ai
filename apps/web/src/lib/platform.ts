@@ -33,6 +33,8 @@ interface TelegramWebApp {
 declare global {
   interface Window {
     Telegram?: { WebApp?: TelegramWebApp };
+    vkBridge?: VkBridgeLike;
+    Max?: { WebApp?: MaxWebApp };
   }
 }
 
@@ -64,6 +66,52 @@ function telegramAdapter(tg: TelegramWebApp): PlatformAdapter {
   };
 }
 
+interface VkBridgeLike {
+  send(method: string, params?: Record<string, unknown>): Promise<unknown>;
+}
+
+/**
+ * VK Mini Apps: launch params arrive in the URL and are verified server-side; UI hooks go through
+ * vk-bridge (loaded by the host). Only the pieces used by this app are wired; the rest is no-op.
+ */
+function vkAdapter(bridge: VkBridgeLike | undefined): PlatformAdapter {
+  return {
+    kind: 'vk',
+    authPayload: () => window.location.search || null,
+    displayName: () => null,
+    themeVars: () => ({}),
+    isDark: () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false,
+    ready: () => void bridge?.send('VKWebAppInit'),
+    haptic: (k) => void bridge?.send('VKWebAppTapticImpactOccurred', { style: k === 'light' ? 'light' : 'medium' }),
+    expand: () => {},
+  };
+}
+
+interface MaxWebApp {
+  initData: string;
+  initDataUnsafe?: { user?: { first_name?: string; last_name?: string } };
+  colorScheme?: 'light' | 'dark';
+  ready?(): void;
+  expand?(): void;
+}
+
+/** MAX Mini Apps expose a Telegram-like `WebApp` object; the adapter mirrors the Telegram one. */
+function maxAdapter(m: MaxWebApp): PlatformAdapter {
+  return {
+    kind: 'max',
+    authPayload: () => m.initData || null,
+    displayName: () => {
+      const u = m.initDataUnsafe?.user;
+      return u ? [u.first_name, u.last_name].filter(Boolean).join(' ') : null;
+    },
+    themeVars: () => ({}),
+    isDark: () => m.colorScheme === 'dark',
+    ready: () => m.ready?.(),
+    haptic: () => {},
+    expand: () => m.expand?.(),
+  };
+}
+
 function webAdapter(): PlatformAdapter {
   return {
     kind: 'web',
@@ -81,5 +129,8 @@ export function detectPlatform(): PlatformAdapter {
   const tg = window.Telegram?.WebApp;
   // initData is empty when the page is opened outside Telegram even though the SDK loaded.
   if (tg && tg.initData) return telegramAdapter(tg);
+  const mx = window.Max?.WebApp;
+  if (mx && mx.initData) return maxAdapter(mx);
+  if (new URLSearchParams(window.location.search).has('vk_app_id')) return vkAdapter(window.vkBridge);
   return webAdapter();
 }

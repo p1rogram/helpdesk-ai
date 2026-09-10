@@ -109,6 +109,11 @@ export const tickets = pgTable(
     resolved: boolean('resolved').notNull().default(false),
     escalated: boolean('escalated').notNull().default(false),
     escalationReason: text('escalation_reason'),
+    /** Request number / link in the external helpdesk after escalation. */
+    externalId: text('external_id'),
+    externalUrl: text('external_url'),
+    /** Why the assistant offered escalation (kept while the user decides). */
+    pendingEscalation: text('pending_escalation'),
     rating: integer('rating'),
     ratingComment: text('rating_comment'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

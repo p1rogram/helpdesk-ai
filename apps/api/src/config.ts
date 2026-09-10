@@ -24,6 +24,52 @@ const EnvSchema = z.object({
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(25_000),
 
   TELEGRAM_BOT_TOKEN: z.string().optional(),
+  /** Public bot username (without @) - used for the "Open in Telegram" link on the website. */
+  TELEGRAM_BOT_USERNAME: z.string().optional(),
+  /** VK Mini Apps: secret key + app id from dev.vk.com (enables /api/auth/vk). */
+  VK_APP_SECRET: z.string().optional(),
+  VK_APP_ID: z.string().optional(),
+  /** MAX Mini Apps: bot token from the MAX developer console (enables /api/auth/max). */
+  MAX_BOT_TOKEN: z.string().optional(),
+  MAX_SECRET_LABEL: z.string().default('WebAppData'),
+
+  // ----- Corporate identity (any subset; each enables its own routes) -----
+  /** OpenID Connect SSO: issuer URL (Keycloak realm / ADFS / etc.). */
+  OIDC_ISSUER: z.string().url().optional(),
+  OIDC_CLIENT_ID: z.string().optional(),
+  OIDC_CLIENT_SECRET: z.string().optional(),
+  OIDC_REDIRECT_URI: z.string().url().optional(),
+  OIDC_SCOPES: z.string().default('openid profile email'),
+  OIDC_CLAIM_ID: z.string().default('preferred_username'),
+  OIDC_CLAIM_NAME: z.string().default('name'),
+  OIDC_CLAIM_EMAIL: z.string().default('email'),
+  OIDC_CLAIM_GROUPS: z.string().default('groups'),
+  SSO_LABEL: z.string().default('Войти через учётную запись ТПУ'),
+  /** LDAP / Active Directory bind. */
+  LDAP_URL: z.string().optional(),
+  LDAP_BIND_TEMPLATE: z.string().default('{login}@tpu.ru'),
+  LDAP_BASE_DN: z.string().optional(),
+  LDAP_SEARCH_FILTER: z.string().default('(sAMAccountName={login})'),
+  LDAP_ATTR_NAME: z.string().default('displayName'),
+  LDAP_ATTR_EMAIL: z.string().default('mail'),
+  LDAP_ATTR_GROUPS: z.string().default('memberOf'),
+  LDAP_TLS_REJECT_UNAUTHORIZED: z
+    .string()
+    .default('true')
+    .transform((v) => v !== 'false' && v !== '0'),
+  /** One-time code to a corporate mailbox. */
+  EMAIL_AUTH_DOMAINS: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().default(587),
+  SMTP_SECURE: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('helpdesk-bot@tpu.ru'),
+  /** Organisation groups (DN or CN) whose members get the operator console. */
+  OPERATOR_GROUPS: z.string().default(''),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 chars'),
   JWT_TTL: z.string().default('12h'),
   WEB_APP_URL: z.string().url().optional(),
@@ -51,6 +97,13 @@ const EnvSchema = z.object({
     .string()
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
+  /** External helpdesk: none (dev) | naumen (help.tpu.ru). */
+  HELPDESK_KIND: z.enum(['none', 'naumen']).default('none'),
+  NAUMEN_URL: z.string().url().optional(),
+  NAUMEN_ACCESS_KEY: z.string().optional(),
+  NAUMEN_DEFAULT_SERVICE: z.string().optional(),
+  /** JSON object: { "network": "slmService$4550406", ... } */
+  NAUMEN_SERVICE_BY_CATEGORY: z.string().optional(),
   /** Comma-separated admin user ids (platform:platformUserId) allowed to call /api/admin/*. */
   ADMIN_USERS: z.string().default(''),
   MAX_CLARIFICATIONS: z.coerce.number().int().min(0).max(5).default(2),
@@ -61,6 +114,7 @@ const EnvSchema = z.object({
 export type AppConfig = z.infer<typeof EnvSchema> & {
   corsOrigins: string[];
   adminUsers: Set<string>;
+  operatorGroups: Set<string>;
   llmEnabled: boolean;
 };
 
@@ -83,6 +137,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .filter(Boolean),
     adminUsers: new Set(
       cfg.ADMIN_USERS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+    operatorGroups: new Set(
+      cfg.OPERATOR_GROUPS.split(',')
         .map((s) => s.trim())
         .filter(Boolean),
     ),

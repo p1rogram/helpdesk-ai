@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
+    "cheerio": "^1.2.0",
     "eslint": "^9.30.0",
     "prettier": "^3.6.0",
     "typescript": "^5.8.0",

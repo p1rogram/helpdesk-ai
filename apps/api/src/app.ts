@@ -7,6 +7,8 @@ import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { kbRoutes } from './routes/kb.js';
+import { operatorRoutes } from './routes/operator.js';
+import { corporateAuthRoutes } from './routes/corporate-auth.js';
 import { ticketRoutes } from './routes/tickets.js';
 
 export async function buildApp(config: AppConfig): Promise<{ app: FastifyInstance; ctx: AppContext }> {
@@ -24,6 +26,7 @@ export async function buildApp(config: AppConfig): Promise<{ app: FastifyInstanc
   });
 
   const ctx = await buildContext(config, app.log);
+  ctx.app = app;
   await registerSecurity(app, config);
 
   app.setErrorHandler((err: Error & { statusCode?: number }, req, reply) => {
@@ -37,9 +40,11 @@ export async function buildApp(config: AppConfig): Promise<{ app: FastifyInstanc
 
   await healthRoutes(app, ctx);
   await authRoutes(app, ctx);
+  await corporateAuthRoutes(app, ctx);
   await app.register(async (s) => ticketRoutes(s, ctx));
   await app.register(async (s) => kbRoutes(s, ctx));
   await app.register(async (s) => adminRoutes(s, ctx));
+  await app.register(async (s) => operatorRoutes(s, ctx));
 
   app.addHook('onClose', async () => ctx.close());
   return { app, ctx };

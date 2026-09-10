@@ -15,6 +15,8 @@ export function ChatScreen(props: {
   platform: PlatformAdapter;
   ticketId?: string;
   onTicketChange?: (id: string) => void;
+  /** Fired whenever the ticket card changes (state, summary) - lets the sidebar refresh. */
+  onTicketUpdate?: () => void;
 }) {
   const { api, platform } = props;
   const [ticket, setTicket] = useState<TicketCard | null>(null);
@@ -39,7 +41,6 @@ export function ChatScreen(props: {
         setError('Не удалось загрузить обращение. Проверьте соединение.');
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [api],
   );
 
@@ -50,6 +51,22 @@ export function ChatScreen(props: {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, streaming]);
+
+  // While a specialist owns the ticket, poll for their replies (a push arrives in Telegram too).
+  useEffect(() => {
+    if (!ticket || ticket.state !== 'escalated') return;
+    const id = ticket.id;
+    const timer = setInterval(async () => {
+      try {
+        const r = await api.getTicket(id);
+        setMessages((m) => (r.messages.length !== m.length ? r.messages : m));
+        setTicket(r.ticket);
+      } catch {
+        /* transient */
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [api, ticket?.id, ticket?.state]);
 
   const send = async (text: string, label?: string) => {
     if (!ticket || busy) return;
@@ -80,6 +97,7 @@ export function ChatScreen(props: {
           setStreaming(null);
           setMessages((m) => [...m, ev.message]);
           setTicket(ev.ticket);
+          props.onTicketUpdate?.();
           platform.haptic(ev.ticket.state === 'escalated' ? 'error' : 'success');
         } else if (ev.type === 'error') {
           setError(ev.message);
@@ -96,7 +114,7 @@ export function ChatScreen(props: {
 
   const last = messages[messages.length - 1];
   const quick: QuickReply[] = !busy && last?.role === 'assistant' && last.quickReplies ? last.quickReplies : [];
-  const closed = ticket?.state === 'closed' || ticket?.state === 'escalated';
+  const closed = ticket?.state === 'closed';
 
   return (
     <>
@@ -132,6 +150,7 @@ export function ChatScreen(props: {
           onRate={async (r) => {
             const res = await api.rate(ticket.id, r);
             setTicket(res.ticket);
+            props.onTicketUpdate?.();
             platform.haptic('success');
           }}
         />
@@ -139,7 +158,13 @@ export function ChatScreen(props: {
       <QuickReplies items={quick} onPick={(q) => send(q.value, q.label)} />
       <Composer
         disabled={busy || !ticket || closed}
-        placeholder={closed ? 'Обращение закрыто — нажмите «Новое обращение»' : 'Опишите проблему…'}
+        placeholder={
+          closed
+            ? 'Обращение закрыто — нажмите «Новое обращение»'
+            : ticket?.state === 'escalated'
+              ? 'Написать специалисту…'
+              : 'Опишите проблему…'
+        }
         onSend={(t) => send(t)}
       />
     </>
@@ -152,6 +177,7 @@ function StateChip({ ticket }: { ticket: TicketCard }) {
     clarifying: ['Уточнение', 'warn'],
     choosing_category: ['Выбор категории', 'warn'],
     solving: ['Решение', ''],
+    offer_escalation: ['Создать заявку?', 'warn'],
     closed: ['Решено', 'ok'],
     escalated: ['У специалиста', 'danger'],
   };

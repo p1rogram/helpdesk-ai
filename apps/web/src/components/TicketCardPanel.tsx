@@ -8,7 +8,21 @@ export function TicketCardPanel({ ticket }: { ticket: TicketCard }) {
   return (
     <div className="card" style={{ marginTop: 8 }}>
       <span className="k">№</span>
-      <span>{ticket.id.slice(0, 8).toUpperCase()}</span>
+      <span>
+        {ticket.externalId ? (
+          ticket.externalUrl ? (
+            <a href={ticket.externalUrl} target="_blank" rel="noopener noreferrer">
+              {ticket.externalId}
+            </a>
+          ) : (
+            ticket.externalId
+          )
+        ) : (
+          <>
+            {ticket.id.slice(0, 8).toUpperCase()} <span style={{ color: 'var(--muted)' }}>(внутренний)</span>
+          </>
+        )}
+      </span>
       <span className="k">Проблема</span>
       <span>{ticket.summary ?? '—'}</span>
       <span className="k">Категория</span>

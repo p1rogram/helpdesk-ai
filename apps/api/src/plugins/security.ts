@@ -75,7 +75,8 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
       return;
     }
     const key = `${req.user.platform}:${req.user.puid}`;
-    if (!cfg.adminUsers.has(key)) reply.code(403).send({ error: 'forbidden' });
+    const byGroup = req.user.roles?.includes('operator') ?? false;
+    if (!cfg.adminUsers.has(key) && !byGroup) reply.code(403).send({ error: 'forbidden' });
   });
 }
 

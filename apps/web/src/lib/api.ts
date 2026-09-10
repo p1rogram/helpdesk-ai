@@ -16,8 +16,42 @@ export class ApiClient {
     return this.token !== null;
   }
 
+  /** Adopt a token issued out-of-band (SSO callback puts it in the URL fragment). */
+  setToken(token: string) {
+    this.token = token;
+  }
+
+  providers() {
+    return this.get<{
+      providers: { telegram: boolean; vk: boolean; max: boolean; guest: boolean; sso: boolean; ldap: boolean; email: boolean };
+      ssoLabel: string;
+      emailDomains: string[];
+    }>('/api/auth/providers');
+  }
+
+  async loginLdap(login: string, password: string) {
+    const r = await this.post<{ token: string }>('/api/auth/ldap', { login, password });
+    this.token = r.token;
+  }
+
+  requestEmailCode(email: string) {
+    return this.post<{ ok: boolean }>('/api/auth/email/request', { email });
+  }
+
+  async verifyEmailCode(email: string, code: string) {
+    const r = await this.post<{ token: string }>('/api/auth/email/verify', { email, code });
+    this.token = r.token;
+  }
+
   async loginTelegram(initData: string, tenant?: string): Promise<AuthResponse> {
     const r = await this.post<AuthResponse>(`/api/auth/telegram${tenant ? `?tenant=${tenant}` : ''}`, { initData });
+    this.token = r.token;
+    return r;
+  }
+
+  /** VK / MAX: opaque signed payload from the host app. */
+  async loginPlatform(platform: 'vk' | 'max', payload: string, tenant?: string): Promise<AuthResponse> {
+    const r = await this.post<AuthResponse>(`/api/auth/${platform}${tenant ? `?tenant=${tenant}` : ''}`, { payload });
     this.token = r.token;
     return r;
   }
@@ -28,8 +62,32 @@ export class ApiClient {
     return r;
   }
 
+  me() {
+    return this.get<{ id: string; platform: string; displayName: string; tenant: string; isAdmin: boolean }>('/api/me');
+  }
+
+  operatorTickets() {
+    return this.get<{ tickets: Array<TicketCard & { user: { displayName: string; platform: string }; lastMessageAt: string | null; unanswered: boolean }> }>(
+      '/api/operator/tickets',
+    );
+  }
+
+  operatorTicket(id: string) {
+    return this.get<{ ticket: TicketCard; user: { displayName: string; platform: string } | null; messages: ChatMessage[] }>(
+      `/api/operator/tickets/${id}`,
+    );
+  }
+
+  operatorReply(id: string, text: string) {
+    return this.post<{ message: ChatMessage }>(`/api/operator/tickets/${id}/reply`, { text });
+  }
+
+  operatorClose(id: string) {
+    return this.post<{ ticket: TicketCard }>(`/api/operator/tickets/${id}/close`, {});
+  }
+
   tenants() {
-    return this.get<{ tenants: Array<{ id: string; sphere: string }>; default: string }>('/api/tenants');
+    return this.get<{ tenants: Array<{ id: string; sphere: string }>; default: string; botUrl?: string }>('/api/tenants');
   }
 
   /** Opens the current ticket (server reuses an open one); `fresh` forces a new ticket. */
