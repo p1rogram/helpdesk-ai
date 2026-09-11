@@ -13,7 +13,7 @@ import { eventBase, type EventBus } from '../events/index.js';
 import type { KnowledgeService, LoadedCatalog } from '../knowledge/index.js';
 import { LlmUnavailableError, type LlmService } from '../llm/index.js';
 import type { Passage, RagService } from '../rag/index.js';
-import { extractFields, optionMentioned } from './extract.js';
+import { extractFields, isRequired, optionMentioned, validateFields } from './extract.js';
 import { inspectMessage, strongerTone } from '../safety/index.js';
 import { toCard, type TicketRepository } from '../tickets/repository.js';
 import type { HelpdeskConnector } from '../helpdesk/index.js';
@@ -256,7 +256,13 @@ export class DialogEngine {
     }
 
     const tone = strongerTone(safety.toneHint, analysis.tone);
-    const fields = { ...ticket.fields, ...cleanFields(analysis.fields) };
+    // AI: Model-extracted values go through the catalog whitelists (a dorm or building that does
+    // not exist is dropped here; the user is told about it in advance()).
+    const knownCategory = catalog.categoryById.get(ticket.categoryId ?? analysis.categoryId);
+    const fields = {
+      ...ticket.fields,
+      ...validateFields(knownCategory?.clarify ?? [], cleanFields(analysis.fields)).fields,
+    };
     if (ticket.state === 'clarifying' && ticket.pendingField && !fields[ticket.pendingField]) {
       // AI: The user answered our question in free form - keep the raw answer.
       fields[ticket.pendingField] = text.slice(0, 200);
@@ -432,7 +438,9 @@ export class DialogEngine {
       return;
     }
 
-    const missing = category.clarify.filter((f) => f.required && !ticket.fields[f.id]);
+    const missing = category.clarify.filter(
+      (f) => isRequired(f, ticket.fields) && !ticket.fields[f.id],
+    );
     if (missing.length && ticket.clarificationsAsked < this.d.config.maxClarifications) {
       const field = missing[0]!;
       ticket = await this.d.tickets.update(ticket.id, {
@@ -850,10 +858,25 @@ export class DialogEngine {
     // fields of the category are collected first (one question at a time, within the usual limit).
     // The user is never trapped - after the limit the request goes through as it is.
     const category = ticket.categoryId ? catalog.categoryById.get(ticket.categoryId) : undefined;
-    const found = category ? extractFields(category.clarify, lastText).fields : {};
-    if (Object.keys(found).length)
-      ticket = await this.d.tickets.update(ticket.id, { fields: { ...ticket.fields, ...found } });
-    const missing = (category?.clarify ?? []).filter((f) => f.required && !ticket.fields[f.id]);
+    const found = category ? extractFields(category.clarify, lastText) : { fields: {} };
+    if (Object.keys(found.fields).length)
+      ticket = await this.d.tickets.update(ticket.id, {
+        fields: { ...ticket.fields, ...found.fields },
+      });
+    if (found.reject) {
+      // AI: "Позовите человека, корпус 40" - the place does not exist; no request goes out for it.
+      ticket = await this.d.tickets.update(ticket.id, {
+        state: 'clarifying',
+        pendingField: found.reject.fieldId,
+        pendingEscalation: reason,
+      });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      yield* this.reply(ticket, catalog, found.reject.message);
+      return;
+    }
+    const missing = (category?.clarify ?? []).filter(
+      (f) => isRequired(f, ticket.fields) && !ticket.fields[f.id],
+    );
     if (missing.length && ticket.clarificationsAsked < this.d.config.maxClarifications) {
       const field = missing[0]!;
       ticket = await this.d.tickets.update(ticket.id, {

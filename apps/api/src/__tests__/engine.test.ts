@@ -221,6 +221,43 @@ describe('DialogEngine', () => {
     expect(msgs[msgs.length - 2]!.content).toBe('Закрыть обращение');
   });
 
+  it('asks for the room in a dorm and refuses a building that does not exist', async () => {
+    const { user, ticket } = await fresh();
+    // AI: The model copied a non-existent building into the fields - it must not survive.
+    llm.queue.push({
+      categoryId: 'campus',
+      summary: 'Нет света',
+      fields: { building: 'корпус 40' },
+    });
+    const r1 = await collect(engine.handle(ticket, user, 'в корпусе 40 нет света'));
+    expect(r1.ticket.fields.building).toBeUndefined();
+    expect(r1.text).toMatch(/корпуса №40 в ТПУ нет/);
+
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t2, user, 'ой, общежитие 12'));
+    llm.queue.push({ categoryId: 'campus', summary: 'Нет света', fields: {} });
+    expect(r2.ticket.fields.building).toBe('общежитие №12');
+    // a dorm problem needs the room; a building would not
+    expect(r2.ticket.state).toBe('clarifying');
+    expect(r2.ticket.state === 'clarifying' && r2.text).toMatch(/комнат/);
+  });
+
+  it('does not hand over to a specialist a building that does not exist', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({
+      asksForHuman: true,
+      categoryId: 'campus',
+      summary: 'Сломана дверь',
+      fields: {},
+    });
+    const r = await collect(
+      engine.handle(ticket, user, 'позовите человека, корпус 99, дверь сломана'),
+    );
+    expect(r.ticket.state).toBe('clarifying');
+    expect(r.ticket.escalated).toBe(false);
+    expect(r.text).toMatch(/корпуса №99 в ТПУ нет/);
+  });
+
   it('treats a short campus-life question as a real request (catalog, model down)', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push(new LlmUnavailableError('down'));

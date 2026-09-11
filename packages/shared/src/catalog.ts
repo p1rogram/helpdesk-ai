@@ -4,6 +4,18 @@ import { z } from 'zod';
  * AI: Catalog = the "sphere" of the assistant. Swapping the sphere (IT support -> university
  * -> ISP) means swapping the JSON file that satisfies this schema. No code changes.
  */
+export const ExtractRuleSchema = z.object({
+  /** AI: Regex over the lowercased message; the first non-empty capture group is the value. */
+  pattern: z.string().min(1),
+  /** AI: How to render the captured value, `$1` = capture. Defaults to the capture itself. */
+  format: z.string().optional(),
+  /** AI: Whitelist of captured values that really exist. Everything else is rejected. */
+  allow: z.array(z.string()).optional(),
+  /** AI: Shown when the value is not in `allow`; `{value}` is replaced with what was captured. */
+  reject: z.string().optional(),
+});
+export type ExtractRule = z.infer<typeof ExtractRuleSchema>;
+
 export const ClarifyingFieldSchema = z.object({
   id: z.string().min(1),
   /** AI: Human label for the ticket card ("Срочность", not "urgency"). */
@@ -15,22 +27,18 @@ export const ClarifyingFieldSchema = z.object({
   /** AI: Only ask when the field is required to pick/adapt a solution. */
   required: z.boolean().default(true),
   /**
-   * AI: Deterministic extraction rule. Lets the engine pull the value straight out of the user's
-   * text (dorm number, room, building) without relying on the model, and reject values that do not
-   * exist in the organisation. Lives in the catalog - i.e. in the database - not in the code.
+   * AI: Conditionally required: asked only when another field's value matches the pattern
+   * ("room" is needed for a dorm, not for a lecture building). Evaluated after `required`.
    */
-  extract: z
-    .object({
-      /** AI: Regex over the lowercased message; the first non-empty capture group is the value. */
-      pattern: z.string().min(1),
-      /** AI: How to render the captured value, `$1` = capture. Defaults to the capture itself. */
-      format: z.string().optional(),
-      /** AI: Whitelist of captured values that really exist. Everything else is rejected. */
-      allow: z.array(z.string()).optional(),
-      /** AI: Shown when the value is not in `allow`; `{value}` is replaced with what was captured. */
-      reject: z.string().optional(),
-    })
-    .optional(),
+  requiredWhen: z.object({ field: z.string().min(1), pattern: z.string().min(1) }).optional(),
+  /**
+   * AI: Deterministic extraction rules. Let the engine pull the value straight out of the user's
+   * text (dorm number, room, building) without relying on the model, and reject values that do not
+   * exist in the organisation. Several rules = several forms of the same place ("общежитие 12",
+   * "корпус 8"); the first rule whose pattern matches decides. Lives in the catalog - i.e. in the
+   * database - not in the code.
+   */
+  extract: z.union([ExtractRuleSchema, z.array(ExtractRuleSchema).min(1)]).optional(),
 });
 
 export const KbArticleSchema = z.object({

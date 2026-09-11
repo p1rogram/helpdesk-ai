@@ -30,6 +30,8 @@ export const tenants = pgTable('tenants', {
   language: text('language').notNull().default('ru'),
   /** AI: Bumped on every catalog change - used for cache invalidation and prompt-cache keys. */
   version: integer('version').notNull().default(1),
+  /** AI: sha1 of the seed file this tenant was last imported from; a changed file is re-imported. */
+  seedHash: text('seed_hash'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

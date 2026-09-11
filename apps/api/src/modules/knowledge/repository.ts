@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { and, asc, eq, sql } from 'drizzle-orm';
@@ -186,8 +187,18 @@ export class CatalogRepository {
   }
 
   /** AI: Import every data/catalog/*.json that is not yet in the DB. Existing tenants are untouched. */
+  /**
+   * AI: Seed files are the source of truth for the catalog: a tenant is imported when it is new
+   * or when its file changed since the last import (hash kept on the tenant row) - so an edited
+   * article in git reaches every deployment on the next start, on every replica, without a
+   * manual re-import. `force` re-imports regardless.
+   */
   async seedFromDir(dir: string, log: { info(msg: string): void }, force = false): Promise<void> {
-    const existing = new Set((await this.listTenants()).map((t) => t.id));
+    const hashes = new Map(
+      (await this.db.select({ id: tenants.id, seedHash: tenants.seedHash }).from(tenants)).map(
+        (t) => [t.id, t.seedHash],
+      ),
+    );
     let files: string[] = [];
     try {
       files = (await readdir(dir)).filter((f) => f.endsWith('.json'));
@@ -196,9 +207,12 @@ export class CatalogRepository {
       return;
     }
     for (const f of files) {
-      const raw = JSON.parse(await readFile(path.join(dir, f), 'utf8')) as { id?: string };
-      if (!force && raw.id && existing.has(raw.id)) continue;
+      const text = await readFile(path.join(dir, f), 'utf8');
+      const hash = createHash('sha1').update(text).digest('hex');
+      const raw = JSON.parse(text) as { id?: string };
+      if (!force && raw.id && hashes.has(raw.id) && hashes.get(raw.id) === hash) continue;
       const loaded = await this.upsert(raw);
+      await this.db.update(tenants).set({ seedHash: hash }).where(eq(tenants.id, loaded.id));
       log.info(
         `catalog seeded: ${loaded.id} (${loaded.categories.length} categories, ${loaded.articles.length} articles)`,
       );

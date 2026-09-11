@@ -57,6 +57,7 @@ export async function ensureSchema(db: Db): Promise<void> {
       "ALTER TABLE kb_articles ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'internal'",
     ),
   );
+  await db.execute(sql.raw('ALTER TABLE tenants ADD COLUMN IF NOT EXISTS seed_hash TEXT'));
 }
 
 const DDL: string[] = [

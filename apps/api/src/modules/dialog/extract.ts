@@ -1,4 +1,4 @@
-import type { ClarifyingField } from '@helpdesk/shared';
+import type { ClarifyingField, ExtractRule } from '@helpdesk/shared';
 
 /**
  * AI: Deterministic value extraction for clarifying fields.
@@ -23,14 +23,78 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
   let reject: ExtractResult['reject'];
 
   for (const field of clarify) {
-    const rule = field.extract;
-    if (!rule) {
+    if (!field.extract) {
       // AI: Fields with fixed options ("из дома / из корпуса", "студент / сотрудник"): an option
       // named in the message is the answer - as long as exactly one of them is.
       const mentioned = (field.options ?? []).filter((o) => optionMentioned(o, lower));
       if (mentioned.length === 1) fields[field.id] = mentioned[0]!;
       continue;
     }
+    const r = applyRules(rulesOf(field), lower);
+    if (r.rejected) {
+      // AI: The first impossible value wins - we tell the user about it instead of searching for a solution.
+      if (!reject) reject = { fieldId: field.id, ...r.rejected };
+      continue;
+    }
+    if (r.value) fields[field.id] = r.value;
+  }
+
+  return { fields, reject };
+}
+
+/**
+ * AI: The model fills fields too, and it happily copies "корпус 40" from the message. Every value
+ * that looks like something a rule knows (a dorm, a building) must pass the same whitelist as text
+ * from the user - otherwise it is dropped and reported, so the dialogue asks again instead of
+ * sending a request to a place that does not exist.
+ */
+export function validateFields(
+  clarify: ClarifyingField[],
+  fields: Record<string, string>,
+): ExtractResult {
+  const out: Record<string, string> = {};
+  let reject: ExtractResult['reject'];
+  for (const [id, value] of Object.entries(fields)) {
+    const field = clarify.find((f) => f.id === id);
+    if (!field?.extract) {
+      out[id] = value;
+      continue;
+    }
+    const r = applyRules(rulesOf(field), value.toLowerCase());
+    if (r.rejected) {
+      if (!reject) reject = { fieldId: id, ...r.rejected };
+      continue;
+    }
+    // AI: Normalised form when a rule recognised it ("общ. 12" -> "общежитие №12"), else as given.
+    out[id] = r.value ?? value;
+  }
+  return { fields: out, reject };
+}
+
+/** AI: Is the field needed right now, given what is already known? */
+export function isRequired(field: ClarifyingField, fields: Record<string, string>): boolean {
+  if (field.required) return true;
+  const cond = field.requiredWhen;
+  if (!cond) return false;
+  const v = fields[cond.field];
+  if (!v) return false;
+  try {
+    return new RegExp(cond.pattern, 'iu').test(v);
+  } catch {
+    return false;
+  }
+}
+
+function rulesOf(field: ClarifyingField): ExtractRule[] {
+  const e = field.extract;
+  return !e ? [] : Array.isArray(e) ? e : [e];
+}
+
+function applyRules(
+  rules: ExtractRule[],
+  lower: string,
+): { value?: string; rejected?: { value: string; message: string } } {
+  for (const rule of rules) {
     let re: RegExp;
     try {
       re = new RegExp(rule.pattern, 'iu');
@@ -41,21 +105,21 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
     if (!m) continue;
     const value = m.slice(1).find((g) => g !== undefined && g !== '');
     if (!value) continue;
-
     if (rule.allow && !rule.allow.includes(value)) {
-      // AI: The first impossible value wins - we tell the user about it instead of searching for a solution.
-      if (!reject && rule.reject) {
-        reject = { fieldId: field.id, value, message: rule.reject.replaceAll('{value}', value) };
-      }
-      continue;
+      return {
+        rejected: {
+          value,
+          message: (
+            rule.reject ?? `Значение «${value}» не найдено. Проверьте и напишите ещё раз.`
+          ).replaceAll('{value}', value),
+        },
+      };
     }
-    fields[field.id] = (rule.format ? rule.format.replaceAll('$1', value) : value).slice(
-      0,
-      MAX_VALUE,
-    );
+    return {
+      value: (rule.format ? rule.format.replaceAll('$1', value) : value).slice(0, MAX_VALUE),
+    };
   }
-
-  return { fields, reject };
+  return {};
 }
 
 /**
