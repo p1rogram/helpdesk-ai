@@ -264,6 +264,9 @@ export class DialogEngine {
       },
       'message analysed',
     );
+    // AI: Card with the fresh summary goes out right away, so the client's history can list the
+    // ticket while the answer is still being written.
+    yield { type: 'meta', ticket: toCard(ticket, catalog) };
 
     if (analysis.asksForHuman) {
       if (catalog.scope === 'guest') {

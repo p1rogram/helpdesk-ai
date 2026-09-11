@@ -83,7 +83,7 @@ export function ProfileScreen(props: {
         <h3>Сфера поддержки</h3>
         <div className="row">
           <span className="k">Организация</span>
-          <span style={{ textAlign: 'right' }}>{props.sphere || '—'}</span>
+          <span style={{ textAlign: 'right' }}>{props.sphere || '-'}</span>
         </div>
         <div className="row">
           <span className="k">Помощник умеет</span>

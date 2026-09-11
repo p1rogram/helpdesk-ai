@@ -145,7 +145,7 @@ export function KbScreen(props: { api: ApiClient }) {
                 <Icon name="search" size={30} />
               </span>
               <div className="lead">Ничего не найдено</div>
-              <div>Опишите проблему в чате — помощник разберётся.</div>
+              <div>Опишите проблему в чате, помощник разберётся.</div>
             </div>
           )}
         </div>

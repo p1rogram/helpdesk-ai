@@ -107,7 +107,7 @@ export function LoginScreen(props: {
             <>
               <button onClick={() => setMode('student')}>Я студент или сотрудник ТПУ</button>
               <button className="btn-secondary" onClick={() => setMode('guest')}>
-                Я гость — вопросы о поступлении и контакты
+                Я гость: вопросы о поступлении и контакты
               </button>
             </>
           )}
@@ -156,7 +156,7 @@ export function LoginScreen(props: {
         <>
           <div className="sub" style={{ color: 'var(--muted)' }}>
             Введите корпоративную почту
-            {domains.length ? ` (${domains.map((d) => '@' + d).join(', ')})` : ''} — пришлём код.
+            {domains.length ? ` (${domains.map((d) => '@' + d).join(', ')})` : ''}. Пришлём код.
           </div>
           <input
             type="email"
@@ -207,7 +207,7 @@ export function LoginScreen(props: {
           <div className="sub" style={{ color: 'var(--muted)' }}>
             {mode === 'guest'
               ? 'Гостю доступны публичные темы: поступление, контакты, адреса, режим работы, заселение.'
-              : 'Полный доступ ко всем темам поддержки. В демо-режиме личность не проверяется — на проде здесь вход по учётной записи ТПУ.'}
+              : 'Полный доступ ко всем темам поддержки. В демо-режиме личность не проверяется, на проде здесь вход по учётной записи ТПУ.'}
           </div>
           <input placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)} />
           <button

@@ -14,7 +14,7 @@ type QueueItem = TicketCard & {
 };
 
 const GROUP_TITLE: Record<0 | 1 | 2, string> = {
-  0: 'В работе — вы отвечаете',
+  0: 'В работе: вы отвечаете',
   1: 'Ждут первого ответа',
   2: 'Закрытые',
 };
@@ -76,8 +76,7 @@ export function OperatorScreen(props: { api: ApiClient }) {
 
   if (!open) {
     if (queue === null) return <SkeletonList rows={4} />;
-    if (!queue.length)
-      return <div className="empty">Очередь пуста — все обращения обработаны.</div>;
+    if (!queue.length) return <div className="empty">Очередь пуста: все обращения обработаны.</div>;
     let lastGroup: number | null = null;
     return (
       <div className="list">
@@ -115,7 +114,7 @@ export function OperatorScreen(props: { api: ApiClient }) {
                   <div className="m">
                     <span className="id">№{t.externalId ?? t.id.slice(0, 8).toUpperCase()}</span>
                     <span>{t.user.displayName}</span>
-                    <span>{t.categoryName ?? '—'}</span>
+                    <span>{t.categoryName ?? '-'}</span>
                     <span>приоритет: {t.priority}</span>
                     <span>{new Date(t.lastMessageAt ?? t.updatedAt).toLocaleString('ru-RU')}</span>
                   </div>
@@ -160,7 +159,7 @@ export function OperatorScreen(props: { api: ApiClient }) {
           Назад к очереди
         </button>
         <span style={{ flex: 1, minWidth: 120 }}>
-          {open.user?.displayName ?? '—'} · №
+          {open.user?.displayName ?? '-'} · №
           {open.ticket.externalId ?? open.ticket.id.slice(0, 8).toUpperCase()}
         </span>
         <button className="pill-btn" onClick={() => setShowCard((v) => !v)}>
@@ -188,8 +187,7 @@ export function OperatorScreen(props: { api: ApiClient }) {
       </div>
       {withAssistant && !closed && (
         <div className="notice">
-          Обращение передано помощнику — он снова ведёт диалог и не будет передавать его
-          специалисту.
+          Обращение передано помощнику. Он снова ведёт диалог и не будет передавать его специалисту.
         </div>
       )}
       {showCard && <TicketCardPanel ticket={open.ticket} />}

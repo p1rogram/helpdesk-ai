@@ -25,20 +25,20 @@ export function TicketCardPanel({ ticket }: { ticket: TicketCard }) {
         )}
       </span>
       <span className="k">Проблема</span>
-      <span>{ticket.summary ?? '—'}</span>
+      <span>{ticket.summary ?? '-'}</span>
       <span className="k">Категория</span>
-      <span>{ticket.categoryName ?? '—'}</span>
+      <span>{ticket.categoryName ?? '-'}</span>
       <span className="k">Приоритет</span>
       <span>{PRIORITY[ticket.priority]}</span>
       <span className="k">Уверенность</span>
-      <span>{ticket.confidence === null ? '—' : `${Math.round(ticket.confidence * 100)}%`}</span>
+      <span>{ticket.confidence === null ? '-' : `${Math.round(ticket.confidence * 100)}%`}</span>
       <span className="k">Тон</span>
       <span>{TONE[ticket.tone]}</span>
       {Object.entries(ticket.fields).map(([k, v]) => (
         <FieldRow key={k} k={ticket.fieldLabels?.[k] ?? k} v={v} />
       ))}
       <span className="k">Статья</span>
-      <span>{ticket.articleTitle ?? '—'}</span>
+      <span>{ticket.articleTitle ?? '-'}</span>
       <span className="k">Статус</span>
       <span>
         <span className={`chip ${ticket.resolved ? 'ok' : ticket.escalated ? 'danger' : 'accent'}`}>
@@ -48,7 +48,7 @@ export function TicketCardPanel({ ticket }: { ticket: TicketCard }) {
       <span className="k">Оценка</span>
       <span>
         {ticket.rating === null ? (
-          '—'
+          '-'
         ) : (
           <span className="rating">
             {'★'.repeat(ticket.rating)}

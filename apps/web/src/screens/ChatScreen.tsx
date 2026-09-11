@@ -116,8 +116,12 @@ export function ChatScreen(props: {
     abortRef.current = ac;
     try {
       for await (const ev of api.sendMessage(ticketId, text, ac.signal)) {
-        if (ev.type === 'meta') setTicket(ev.ticket);
-        else if (ev.type === 'ack') {
+        if (ev.type === 'meta') {
+          // AI: The card changed mid-answer (category, summary): the history list can already show
+          // the ticket instead of waiting for the full answer.
+          setTicket(ev.ticket);
+          props.onTicketUpdate?.();
+        } else if (ev.type === 'ack') {
           // AI: A specialist owns the chat: the message was delivered, the assistant stays silent.
           setStreaming(null);
           setStatus(null);
