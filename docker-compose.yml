@@ -65,7 +65,6 @@ services:
       DATABASE_URL: postgres://helpdesk:${POSTGRES_PASSWORD}@postgres:5432/helpdesk
       EVENT_BUS: kafka
       KAFKA_BROKERS: kafka:9092
-      AUTH_DEV_BYPASS: 'false'
       OPERATOR_OPEN_ACCESS: 'false'
       CORS_ORIGINS: https://${DOMAIN}
       WEB_APP_URL: https://${DOMAIN}

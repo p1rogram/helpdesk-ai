@@ -64,7 +64,7 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
     );
   }
 
-  /** AI: Guest login for browser demos. Only mounted when AUTH_DEV_BYPASS=true (refused in production). */
+  /** AI: Website login without an identity provider: guest (public topics) or demo student. */
   if (ctx.verifiers.has('web')) {
     app.post(
       '/api/auth/dev',
@@ -73,6 +73,9 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
         const body = DevAuthSchema.safeParse(req.body);
         if (!body.success) return reply.code(400).send({ error: 'bad_request' });
         const { tenant } = TenantQuery.parse(req.query ?? {});
+        const allowed =
+          body.data.scope === 'guest' ? ctx.config.WEB_GUEST_LOGIN : ctx.config.WEB_DEMO_LOGIN;
+        if (!allowed) return reply.code(403).send({ error: 'login_disabled' });
         const id = await ctx.verifiers.get('web')!.verify(body.data.name);
         return issue(app, ctx, id, tenant, body.data.scope);
       },

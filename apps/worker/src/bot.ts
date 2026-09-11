@@ -7,12 +7,14 @@ import type { Logger } from 'pino';
  * only the transport for push messages.
  *
  * Networking: uses Node's global fetch. If api.telegram.org is reachable only through a proxy,
- * run with NODE_USE_ENV_PROXY=1 and HTTPS_PROXY=... (Node >= 24) - no code changes needed.
+ * either set TELEGRAM_API_ROOT to a forwarding worker (deploy/telegram-proxy.worker.js) or run
+ * with NODE_USE_ENV_PROXY=1 and HTTPS_PROXY=... (Node >= 24).
  */
 export async function startBot(
   token: string,
   webAppUrl: string | undefined,
   log: Logger,
+  apiRoot?: string,
 ): Promise<Bot> {
   // AI: grammY defaults to its own node-fetch shim (polyfilled AbortSignal, `compress` option) which the
   // native fetch rejects. Use the global fetch - it honours NODE_USE_ENV_PROXY - with a native timeout.
@@ -24,7 +26,9 @@ export async function startBot(
     } = (init ?? {}) as RequestInit & { compress?: boolean };
     return globalThis.fetch(url, { ...rest, signal: AbortSignal.timeout(35_000) });
   };
-  const bot = new Bot(token, { client: { timeoutSeconds: 30, fetch: nativeFetch } });
+  const bot = new Bot(token, {
+    client: { timeoutSeconds: 30, fetch: nativeFetch, ...(apiRoot ? { apiRoot } : {}) },
+  });
 
   bot.command('start', async (ctx) => {
     if (!webAppUrl) return ctx.reply('Помощник поддержки временно недоступен.');

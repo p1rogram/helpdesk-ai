@@ -7,7 +7,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     // Standalone Node/browser-context utility scripts (crawlers) - not part of the app build.
-    files: ['scripts/**/*.mjs', 'deploy/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'deploy/**/*.mjs', 'deploy/**/*.worker.js'],
     languageOptions: {
       globals: {
         process: 'readonly',

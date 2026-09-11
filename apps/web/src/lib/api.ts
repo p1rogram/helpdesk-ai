@@ -62,6 +62,7 @@ export class ApiClient {
         vk: boolean;
         max: boolean;
         guest: boolean;
+        demo: boolean;
         sso: boolean;
         ldap: boolean;
         email: boolean;

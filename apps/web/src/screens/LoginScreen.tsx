@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import type { ApiClient } from '../lib/api';
 import type { PlatformAdapter } from '../lib/platform';
 
-type Providers = { guest: boolean; sso: boolean; ldap: boolean; email: boolean };
+type Providers = { guest: boolean; demo: boolean; sso: boolean; ldap: boolean; email: boolean };
 type Mode = 'menu' | 'ldap' | 'email' | 'guest' | 'student';
-const MODES = ['sso', 'ldap', 'email', 'guest'] as const;
+const MODES = ['sso', 'ldap', 'email', 'guest', 'demo'] as const;
 
 /**
  * AI: Browser login. Inside a messenger the login is silent; here the user picks what the
@@ -41,10 +41,15 @@ export function LoginScreen(props: {
         setDomains(p.emailDomains);
         // AI: A single non-SSO provider opens directly.
         const enabled = MODES.filter((k) => p.providers[k]);
-        const only = enabled.length === 1 && enabled[0] !== 'guest' ? enabled[0] : undefined;
+        const only =
+          enabled.length === 1 && enabled[0] !== 'guest' && enabled[0] !== 'demo'
+            ? enabled[0]
+            : undefined;
         if (only && only !== 'sso') setMode(only);
       })
-      .catch(() => setProviders({ guest: true, sso: false, ldap: false, email: false }));
+      .catch(() =>
+        setProviders({ guest: true, demo: false, sso: false, ldap: false, email: false }),
+      );
   }, [api]);
 
   if (props.platform.kind !== 'web') {
@@ -103,13 +108,13 @@ export function LoginScreen(props: {
           {providers.email && (
             <button onClick={() => setMode('email')}>Код на корпоративную почту</button>
           )}
+          {providers.demo && (
+            <button onClick={() => setMode('student')}>Я студент или сотрудник ТПУ</button>
+          )}
           {providers.guest && (
-            <>
-              <button onClick={() => setMode('student')}>Я студент или сотрудник ТПУ</button>
-              <button className="btn-secondary" onClick={() => setMode('guest')}>
-                Я гость: вопросы о поступлении и контакты
-              </button>
-            </>
+            <button className="btn-secondary" onClick={() => setMode('guest')}>
+              Я гость: вопросы о поступлении и контакты
+            </button>
           )}
           {enabledCount === 0 && (
             <div className="empty">

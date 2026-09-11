@@ -40,17 +40,18 @@ if (config.EVENT_BUS === 'memory') {
 }
 
 const bot = config.TELEGRAM_BOT_TOKEN
-  ? await startBot(config.TELEGRAM_BOT_TOKEN, config.WEB_APP_URL, log)
+  ? await startBot(config.TELEGRAM_BOT_TOKEN, config.WEB_APP_URL, log, config.TELEGRAM_API_ROOT)
   : null;
 
 const notifier = new NotifierConsumer(bot, log);
 const analytics = new AnalyticsConsumer(dbHandle.db, log);
 
 await events.subscribe(TOPICS.notifications, 'helpdesk-notifier', (e) => notifier.handle(e));
-await events.subscribe(TOPICS.ticketEvents, 'helpdesk-analytics', (e) =>
+// AI: One consumer group per topic - sharing a group id across topics makes Kafka rebalance in a loop.
+await events.subscribe(TOPICS.ticketEvents, 'helpdesk-analytics-tickets', (e) =>
   analytics.onTicketEvent(e),
 );
-await events.subscribe(TOPICS.llmUsage, 'helpdesk-analytics', (e) => analytics.onLlmUsage(e));
+await events.subscribe(TOPICS.llmUsage, 'helpdesk-analytics-llm', (e) => analytics.onLlmUsage(e));
 log.info('worker: consumers running');
 
 const shutdown = async () => {

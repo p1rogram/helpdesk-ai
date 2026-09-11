@@ -29,6 +29,12 @@ const EnvSchema = z.object({
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(25_000),
 
   TELEGRAM_BOT_TOKEN: z.string().optional(),
+  /**
+   * AI: Alternative Bot API origin. Hosting in Russia cannot reach api.telegram.org directly;
+   * a tiny Cloudflare Worker (deploy/telegram-proxy.worker.js) forwards requests. Same idea as
+   * LLM_BASE_URL for the model.
+   */
+  TELEGRAM_API_ROOT: z.string().url().optional(),
   /** AI: Public bot username (without @) - used for the "Open in Telegram" link on the website. */
   TELEGRAM_BOT_USERNAME: z.string().optional(),
   /** AI: VK Mini Apps: secret key + app id from dev.vk.com (enables /api/auth/vk). */
@@ -78,7 +84,17 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 chars'),
   JWT_TTL: z.string().default('12h'),
   WEB_APP_URL: z.string().url().optional(),
-  AUTH_DEV_BYPASS: z
+  /**
+   * AI: Website entrances. Guest login is anonymous (public topics only, no requests, no operator)
+   * and safe anywhere. Demo login lets anyone enter as "student" by typing a name - for demos and
+   * team testing only; in production it is allowed but loudly warned about, the real entrance
+   * for organisation users is SSO / LDAP / e-mail code.
+   */
+  WEB_GUEST_LOGIN: z
+    .string()
+    .default('true')
+    .transform((v) => v === 'true' || v === '1'),
+  WEB_DEMO_LOGIN: z
     .string()
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
@@ -160,9 +176,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
   const cfg = parsed.data;
-  if (cfg.NODE_ENV === 'production' && cfg.AUTH_DEV_BYPASS) {
-    throw new Error('AUTH_DEV_BYPASS must be false in production');
-  }
   if (cfg.NODE_ENV === 'production' && cfg.OPERATOR_OPEN_ACCESS) {
     throw new Error('OPERATOR_OPEN_ACCESS must be false in production');
   }

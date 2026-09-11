@@ -74,7 +74,7 @@ export function maxVerifier(botToken: string, secretLabel?: string): PlatformVer
   };
 }
 
-/** AI: Guest identity for the plain-web demo. Enabled only with AUTH_DEV_BYPASS=true. */
+/** AI: Website identity without a provider: guest (WEB_GUEST_LOGIN) or demo student (WEB_DEMO_LOGIN). */
 export function devVerifier(): PlatformVerifier {
   return {
     platform: 'web',
