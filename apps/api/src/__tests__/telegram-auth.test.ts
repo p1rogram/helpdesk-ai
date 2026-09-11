@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { verifyTelegramInitData } from '../modules/auth/telegram.js';
+import { pseudonym, telegramVerifier } from '../modules/auth/index.js';
 
 const BOT = '123456:TEST_TOKEN';
 
@@ -41,5 +42,19 @@ describe('verifyTelegramInitData', () => {
     expect(() => verifyTelegramInitData(sign({ auth_date: String(old), user }), BOT)).toThrow(
       /expired/,
     );
+  });
+});
+
+describe('identity minimisation', () => {
+  it('never keeps the name the messenger sent - only a stable pseudonym', () => {
+    const id = telegramVerifier(BOT).verify(sign({ auth_date: String(now), user })) as {
+      platformUserId: string;
+      displayName: string;
+    };
+    expect(id.platformUserId).toBe('42');
+    expect(id.displayName).toMatch(/^Пользователь [0-9A-F]{6}$/);
+    expect(id.displayName).not.toMatch(/Иван|Петров/);
+    expect(pseudonym('telegram', '42')).toBe(id.displayName);
+    expect(pseudonym('telegram', '43')).not.toBe(id.displayName);
   });
 });

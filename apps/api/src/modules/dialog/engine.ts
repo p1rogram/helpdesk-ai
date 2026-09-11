@@ -78,7 +78,7 @@ export class DialogEngine {
     // stored and pushed to the operator console; the client gets a silent acknowledgement.
     if (ticket.state === 'escalated') {
       if (isCmd) {
-        yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
+        yield* this.reply(ticket, catalog, T.withOperator(), QR_CLOSED);
         return;
       }
       const touched = await this.d.tickets.update(ticket.id, { updatedAt: new Date() });
@@ -197,7 +197,7 @@ export class DialogEngine {
     }
 
     // ---------- free text ----------
-    // Greetings / "are you there?" / thanks never need the model - answer instantly and warmly.
+    // AI: Greetings / "are you there?" / thanks never need the model - answer instantly and warmly.
     if (isSmalltalk(text)) {
       const solving = ticket.state === 'solving';
       yield* this.reply(
@@ -281,7 +281,7 @@ export class DialogEngine {
       );
       return;
     }
-    if (analysis.offTopic && (!ticket.categoryId || ticket.state === 'clarifying')) {
+    if (analysis.offTopic && ticket.state !== 'solving') {
       yield* this.reply(ticket, catalog, analysis.smalltalkReply?.trim() || T.offTopic());
       return;
     }
@@ -317,10 +317,13 @@ export class DialogEngine {
       }
     }
 
-    // AI: In "solving" state: a complaint means the steps did not help; anything else is a detail we note.
+    // AI: In "solving" state: a complaint means the steps did not help; a question is answered on the
+    // spot (another article or the documentation); anything else is a detail we note.
     if (ticket.state === 'solving') {
-      if (NEGATIVE.test(text.toLowerCase()) || text.length > 80) {
+      if (NEGATIVE.test(text.toLowerCase())) {
         yield* this.nextSolution(ticket, user, catalog, text);
+      } else if (isQuestion(text) || text.length > 80) {
+        yield* this.followUp(ticket, catalog, text);
       } else {
         yield* this.reply(ticket, catalog, T.noted(), QR_AFTER_SOLUTION);
       }
@@ -441,11 +444,8 @@ export class DialogEngine {
     let failed = llmDown;
     let noSolution = false;
     if (!failed) {
-      try {
-        // AI: Buffer the first few characters: the model may open with [NO_SOLUTION] (article does not fit).
-        let head = '';
-        let decided = false;
-        for await (const chunk of this.d.llm.solve(catalog, {
+      const r = yield* this.streamGrounded(
+        this.d.llm.solve(catalog, {
           summary: ticket.summary ?? lastText,
           category,
           fields: ticket.fields,
@@ -453,46 +453,23 @@ export class DialogEngine {
           tone: ticket.tone as Tone,
           lastMessage: lastText,
           passages,
-        })) {
-          if (!decided) {
-            head += chunk;
-            if (
-              head.trimStart().startsWith(NO_SOLUTION) ||
-              head.length >= NO_SOLUTION.length + 2 ||
-              head.includes('\n')
-            ) {
-              decided = true;
-              if (head.trimStart().startsWith(NO_SOLUTION)) {
-                noSolution = true;
-                break;
-              }
-              streamed += head;
-              yield { type: 'delta', text: head };
-            }
-            continue;
-          }
-          streamed += chunk;
-          yield { type: 'delta', text: chunk };
-        }
-        if (!decided && !noSolution) {
-          if (head.trimStart().startsWith(NO_SOLUTION)) noSolution = true;
-          else {
-            streamed += head;
-            if (head) yield { type: 'delta', text: head };
-          }
-        }
-      } catch (err) {
-        if (!(err instanceof LlmUnavailableError)) throw err;
-        failed = true;
-      }
+        }),
+      );
+      streamed = r.text;
+      failed = r.failed;
+      noSolution = r.noSolution;
     }
     if (noSolution) {
-      // AI: The model judged the best article irrelevant: do not show it. Try the documentation
-      // corpus, then offer a hand-over honestly.
-      ticket = await this.d.tickets.update(ticket.id, { articleId: null, state: 'intake' });
-      if (!ticket.triedArticles.length && (yield* this.ragAnswer(ticket, user, catalog, lastText)))
-        return;
-      yield* this.offerEscalation(ticket, catalog, 'no_solution');
+      // AI: The model judged the best article irrelevant: do not show it, do not retrieve it again.
+      // Try the documentation corpus, then offer a hand-over honestly.
+      const firstTry = !ticket.triedArticles.length;
+      ticket = await this.d.tickets.update(ticket.id, {
+        articleId: null,
+        state: 'intake',
+        triedArticles: [...new Set([...ticket.triedArticles, article.id])],
+      });
+      if (firstTry && (yield* this.ragAnswer(ticket, user, catalog, lastText))) return;
+      yield* this.offerEscalation(ticket, catalog, firstTry ? 'no_solution' : 'solution_failed');
       return;
     }
     if (failed || !streamed.trim()) {
@@ -548,11 +525,8 @@ export class DialogEngine {
     if (!passages.length) return false;
 
     yield { type: 'status', text: 'Ищу ответ в документации…' };
-    let streamed = '';
-    let head = '';
-    let decided = false;
-    try {
-      for await (const chunk of this.d.llm.answer(catalog, {
+    const r = yield* this.streamGrounded(
+      this.d.llm.answer(catalog, {
         summary: ticket.summary ?? lastText,
         categoryName: ticket.categoryId
           ? catalog.categoryById.get(ticket.categoryId)?.name
@@ -561,29 +535,10 @@ export class DialogEngine {
         tone: ticket.tone as Tone,
         lastMessage: lastText,
         passages,
-      })) {
-        if (!decided) {
-          head += chunk;
-          if (head.trimStart().startsWith(NO_SOLUTION)) return false;
-          if (head.length >= NO_SOLUTION.length + 2 || head.includes('\n')) {
-            decided = true;
-            streamed += head;
-            yield { type: 'delta', text: head };
-          }
-          continue;
-        }
-        streamed += chunk;
-        yield { type: 'delta', text: chunk };
-      }
-      if (!decided) {
-        if (head.trimStart().startsWith(NO_SOLUTION) || !head.trim()) return false;
-        streamed += head;
-        yield { type: 'delta', text: head };
-      }
-    } catch (err) {
-      if (!(err instanceof LlmUnavailableError)) throw err;
-      if (!streamed.trim()) return false;
-    }
+      }),
+    );
+    if (r.noSolution || !r.text.trim()) return false;
+    const streamed = r.text;
 
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'solving',
@@ -602,6 +557,111 @@ export class DialogEngine {
       rag: passages.slice(0, 3).map((p) => ({ url: p.url, title: p.title })),
     });
     return true;
+  }
+
+  /**
+   * AI: Streams model output to the client, holding back the first characters until it is clear
+   * the answer does not start with [NO_SOLUTION]. Returns what was shown; `failed` means the model
+   * went away mid-way (the caller decides how to fall back).
+   */
+  private async *streamGrounded(
+    gen: AsyncGenerator<string, void, void>,
+  ): AsyncGenerator<ChatStreamEvent, { text: string; noSolution: boolean; failed: boolean }> {
+    let text = '';
+    let head = '';
+    let decided = false;
+    try {
+      for await (const chunk of gen) {
+        if (!decided) {
+          head += chunk;
+          if (head.trimStart().startsWith(NO_SOLUTION))
+            return { text: '', noSolution: true, failed: false };
+          if (head.length >= NO_SOLUTION.length + 2 || head.includes('\n')) {
+            decided = true;
+            text = head;
+            yield { type: 'delta', text: head };
+          }
+          continue;
+        }
+        text += chunk;
+        yield { type: 'delta', text: chunk };
+      }
+      if (!decided) {
+        if (head.trimStart().startsWith(NO_SOLUTION))
+          return { text: '', noSolution: true, failed: false };
+        text = head;
+        if (head) yield { type: 'delta', text: head };
+      }
+      return { text, noSolution: false, failed: false };
+    } catch (err) {
+      if (!(err instanceof LlmUnavailableError)) throw err;
+      return { text, noSolution: false, failed: true };
+    }
+  }
+
+  /**
+   * AI: A question asked while a solution is on screen ("а где находится деканат?") is answered
+   * from the best-matching article across the whole catalog, or from the documentation; the
+   * current solution and its buttons stay in place.
+   */
+  private async *followUp(
+    ticket: TicketRow,
+    catalog: LoadedCatalog,
+    text: string,
+  ): AsyncGenerator<ChatStreamEvent> {
+    const [best] = await this.d.knowledge.search(ticket.tenantId, text, { limit: 1 });
+    const category = best && catalog.categoryById.get(best.article.categoryId);
+    if (
+      best &&
+      category &&
+      best.score >= MIN_SOLUTION_SCORE &&
+      best.article.id !== ticket.articleId
+    ) {
+      if (!this.d.llm.enabled) {
+        yield* this.reply(ticket, catalog, T.solutionFallback(best.article), QR_AFTER_SOLUTION);
+        return;
+      }
+      const r = yield* this.streamGrounded(
+        this.d.llm.solve(catalog, {
+          summary: text,
+          category,
+          fields: ticket.fields,
+          article: best.article,
+          tone: ticket.tone as Tone,
+          lastMessage: text,
+          passages: await this.retrieve(ticket, catalog, text, 3),
+        }),
+      );
+      if (r.text.trim()) {
+        yield* this.finish(ticket, catalog, r.text.trim(), QR_AFTER_SOLUTION, {
+          articleId: best.article.id,
+        });
+        return;
+      }
+      if (r.failed) {
+        yield* this.reply(ticket, catalog, T.solutionFallback(best.article), QR_AFTER_SOLUTION);
+        return;
+      }
+    }
+    const passages = await this.retrieve(ticket, catalog, text, 5);
+    if (passages.length && this.d.llm.enabled) {
+      const r = yield* this.streamGrounded(
+        this.d.llm.answer(catalog, {
+          summary: text,
+          fields: ticket.fields,
+          tone: ticket.tone as Tone,
+          lastMessage: text,
+          passages,
+        }),
+      );
+      if (r.text.trim()) {
+        yield* this.finish(ticket, catalog, r.text.trim(), QR_AFTER_SOLUTION, {
+          rag: passages.slice(0, 3).map((p) => ({ url: p.url, title: p.title })),
+        });
+        return;
+      }
+    }
+    yield* this.reply(ticket, catalog, T.noted(), QR_AFTER_SOLUTION);
   }
 
   private async *nextSolution(
@@ -857,8 +917,18 @@ export class DialogEngine {
   }
 }
 
+// AI: One or several chit-chat tokens ("ок, спасибо!") and nothing else.
 const SMALLTALK =
-  /^(привет|приветствую|здравствуй(те)?|добрый (день|вечер|утро)|доброе утро|хай|hi|hello|hey|ты тут|ты здесь|есть кто|ау|эй|как дела|кто ты|ты кто|что ты умеешь|спасибо|спс|благодарю|ок|окей|ok|понял|пон|ясно|хорошо|ладно|пока|до свидания|тест|test|проверка)[\s!?.)]*$/i;
+  /^(?:(?:привет|приветствую|здравствуй(?:те)?|добрый (?:день|вечер|утро)|доброе утро|хай|hi|hello|hey|ты тут|ты здесь|есть кто|ау|эй|как дела|кто ты|ты кто|что ты умеешь|спасибо|спс|благодарю|ок|окей|ok|понял|пон|ясно|хорошо|ладно|пока|до свидания|тест|test|проверка)[\s!?.,)]*){1,3}$/i;
+
+/** AI: "Где / как / когда / сколько …?" - a question, not feedback on the steps. */
+function isQuestion(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  return (
+    t.endsWith('?') ||
+    /^(а |и )?(как|где|когда|какой|какая|какие|сколько|кто|что|можно ли|куда|почему)\b/.test(t)
+  );
+}
 
 function isSmalltalk(text: string): boolean {
   return text.trim().length <= 40 && SMALLTALK.test(text.trim());
@@ -905,6 +975,8 @@ function labelFor(cmd: string, catalog: LoadedCatalog): string {
   if (cmd === CMD.helped) return 'Помогло';
   if (cmd === CMD.notHelped) return 'Не помогло';
   if (cmd === CMD.human) return 'Нужен специалист';
+  if (cmd === CMD.escalate) return 'Создать заявку специалисту';
+  if (cmd === CMD.dismiss) return 'Не нужно';
   if (cmd.startsWith(CMD.category))
     return catalog.categoryById.get(cmd.slice(CMD.category.length))?.name ?? cmd;
   return cmd;

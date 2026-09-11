@@ -63,7 +63,11 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     return { ticket: toCard(ticket, catalog), messages: msgs.map(toChatMessage) };
   });
 
-  /** AI: Send a message; the answer streams back as Server-Sent Events. */
+  /**
+   * AI: Send a message; the answer streams back as Server-Sent Events. One message per ticket at a
+   * time: a double-tap on "send" must not run two engine passes over the same state.
+   */
+  const inFlight = new Set<string>();
   app.post('/api/tickets/:id/messages', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = SendMessageRequestSchema.safeParse(req.body);
@@ -71,6 +75,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
     const ticket = await ctx.tickets.get(id, req.user.sub);
     if (!ticket) return reply.code(404).send({ error: 'not_found' });
+    if (inFlight.has(ticket.id)) return reply.code(409).send({ error: 'busy' });
+    inFlight.add(ticket.id);
     const user = (await ctx.tickets.getUser(req.user.sub))!;
 
     reply.raw.writeHead(200, {
@@ -78,7 +84,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': (req.headers.origin as string) ?? '*',
+      ...sseCors(req.headers.origin, ctx.config.corsOrigins),
     });
     const send = (ev: ChatStreamEvent) => reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
     const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), 15_000);
@@ -94,6 +100,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       req.log.error(err, 'dialog engine failed');
       send({ type: 'error', message: 'Не удалось обработать сообщение. Попробуйте ещё раз.' });
     } finally {
+      inFlight.delete(ticket.id);
       clearInterval(heartbeat);
       reply.raw.end();
     }
@@ -121,4 +128,14 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     const catalog = await ctx.knowledge.catalog(ticket.tenantId);
     return { ticket: toCard(updated, catalog), quickReplies: QR_CLOSED };
   });
+}
+
+/**
+ * AI: SSE bypasses the CORS plugin (raw response), so the allow-list is applied here by hand.
+ * Same-origin requests carry no Origin header and need nothing.
+ */
+export function sseCors(origin: string | undefined, allowed: string[]): Record<string, string> {
+  return origin && allowed.includes(origin)
+    ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }
+    : {};
 }

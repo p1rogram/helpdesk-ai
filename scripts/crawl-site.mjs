@@ -76,7 +76,7 @@ const normalize = (href, base) => {
     u.hash = '';
     if (!/^https?:$/.test(u.protocol)) return null;
     if (SKIP_EXT.test(u.pathname)) return null;
-    // drop tracking params
+    // AI: drop tracking params
     for (const k of [...u.searchParams.keys()])
       if (/^(utm_|yclid|fbclid|_ga)/.test(k)) u.searchParams.delete(k);
     return u.toString();
@@ -94,7 +94,7 @@ const inScope = (u, prefixes) =>
     const p = raw.endsWith('/') ? raw.slice(0, -1) : raw;
     return u === p || u.startsWith(p + '/') || u.startsWith(p + '?');
   });
-// Seeds are always crawled, even when the allow prefix is written with a trailing slash.
+// AI: Seeds are always crawled, even when the allow prefix is written with a trailing slash.
 const allowed = (u) => (opt.start.includes(u) || inScope(u, opt.allow)) && !inScope(u, opt.deny);
 
 const queue = [...opt.start];
@@ -108,15 +108,13 @@ while (queue.length && done < opt.max) {
   let html;
   try {
     const res = await fetch(url, {
+      // AI: A minimal header set: tpu.ru sits behind Qrator, which answers 503 to requests that
+      // imitate a full browser header block but are not one. Plain UA + Accept passes.
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        Connection: 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ru-RU,ru;q=0.9',
       },
       signal: AbortSignal.timeout(20_000),
       redirect: 'follow',

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { connectDb, ensureSchema } from '../db/client.js';
 import { tenants } from '../db/schema.js';
 import { chunkText, stripBoilerplate } from '../modules/rag/chunker.js';
-import { RagService, type Embedder } from '../modules/rag/index.js';
+import { RagService, redactNames, type Embedder } from '../modules/rag/index.js';
+import { findPersonalData } from '../modules/rag/redact.js';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -147,5 +148,38 @@ describe('markdown documents', () => {
         audience: 'internal',
       },
     ]);
+  });
+});
+
+describe('redactNames', () => {
+  it('removes full names and initials but keeps roles and office contacts', () => {
+    const src =
+      'Проректор по управлению кампусом Высокоморный Владимир Сергеевич принимает каждый первый четверг, каб. 312, 8 (3822) 70-17-77. ' +
+      'Заведующая: Казакова Елена Геннадьевна (+7 (3822) 60-64-43, eleka@tpu.ru). Вопросы — Бредихина Г. В., bgv@tpu.ru.';
+    const out = redactNames(src);
+    expect(out).not.toMatch(/Высокоморный|Казакова|Бредихина/);
+    expect(out).toContain('Проректор по управлению кампусом принимает каждый первый четверг');
+    expect(out).toContain('(+7 (3822) 60-64-43, eleka@tpu.ru)');
+    expect(out).toContain('bgv@tpu.ru');
+  });
+
+  it('catches inverted order, first-name + surname pairs and mobile numbers', () => {
+    const out = redactNames(
+      'Екатерина Валериевна Сулема, руководитель. Контакты: Данил Казаков, тел. +7-923-407-1493; Новикова Юлия.',
+    );
+    expect(out).not.toMatch(/Сулема|Казаков|Новикова|923/);
+    expect(out).toContain('руководитель');
+  });
+
+  it('keeps streets and places named after people', () => {
+    const t =
+      'Общежитие №15: ул. Аркадия Иванова, 8. Мемориальный кабинет В. А. Обручева, корпус имени Кижнера.';
+    expect(redactNames(t)).toBe(t);
+    expect(findPersonalData(t)).toEqual([]);
+  });
+
+  it('leaves ordinary text alone', () => {
+    const t = 'Общежитие №12: ул. Вершинина, 37. Отдел студенческих общежитий, +7 (3822) 60-62-05.';
+    expect(redactNames(t)).toBe(t);
   });
 });

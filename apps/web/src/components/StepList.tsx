@@ -27,7 +27,7 @@ export function parseSteps(text: string): { lead: string; steps: string[]; tail:
     const line = raw.trim();
     const m = /^(\d{1,2})[.)]\s+(.*)$/.exec(line);
     if (m && phase !== 'tail') {
-      // A numbered line continues the list only if it follows the expected order.
+      // AI: A numbered line continues the list only if it follows the expected order.
       if (Number(m[1]) === steps.length + 1) {
         steps.push(stripMd(m[2] ?? ''));
         phase = 'steps';

@@ -37,7 +37,7 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
     if (!value) continue;
 
     if (rule.allow && !rule.allow.includes(value)) {
-      // The first impossible value wins - we tell the user about it instead of searching for a solution.
+      // AI: The first impossible value wins - we tell the user about it instead of searching for a solution.
       if (!reject && rule.reject) {
         reject = { fieldId: field.id, value, message: rule.reject.replaceAll('{value}', value) };
       }

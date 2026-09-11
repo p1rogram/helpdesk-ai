@@ -1,0 +1,14 @@
+# AI: Сервер: образы берутся из GitHub Container Registry (их собирает CD), локальная сборка не нужна.
+#   IMAGE_PREFIX=ghcr.io/<owner>/<repo> IMAGE_TAG=<sha|latest> \
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+services:
+  api:
+    image: ${IMAGE_PREFIX}-api:${IMAGE_TAG:-latest}
+    build: !reset null
+    ports: ['127.0.0.1:8080:8080']   # только для health-check с самого сервера
+  worker:
+    image: ${IMAGE_PREFIX}-worker:${IMAGE_TAG:-latest}
+    build: !reset null
+  web:
+    image: ${IMAGE_PREFIX}-web:${IMAGE_TAG:-latest}
+    build: !reset null

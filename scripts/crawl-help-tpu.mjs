@@ -47,7 +47,7 @@ for (let i = 0; i < 40; i++) {
   await page.waitForTimeout(800);
 }
 const services = await page.evaluate(() => {
-  // Each service card: name element followed by an optional description.
+  // AI: Each service card: name element followed by an optional description.
   const items = [];
   document
     .querySelectorAll('a[href*="navigator-service-call"], a[href*="navigator-fields"]')

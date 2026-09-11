@@ -5,6 +5,7 @@ import type { AppContext } from '../context.js';
 import { eventBase } from '../modules/events/index.js';
 import { toCard, toChatMessage } from '../modules/tickets/repository.js';
 import { QR_CLOSED, QR_AFTER_SOLUTION, T } from '../modules/dialog/templates.js';
+import { sseCors } from './tickets.js';
 
 const IdParam = z.object({ id: z.string().uuid() });
 const ReplySchema = z.object({ text: z.string().trim().min(1).max(4000) });
@@ -12,10 +13,10 @@ const ReplySchema = z.object({ text: z.string().trim().min(1).max(4000) });
 /**
  * AI: Operator console: the built-in "specialist side". Escalated tickets land here; an operator
  * answers into the user's chat (push via the notification topic) and closes the ticket.
- * Restricted to ADMIN_USERS. An external helpdesk (Naumen) can replace or complement this.
+ * Restricted to operators (ADMIN_USERS or an operator group). An external helpdesk (Naumen) can replace or complement this.
  */
 export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  app.addHook('preHandler', app.requireAdmin);
+  app.addHook('preHandler', app.requireOperator);
 
   /**
    * AI: Work list, already grouped: 0 - the operator's own conversations, 1 - waiting for a first
@@ -42,7 +43,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': (req.headers.origin as string) ?? '*',
+      ...sseCors(req.headers.origin, ctx.config.corsOrigins),
     });
     reply.raw.write(`data: ${JSON.stringify({ type: 'ready' })}\n\n`);
     const detach = ctx.operatorHub.add({
@@ -66,8 +67,9 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     const ticket = await ctx.tickets.getAny(id);
     if (!ticket || ticket.tenantId !== req.user.tenant)
       return reply.code(404).send({ error: 'not_found' });
+    if (ticket.state !== 'escalated') return reply.code(409).send({ error: 'not_escalated' });
     const user = (await ctx.tickets.getUser(ticket.userId))!;
-    const text = T.handedBackToAi(req.user.name);
+    const text = T.handedBackToAi();
     await ctx.tickets.addMessage(ticket.id, 'assistant', text, {
       handback: true,
       quickReplies: ticket.articleId ? QR_AFTER_SOLUTION : [],
@@ -116,6 +118,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     const ticket = await ctx.tickets.getAny(id);
     if (!ticket || ticket.tenantId !== req.user.tenant)
       return reply.code(404).send({ error: 'not_found' });
+    if (ticket.state !== 'escalated') return reply.code(409).send({ error: 'not_escalated' });
     const user = (await ctx.tickets.getUser(ticket.userId))!;
     const saved = await ctx.tickets.addMessage(ticket.id, 'assistant', body.data.text, {
       operator: req.user.name,
@@ -140,8 +143,9 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     const ticket = await ctx.tickets.getAny(id);
     if (!ticket || ticket.tenantId !== req.user.tenant)
       return reply.code(404).send({ error: 'not_found' });
+    if (ticket.state === 'closed') return reply.code(409).send({ error: 'already_closed' });
     const user = (await ctx.tickets.getUser(ticket.userId))!;
-    const closingText = `Специалист ${req.user.name} закрыл заявку как решённую. Если проблема повторится — создайте новое обращение.`;
+    const closingText = `Специалист закрыл заявку как решённую. Если проблема повторится — создайте новое обращение.`;
     await ctx.tickets.addMessage(ticket.id, 'assistant', closingText, {
       operator: req.user.name,
       quickReplies: QR_CLOSED,

@@ -7,9 +7,11 @@ import { ragChunks } from '../../db/schema.js';
 import { tokenize } from '../knowledge/search.js';
 import { chunkText, stripBoilerplate } from './chunker.js';
 import { cosine, type Embedder } from './embedder.js';
+import { redactNames } from './redact.js';
 
 export { chunkText } from './chunker.js';
 export { LocalEmbedder, NullEmbedder, type Embedder } from './embedder.js';
+export { redactNames } from './redact.js';
 
 /**
  * AI: Retrieval-augmented generation over crawled documentation (help.tpu.ru articles, tpu.ru
@@ -119,10 +121,10 @@ export class RagService {
       for (const line of site.split('\n')) {
         if (!line.trim()) continue;
         const p = JSON.parse(line) as { url: string; title: string; h1?: string; text: string };
-        const key = p.url.replace(/\/+$/, '');
+        const key = p.url.split('?')[0]!.replace(/\/+$/, ''); // /x, /x/ and /x?ysclid=… are one page
         if (seen.has(key) || !p.text?.trim()) continue; // the crawler stores /x and /x/ as two pages
         seen.add(key);
-        pages.push({ url: p.url, title: p.h1 || p.title, text: p.text });
+        pages.push({ url: key, title: p.h1 || p.title, text: p.text });
       }
       const cleaned = stripBoilerplate(pages.map((p) => p.text));
       pages.forEach((p, i) =>
@@ -153,7 +155,8 @@ export class RagService {
     type Row = typeof ragChunks.$inferInsert;
     const rows: Row[] = [];
     for (const doc of docs) {
-      const parts = chunkText(doc.text);
+      // AI: Personal names never reach the index - see redact.ts.
+      const parts = chunkText(redactNames(doc.text));
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i]!;
         const id = sha1(`${tenantId}|${doc.url}|${i}`).slice(0, 24);

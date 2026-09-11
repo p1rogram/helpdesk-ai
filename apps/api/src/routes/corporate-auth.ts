@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
-import { AuthError } from '../modules/auth/index.js';
+import { AuthError, pseudonym } from '../modules/auth/index.js';
 import { rolesFor, type CorporateIdentity } from '../modules/auth/corporate.js';
 
 /**
@@ -130,13 +130,16 @@ export async function corporateAuthRoutes(app: FastifyInstance, ctx: AppContext)
 
 /** AI: Corporate identities share the `corp` platform; roles come from organisation groups. */
 async function issueCorporate(ctx: AppContext, identity: CorporateIdentity): Promise<string> {
-  const user = await ctx.tickets.upsertUser('corp', identity.id, identity.displayName);
+  // AI: The directory name is used for the greeting on this page only; the database and the
+  // token carry a pseudonym.
+  const name = pseudonym('corp', identity.id);
+  const user = await ctx.tickets.upsertUser('corp', identity.id, name);
   const roles = rolesFor(identity, ctx.config.operatorGroups);
   return ctx.app.jwt.sign({
     sub: user.id,
     platform: 'corp',
     puid: identity.id,
-    name: identity.displayName,
+    name,
     tenant: ctx.config.DEFAULT_TENANT,
     roles,
   });

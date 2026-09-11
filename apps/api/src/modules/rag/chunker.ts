@@ -52,7 +52,19 @@ export function chunkText(
     // AI: An oversized paragraph is cut into sentence-aligned windows with overlap.
     const pieces = line.length <= max ? [line] : windows(line, max, overlap);
     for (const piece of pieces) {
-      if (buf && buf.length + piece.length + 1 > target) flush();
+      if (buf && buf.length + piece.length + 1 > target) {
+        // AI: Never orphan a label ("Проректор по …", "Адрес") at the end of a chunk - the row it
+        // introduces (hours, room, phone) must travel with it.
+        const cut = buf.lastIndexOf('\n');
+        const tail = buf.slice(cut + 1);
+        if (cut > 0 && isLabel(tail)) {
+          buf = buf.slice(0, cut);
+          flush();
+          buf = tail;
+        } else {
+          flush();
+        }
+      }
       buf += (buf ? '\n' : '') + piece;
     }
   }
@@ -60,16 +72,14 @@ export function chunkText(
   return out;
 }
 
-/** AI: Short, no digits, no closing punctuation, followed by a proper paragraph -> a heading. */
+/** AI: Short caption-like line: no digits, no closing punctuation. */
+function isLabel(line: string): boolean {
+  return line.length >= 3 && line.length <= 70 && !/[.!?:;,]$/.test(line) && !/\d/.test(line);
+}
+
+/** AI: A label followed by a proper paragraph -> a heading. */
 function isHeading(line: string, next: string | undefined): boolean {
-  return (
-    line.length >= 3 &&
-    line.length <= 70 &&
-    !/[.!?:;,]$/.test(line) &&
-    !/\d/.test(line) &&
-    next !== undefined &&
-    next.length > 80
-  );
+  return isLabel(line) && next !== undefined && next.length > 80;
 }
 
 /**

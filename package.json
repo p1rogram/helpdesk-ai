@@ -21,7 +21,8 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "db:seed": "npm run db:seed -w @helpdesk/api"
+    "db:seed": "npm run db:seed -w @helpdesk/api",
+    "check:pd": "node scripts/check-personal-data.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

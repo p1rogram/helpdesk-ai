@@ -1,4 +1,4 @@
-# Боевой стек: Postgres + Kafka (KRaft, без ZooKeeper) + API + worker + Caddy (HTTPS автоматически).
+# AI: Боевой стек: Postgres + Kafka (KRaft, без ZooKeeper) + API + worker + Caddy (HTTPS автоматически).
 #   cp .env.example .env && nano .env        # ANTHROPIC_API_KEY, JWT_SECRET, TELEGRAM_BOT_TOKEN, DOMAIN
 #   docker compose up -d --build
 # Масштабирование: docker compose up -d --scale api=3 --scale worker=2 — Kafka перераспределит партиции.
@@ -41,7 +41,7 @@ services:
       timeout: 10s
       retries: 20
 
-  # Просмотр топиков: docker compose --profile tools up -d kafka-ui  ->  http://host:8090
+  # AI: Просмотр топиков: docker compose --profile tools up -d kafka-ui  ->  http://host:8090
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     profiles: [tools]
@@ -83,7 +83,9 @@ services:
       KAFKA_BROKERS: kafka:9092
       WEB_APP_URL: https://${DOMAIN}
     depends_on:
-      postgres: { condition: service_healthy }
+      # AI: The API owns the schema; the worker starts once it is healthy, so two processes never
+      # run CREATE TABLE against the same fresh database at the same moment.
+      api: { condition: service_healthy }
       kafka: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 512m } } }
 

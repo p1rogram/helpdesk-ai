@@ -13,13 +13,21 @@
         {
           "id": "device",
           "question": "Какое устройство: стационарный ПК или ноутбук? И какая ОС — Windows или macOS?",
-          "options": ["ПК на Windows", "Ноутбук на Windows", "Ноутбук на macOS"],
+          "options": [
+            "ПК на Windows",
+            "Ноутбук на Windows",
+            "Ноутбук на macOS"
+          ],
           "required": true
         },
         {
           "id": "symptom_when",
           "question": "Когда это началось — после обновления, перезагрузки или само по себе?",
-          "options": ["После обновления", "После перезагрузки", "Само по себе"],
+          "options": [
+            "После обновления",
+            "После перезагрузки",
+            "Само по себе"
+          ],
           "required": false
         }
       ]
@@ -51,7 +59,10 @@
         {
           "id": "location",
           "question": "Вы подключаетесь из офиса или удалённо (дом, кафе, мобильный интернет)?",
-          "options": ["Из офиса", "Удалённо"],
+          "options": [
+            "Из офиса",
+            "Удалённо"
+          ],
           "required": true
         },
         {
@@ -70,7 +81,11 @@
         {
           "id": "client",
           "question": "Где вы работаете с почтой: Outlook на компьютере, веб-версия в браузере или телефон?",
-          "options": ["Outlook", "Веб-версия", "Телефон"],
+          "options": [
+            "Outlook",
+            "Веб-версия",
+            ""
+          ],
           "required": true
         }
       ]
@@ -84,13 +99,20 @@
         {
           "id": "device",
           "question": "С какого устройства подключаетесь: ноутбук Windows, macOS или телефон?",
-          "options": ["Ноутбук Windows", "macOS", "Телефон"],
+          "options": [
+            "Ноутбук Windows",
+            "macOS",
+            ""
+          ],
           "required": true
         },
         {
           "id": "network_name",
           "question": "К какой сети подключаетесь — Corp-WiFi (сотрудники) или Guest?",
-          "options": ["Corp-WiFi", "Guest"],
+          "options": [
+            "Corp-WiFi",
+            "Guest"
+          ],
           "required": false
         }
       ]

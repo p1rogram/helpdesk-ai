@@ -73,7 +73,3 @@ export class AuthError extends Error {
     this.name = 'AuthError';
   }
 }
-
-export function displayNameOf(u: TelegramUser): string {
-  return [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || `tg:${u.id}`;
-}

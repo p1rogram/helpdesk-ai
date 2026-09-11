@@ -16,6 +16,9 @@ declare module '@fastify/jwt' {
 declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    /** AI: Operator console: ADMIN_USERS, operator groups, or everyone in demo mode. */
+    requireOperator: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    /** AI: Administration (catalog, RAG): ADMIN_USERS only - demo mode never opens this. */
     requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
@@ -69,17 +72,32 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
     }
   });
 
-  app.decorate('requireAdmin', async (req: FastifyRequest, reply: FastifyReply) => {
+  const verified = async (req: FastifyRequest, reply: FastifyReply): Promise<boolean> => {
     try {
       await req.jwtVerify();
     } catch {
       reply.code(401).send({ error: 'unauthorized' });
-      return;
+      return false;
     }
-    if (cfg.OPERATOR_OPEN_ACCESS) return; // demo mode: the console is open to everyone
-    const key = `${req.user.platform}:${req.user.puid}`;
+    if (req.user.scope === 'guest') {
+      reply.code(403).send({ error: 'forbidden' });
+      return false;
+    }
+    return true;
+  };
+  const isAdmin = (req: FastifyRequest) =>
+    cfg.adminUsers.has(`${req.user.platform}:${req.user.puid}`);
+
+  app.decorate('requireOperator', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!(await verified(req, reply))) return;
+    if (cfg.OPERATOR_OPEN_ACCESS) return;
     const byGroup = req.user.roles?.includes('operator') ?? false;
-    if (!cfg.adminUsers.has(key) && !byGroup) reply.code(403).send({ error: 'forbidden' });
+    if (!isAdmin(req) && !byGroup) reply.code(403).send({ error: 'forbidden' });
+  });
+
+  app.decorate('requireAdmin', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!(await verified(req, reply))) return;
+    if (!isAdmin(req)) reply.code(403).send({ error: 'forbidden' });
   });
 }
 

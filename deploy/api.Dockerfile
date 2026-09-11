@@ -1,4 +1,4 @@
-# onnxruntime-node ships glibc binaries only - Debian slim, not Alpine.
+# AI: onnxruntime-node ships glibc binaries only - Debian slim, not Alpine.
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -11,7 +11,7 @@ COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/api apps/api
 RUN npm run build -w @helpdesk/shared && npm run build -w @helpdesk/api
-# Embedding model goes into the image: no download on first start.
+# AI: Embedding model goes into the image: no download on first start.
 COPY deploy/prefetch-model.mjs deploy/
 RUN RAG_MODEL_DIR=/app/data/models node deploy/prefetch-model.mjs
 

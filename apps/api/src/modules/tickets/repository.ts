@@ -58,7 +58,13 @@ export class TicketRepository {
       .where(
         and(
           eq(tickets.userId, userId),
-          inArray(tickets.state, ['intake', 'clarifying', 'choosing_category', 'solving']),
+          inArray(tickets.state, [
+            'intake',
+            'clarifying',
+            'choosing_category',
+            'solving',
+            'offer_escalation',
+          ]),
         ),
       )
       .orderBy(desc(tickets.createdAt))

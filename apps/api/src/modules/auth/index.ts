@@ -1,5 +1,6 @@
 import type { Platform, Scope } from '@helpdesk/shared';
-import { AuthError, displayNameOf, verifyTelegramInitData } from './telegram.js';
+import { createHash } from 'node:crypto';
+import { AuthError, verifyTelegramInitData } from './telegram.js';
 import { verifyVkLaunchParams } from './vk.js';
 import { verifyMaxInitData } from './max.js';
 
@@ -8,7 +9,22 @@ export { AuthError } from './telegram.js';
 export interface VerifiedIdentity {
   platform: Platform;
   platformUserId: string;
+  /** AI: Always a pseudonym - see `pseudonym()`. */
   displayName: string;
+}
+
+/**
+ * AI: Data minimisation (152-ФЗ): the service never stores what the messenger or the directory
+ * knows about a person - no first name, no surname, no username. Users are addressed by a
+ * stable pseudonym derived from the platform id ("Пользователь 4F2A9C"); operators see the same.
+ */
+export function pseudonym(platform: string, platformUserId: string): string {
+  const tag = createHash('sha256')
+    .update(`${platform}:${platformUserId}`)
+    .digest('hex')
+    .slice(0, 6)
+    .toUpperCase();
+  return `Пользователь ${tag}`;
 }
 
 /** AI: One verifier per messenger. Adding VK / MAX = adding one file that implements this. */
@@ -25,7 +41,7 @@ export function telegramVerifier(botToken: string): PlatformVerifier {
       return {
         platform: 'telegram',
         platformUserId: String(v.user.id),
-        displayName: displayNameOf(v.user),
+        displayName: pseudonym('telegram', String(v.user.id)),
       };
     },
   };
@@ -38,7 +54,7 @@ export function vkVerifier(appSecret: string, appId?: string): PlatformVerifier 
     verify(launchParams) {
       const v = verifyVkLaunchParams(launchParams, appSecret, { expectedAppId: appId });
       // AI: VK does not include the name in launch params; the client may pass it separately later.
-      return { platform: 'vk', platformUserId: v.userId, displayName: `vk:${v.userId}` };
+      return { platform: 'vk', platformUserId: v.userId, displayName: pseudonym('vk', v.userId) };
     },
   };
 }
@@ -49,11 +65,11 @@ export function maxVerifier(botToken: string, secretLabel?: string): PlatformVer
     platform: 'max',
     verify(initData) {
       const v = verifyMaxInitData(initData, botToken, { secretLabel });
-      const name =
-        [v.user.first_name, v.user.last_name].filter(Boolean).join(' ') ||
-        v.user.username ||
-        `max:${v.user.id}`;
-      return { platform: 'max', platformUserId: String(v.user.id), displayName: name };
+      return {
+        platform: 'max',
+        platformUserId: String(v.user.id),
+        displayName: pseudonym('max', String(v.user.id)),
+      };
     },
   };
 }
@@ -65,7 +81,9 @@ export function devVerifier(): PlatformVerifier {
     verify(name) {
       const clean = name.trim().slice(0, 64);
       if (!clean) throw new AuthError('name required');
-      return { platform: 'web', platformUserId: clean.toLowerCase(), displayName: clean };
+      // AI: The typed name is only a key to find the same demo account again - it is hashed, not stored.
+      const id = createHash('sha256').update(clean.toLowerCase()).digest('hex').slice(0, 16);
+      return { platform: 'web', platformUserId: id, displayName: pseudonym('web', id) };
     },
   };
 }

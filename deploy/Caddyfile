@@ -1,8 +1,8 @@
-# Auto-HTTPS (Let's Encrypt) for DOMAIN. Mini Apps require HTTPS.
+# AI: Auto-HTTPS (Let's Encrypt) for DOMAIN. Mini Apps require HTTPS.
 {$DOMAIN} {
 	encode zstd gzip
 
-	# Security headers for the SPA. frame-ancestors lets Telegram embed the Mini App.
+	# AI: Security headers for the SPA. frame-ancestors lets Telegram embed the Mini App.
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
@@ -11,7 +11,7 @@
 		-Server
 	}
 
-	# API is same-origin -> no CORS at all in production. SSE needs flush_interval -1.
+	# AI: API is same-origin -> no CORS at all in production. SSE needs flush_interval -1.
 	handle /api/* {
 		reverse_proxy api:8080 {
 			flush_interval -1
