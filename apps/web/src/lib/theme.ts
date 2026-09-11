@@ -3,22 +3,22 @@ export type ThemeMode = 'auto' | 'light' | 'dark';
 const KEY = 'helpdesk.theme';
 
 /**
- * AI: Управление темой. `auto` следует за хостом (цветовая схема Telegram в Mini App, системная
- * настройка в браузере); `light` / `dark` - явный выбор пользователя, переживает перезагрузку.
+ * AI: Управление темой. По умолчанию светлая - бренд узнаваем одинаково на проекторе, на сайте и в
+ * Mini App. `auto` следует за хостом (цветовая схема Telegram в Mini App, системная настройка в
+ * браузере); любой выбор пользователя переживает перезагрузку.
  */
 export function getThemeMode(): ThemeMode {
   try {
     const v = localStorage.getItem(KEY);
-    return v === 'light' || v === 'dark' ? v : 'auto';
+    return v === 'light' || v === 'dark' || v === 'auto' ? v : 'light';
   } catch {
-    return 'auto';
+    return 'light';
   }
 }
 
 export function setThemeMode(mode: ThemeMode): void {
   try {
-    if (mode === 'auto') localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, mode);
+    localStorage.setItem(KEY, mode);
   } catch {
     /* хранилище недоступно */
   }

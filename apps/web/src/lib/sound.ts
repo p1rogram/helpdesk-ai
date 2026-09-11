@@ -20,11 +20,12 @@ const MUSIC_VOLUME = 0.2;
 export function getSoundSettings(): SoundSettings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { sfx: false, music: false, ...(JSON.parse(raw) as Partial<SoundSettings>) };
+    if (raw) return { sfx: true, music: false, ...(JSON.parse(raw) as Partial<SoundSettings>) };
   } catch {
     /* приватный режим или заблокированное хранилище - значения по умолчанию ниже */
   }
-  return { sfx: false, music: false };
+  // AI: Отклик на нажатия включён по умолчанию, музыка - по желанию.
+  return { sfx: true, music: false };
 }
 
 export function setSoundSettings(s: SoundSettings): void {

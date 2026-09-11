@@ -15,7 +15,6 @@ import { Icon } from './components/Icon';
 import { ChatScreen } from './screens/ChatScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { KbScreen } from './screens/KbScreen';
-import { LandingScreen } from './screens/LandingScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { OperatorScreen } from './screens/OperatorScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
@@ -33,9 +32,24 @@ export function App() {
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(platform.kind === 'web' && api.authenticated);
-  const [showLanding, setShowLanding] = useState(true);
 
-  const [tab, setTab] = useState<Tab>('chat');
+  // AI: Вкладка живёт в адресе (#/chat, #/history, ...): кнопки «назад / вперёд» браузера
+  // и ссылки на вкладку работают как в обычном сайте, а в Mini App это ничему не мешает.
+  const [tab, setTab] = useState<Tab>(() => tabFromHash() ?? 'chat');
+  useEffect(() => {
+    const onHash = () => {
+      const next = tabFromHash();
+      if (next) setTab(next);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  useEffect(() => {
+    if (window.location.hash !== `#/${tab}` && !window.location.hash.includes('token='))
+      history.pushState(null, '', `#/${tab}`);
+  }, [tab]);
+  // AI: На широком экране история показывается рядом с чатом, а вкладки - боковой полосой.
+  const desktop = useMediaQuery('(min-width: 1000px)');
   // AI: -1 / 1 - в какую сторону было последнее переключение, чтобы новая панель въезжала с той
   // стороны.
   const [slide, setSlide] = useState<1 | -1>(1);
@@ -194,23 +208,6 @@ export function App() {
     );
   }
 
-  if (
-    !authed &&
-    platform.kind === 'web' &&
-    showLanding &&
-    !window.location.hash.includes('token=')
-  ) {
-    return (
-      <LandingScreen
-        sphere={sphere}
-        botUrl={botUrl}
-        theme={theme}
-        onToggleTheme={cycleTheme}
-        onStart={() => setShowLanding(false)}
-      />
-    );
-  }
-
   if (!authed) {
     return (
       <div className="app">
@@ -226,6 +223,7 @@ export function App() {
           api={api}
           platform={platform}
           tenant={urlTenant}
+          botUrl={botUrl}
           error={authError}
           onLoggedIn={() => {
             setAuthError(null);
@@ -247,7 +245,7 @@ export function App() {
   const paneClass = `pane slide-${slide > 0 ? 'left' : 'right'}`;
 
   return (
-    <div className={`app${tab === 'operator' ? ' wide' : ''}`}>
+    <div className={`app${tab === 'operator' ? ' wide' : ''}${desktop ? ' desktop' : ''}`}>
       <Header
         sphere={sphere}
         online
@@ -259,7 +257,7 @@ export function App() {
 
       {/* AI: Каждая вкладка остаётся смонтированной и хранит своё состояние (прокрутка, черновики, живые подписки); переключение лишь меняет видимость, поэтому ничего не перезапрашивается и не рендерится с нуля. */}
       <div className="screen" ref={screenRef} data-tab={tab}>
-        <div className={paneClass} hidden={tab !== 'chat'}>
+        <div className={`${paneClass} chat-pane`} hidden={tab !== 'chat'}>
           <ChatScreen
             api={api}
             platform={platform}
@@ -272,10 +270,13 @@ export function App() {
             onTicketUpdate={() => setHistoryVersion((v) => v + 1)}
           />
         </div>
-        <div className={paneClass} hidden={tab !== 'history'}>
+        <div
+          className={`${paneClass} history-pane${desktop && tab === 'chat' ? ' side' : ''}`}
+          hidden={tab !== 'history' && !(desktop && tab === 'chat')}
+        >
           <HistoryScreen
             api={api}
-            active={tab === 'history'}
+            active={tab === 'history' || (desktop && tab === 'chat')}
             refreshKey={historyVersion}
             activeId={openTicketId ?? currentTicket}
             onOpen={(id) => {
@@ -307,7 +308,6 @@ export function App() {
                     api.logout();
                     setCurrentTicket(undefined);
                     setAuthed(false);
-                    setShowLanding(true);
                   }
                 : undefined
             }
@@ -318,6 +318,24 @@ export function App() {
       <BottomNav items={items} active={tab} onSelect={(k) => goToTab(k as Tab)} />
     </div>
   );
+}
+
+const TABS: Tab[] = ['chat', 'history', 'kb', 'operator', 'profile'];
+function tabFromHash(): Tab | undefined {
+  const m = /^#\/([a-z]+)/.exec(window.location.hash);
+  return m && (TABS as string[]).includes(m[1]!) ? (m[1] as Tab) : undefined;
+}
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia?.(query).matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.(query);
+    if (!mq) return;
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [query]);
+  return matches;
 }
 
 function Header(props: {

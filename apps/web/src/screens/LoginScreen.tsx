@@ -15,6 +15,8 @@ export function LoginScreen(props: {
   platform: PlatformAdapter;
   /** AI: Переопределение сферы из URL (?tenant=...); иначе сфера по умолчанию. */
   tenant?: string;
+  /** AI: Ссылка на бота - тем, кому удобнее в Telegram. */
+  botUrl?: string;
   error: string | null;
   onLoggedIn: () => void;
 }) {
@@ -92,7 +94,8 @@ export function LoginScreen(props: {
       {mode === 'menu' && (
         <>
           <div className="sub" style={{ color: 'var(--muted)' }}>
-            Выберите способ входа.
+            Опишите проблему своими словами: помощник подскажет решение по базе знаний или, с вашего
+            согласия, создаст заявку специалисту. Войдите, чтобы начать.
           </div>
           {providers.sso && (
             <a
@@ -120,6 +123,11 @@ export function LoginScreen(props: {
             <div className="empty">
               Вход в браузере не настроен. Откройте помощника из Telegram.
             </div>
+          )}
+          {props.botUrl && (
+            <a className="tg-link" href={props.botUrl} target="_blank" rel="noopener noreferrer">
+              Открыть в Telegram
+            </a>
           )}
         </>
       )}
