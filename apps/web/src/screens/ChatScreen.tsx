@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatMessage, QuickReply, TicketCard } from '@helpdesk/shared';
 import { ApiError, type ApiClient } from '../lib/api';
+import { playMessage } from '../lib/sound';
 import type { PlatformAdapter } from '../lib/platform';
 import { Composer } from '../components/Composer';
 import { MessageBubble } from '../components/MessageBubble';
@@ -77,7 +78,12 @@ export function ChatScreen(props: {
     const timer = setInterval(async () => {
       try {
         const r = await api.getTicket(id);
-        setMessages((m) => (r.messages.length !== m.length ? r.messages : m));
+        setMessages((m) => {
+          if (r.messages.length === m.length) return m;
+          // AI: Новое сообщение от специалиста - тот же звук, что и при ответе помощника.
+          playMessage();
+          return r.messages;
+        });
         setTicket(r.ticket);
       } catch {
         /* временная ошибка */
@@ -115,6 +121,7 @@ export function ChatScreen(props: {
       },
     ]);
     setStreaming('');
+    playMessage();
     const ac = new AbortController();
     abortRef.current = ac;
     try {
@@ -135,6 +142,7 @@ export function ChatScreen(props: {
           setStreaming((s) => (s ?? '') + ev.text);
         } else if (ev.type === 'done') {
           setStreaming(null);
+          playMessage();
           setMessages((m) => [...m, ev.message]);
           setTicket(ev.ticket);
           props.onTicketUpdate?.();

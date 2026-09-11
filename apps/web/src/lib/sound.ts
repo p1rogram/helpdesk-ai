@@ -1,7 +1,7 @@
 /**
  * AI: Звуки включаются по желанию на устройстве и не касаются сервера. Два канала, у каждого свой
- * переключатель в профиле: короткие эффекты на нажатия (кнопки, быстрые ответы, отправка) и фоновая
- * музыка. Файлы лежат в /public/sounds; отсутствующий файл тихо игнорируется - приложение никогда
+ * переключатель в профиле: звуки окружения (нажатия кнопок, отправка и получение сообщений) и
+ * фоновая музыка. Файлы лежат в /public/sounds; отсутствующий файл тихо игнорируется - приложение никогда
  * не ломается из-за аудио. Браузеры разрешают воспроизведение только после жеста пользователя,
  * поэтому оба канала стартуют от клика: эффект сам по себе клик, музыка (пере)запускается
  * переключателем в профиле или первым нажатием после загрузки.
@@ -14,6 +14,8 @@ export interface SoundSettings {
 const KEY = 'helpdesk.sound';
 /** AI: Побеждает первый существующий источник: mp3 команды, иначе встроенная wav-заглушка. */
 const SFX_SOURCES = ['/sounds/click.mp3', '/sounds/click.wav'];
+/** AI: Отправка и получение сообщения - один и тот же короткий звук. */
+const MESSAGE_SOURCES = ['/sounds/message.mp3', '/sounds/click.wav'];
 const MUSIC_SOURCES = ['/sounds/bg.mp3', '/sounds/bg.ogg'];
 const MUSIC_VOLUME = 0.2;
 
@@ -38,6 +40,7 @@ export function setSoundSettings(s: SoundSettings): void {
 }
 
 let sfx: HTMLAudioElement | null = null;
+let msg: HTMLAudioElement | null = null;
 let music: HTMLAudioElement | null = null;
 let current: SoundSettings = { sfx: false, music: false };
 
@@ -58,6 +61,14 @@ function sfxElement(): HTMLAudioElement {
     sfx.volume = 0.6;
   }
   return sfx;
+}
+
+function messageElement(): HTMLAudioElement {
+  if (!msg) {
+    msg = audioWithSources(MESSAGE_SOURCES);
+    msg.volume = 0.7;
+  }
+  return msg;
 }
 
 function musicElement(): HTMLAudioElement {
@@ -81,10 +92,25 @@ export function playTap(): void {
   }
 }
 
+/** AI: Звук сообщения: своё отправлено или пришёл ответ (помощника или специалиста). */
+export function playMessage(): void {
+  if (!current.sfx) return;
+  try {
+    const a = messageElement();
+    a.currentTime = 0;
+    void a.play().catch(() => undefined);
+  } catch {
+    /* игнорируем */
+  }
+}
+
 /** AI: Музыка запускается здесь (нужен жест); пауза происходит сразу при выключении. */
 export function applySoundSettings(s: SoundSettings): void {
   current = s;
-  if (s.sfx) sfxElement().load();
+  if (s.sfx) {
+    sfxElement().load();
+    messageElement().load();
+  }
   if (s.music) {
     void musicElement()
       .play()

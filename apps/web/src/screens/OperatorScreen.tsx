@@ -5,6 +5,7 @@ import { MessageBubble } from '../components/MessageBubble';
 import { TicketCardPanel } from '../components/TicketCardPanel';
 import { Icon, categoryVisual } from '../components/Icon';
 import { SkeletonList } from '../components/Skeleton';
+import { playMessage } from '../lib/sound';
 
 type QueueItem = TicketCard & {
   user: { displayName: string; platform: string };
@@ -209,6 +210,7 @@ export function OperatorScreen(props: { api: ApiClient }) {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && text.trim()) {
                 void act(async () => {
                   await api.operatorReply(open.ticket.id, text.trim());
+                  playMessage();
                   setText('');
                 });
               }
@@ -219,6 +221,7 @@ export function OperatorScreen(props: { api: ApiClient }) {
             onClick={() =>
               act(async () => {
                 await api.operatorReply(open.ticket.id, text.trim());
+                playMessage();
                 setText('');
               })
             }

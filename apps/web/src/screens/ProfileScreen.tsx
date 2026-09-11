@@ -80,8 +80,8 @@ export function ProfileScreen(props: {
         <h3>Звук</h3>
         <label className="switch-row">
           <span>
-            Звуки нажатий
-            <span className="hint">Короткий отклик на кнопки и отправку</span>
+            Звуки окружения
+            <span className="hint">Нажатия, отправка и получение сообщений</span>
           </span>
           <input type="checkbox" checked={sound.sfx} onChange={() => toggle('sfx')} />
           <span className="switch" aria-hidden="true" />
