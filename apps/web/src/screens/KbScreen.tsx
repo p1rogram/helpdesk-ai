@@ -1,48 +1,123 @@
 import { useEffect, useState } from 'react';
 import type { KbSearchResult } from '@helpdesk/shared';
 import type { ApiClient } from '../lib/api';
+import { Icon, categoryVisual } from '../components/Icon';
 
-/** "Поиск по базе знаний" - self-service without a dialogue. */
+interface Category {
+  id: string;
+  name: string;
+}
+
+/** AI: База знаний: плитки категорий, поиск с первого символа, статья с пошаговой инструкцией. */
 export function KbScreen(props: { api: ApiClient }) {
   const [q, setQ] = useState('');
-  const [results, setResults] = useState<KbSearchResult[]>([]);
-  const [open, setOpen] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [results, setResults] = useState<KbSearchResult[] | null>(null);
+  const [open, setOpen] = useState<KbSearchResult | null>(null);
 
   useEffect(() => {
-    if (q.trim().length < 1) {
-      setResults([]);
+    props.api
+      .categories()
+      .then((r) => setCategories(r.categories))
+      .catch(() => setCategories([]));
+  }, [props.api]);
+
+  useEffect(() => {
+    const query = q.trim();
+    if (!query && !category) {
+      setResults(null);
       return;
     }
     const t = setTimeout(() => {
       props.api
-        .searchKb(q.trim())
-        .then((r) => setResults(r.results))
+        .searchKb(query || (category?.name ?? ''))
+        .then((r) => setResults(category && !query ? r.results.filter((x) => x.categoryId === category.id) : r.results))
         .catch(() => setResults([]));
     }, 150);
     return () => clearTimeout(t);
-  }, [q, props.api]);
+  }, [q, category, props.api]);
+
+  if (open) {
+    return (
+      <>
+        <div className="toolbar">
+          <button className="pill-btn" onClick={() => setOpen(null)}>
+            <Icon name="back" size={14} /> Назад
+          </button>
+        </div>
+        <div className="list scroll">
+          <div className="panel">
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>{open.title}</h3>
+            <div style={{ color: 'var(--muted)', fontSize: 13 }}>Пошаговая инструкция · {open.steps.length} шага</div>
+            <ol className="article-steps">
+              {open.steps.map((s, i) => (
+                <li key={i}>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <div className="search">
-        <input placeholder="Поиск по базе знаний: например, VPN" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        <span className="ico">
+          <Icon name="search" size={17} />
+        </span>
+        <input placeholder="Поиск по статьям…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
+
+      {category && (
+        <div className="toolbar">
+          <button className="pill-btn" onClick={() => setCategory(null)}>
+            <Icon name="back" size={14} /> Все категории
+          </button>
+          <span style={{ color: 'var(--muted)' }}>{category.name}</span>
+        </div>
+      )}
+
+      <div className="scroll">
+      {!q.trim() && !category && (
+        <div className="tiles">
+          {categories.map((c) => {
+            const v = categoryVisual(c.id);
+            return (
+              <button key={c.id} className="tile" onClick={() => setCategory(c)}>
+                <span className={`tile-ico ${v.tone}`}>
+                  <Icon name={v.icon} size={19} />
+                </span>
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="list">
-        {q.trim().length >= 1 && !results.length && <div className="empty">Ничего не найдено. Опишите проблему в чате.</div>}
-        {results.map((r) => (
-          <div key={r.id} className="item" onClick={() => setOpen(open === r.id ? null : r.id)}>
-            <div className="t">{r.title}</div>
-            {open === r.id && (
-              <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
-                {r.steps.map((s, i) => (
-                  <li key={i} style={{ margin: '4px 0' }}>
-                    {s}
-                  </li>
-                ))}
-              </ol>
-            )}
+        {results?.map((r) => (
+          <div key={r.id} className="item" onClick={() => setOpen(r)}>
+            <div className="body">
+              <div className="t">{r.title}</div>
+              <div className="m">Пошаговая инструкция · {r.steps.length} шага</div>
+            </div>
+            <Icon name="back" size={16} className="chev" />
           </div>
         ))}
+        {results !== null && !results.length && (
+          <div className="empty">
+            <span className="art">
+              <Icon name="search" size={30} />
+            </span>
+            <div className="lead">Ничего не найдено</div>
+            <div>Опишите проблему в чате — помощник разберётся.</div>
+          </div>
+        )}
+      </div>
       </div>
     </>
   );

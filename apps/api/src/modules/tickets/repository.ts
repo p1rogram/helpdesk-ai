@@ -39,7 +39,7 @@ export class TicketRepository {
     return row;
   }
 
-  /** Latest ticket that is still open (not closed / escalated), if any. */
+  /** AI: Latest ticket that is still open (not closed / escalated), if any. */
   async latestOpen(userId: string): Promise<TicketRow | undefined> {
     const [row] = await this.db
       .select()
@@ -50,7 +50,7 @@ export class TicketRepository {
     return row;
   }
 
-  /** Delete tickets that never received a user message (abandoned greetings). */
+  /** AI: Delete tickets that never received a user message (abandoned greetings). */
   async pruneEmpty(userId: string, keepId?: string): Promise<void> {
     const rows = await this.db
       .select({ id: tickets.id })
@@ -69,14 +69,14 @@ export class TicketRepository {
     }
   }
 
-  /** Any ticket by id (operator access - not scoped to the requesting user). */
+  /** AI: Any ticket by id (operator access - not scoped to the requesting user). */
   async getAny(id: string): Promise<TicketRow | undefined> {
     const [row] = await this.db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
     return row;
   }
 
   /**
-   * Operator work list: everything that reached a specialist. Grouped for the console:
+   * AI: Operator work list: everything that reached a specialist. Grouped for the console:
    *   0 - in progress: the operator already replied (their conversations come first)
    *   1 - waiting: escalated but no operator reply yet (oldest waiting first - SLA order)
    *   2 - closed: finished, newest first
@@ -119,7 +119,7 @@ export class TicketRepository {
     const time = (d: Date | null | undefined) => (d ? d.getTime() : 0);
     return out.sort((a, b) => {
       if (a.group !== b.group) return a.group - b.group;
-      // In progress and closed: latest activity first. Waiting: longest wait first.
+      // AI: In progress and closed: latest activity first. Waiting: longest wait first.
       if (a.group === 1) return time(a.ticket.updatedAt) - time(b.ticket.updatedAt);
       return time(b.lastMessageAt ?? b.ticket.updatedAt) - time(a.lastMessageAt ?? a.ticket.updatedAt);
     });

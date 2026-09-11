@@ -2,7 +2,7 @@ import { Bot, InlineKeyboard } from 'grammy';
 import type { Logger } from 'pino';
 
 /**
- * The Telegram bot is deliberately thin: it opens the Mini App and delivers notifications.
+ * AI: The Telegram bot is deliberately thin: it opens the Mini App and delivers notifications.
  * All dialogue happens inside the Mini App (rich UI, streaming, buttons) - the bot API is
  * only the transport for push messages.
  *
@@ -10,7 +10,7 @@ import type { Logger } from 'pino';
  * run with NODE_USE_ENV_PROXY=1 and HTTPS_PROXY=... (Node >= 24) - no code changes needed.
  */
 export async function startBot(token: string, webAppUrl: string | undefined, log: Logger): Promise<Bot> {
-  // grammY defaults to its own node-fetch shim (polyfilled AbortSignal, `compress` option) which the
+  // AI: grammY defaults to its own node-fetch shim (polyfilled AbortSignal, `compress` option) which the
   // native fetch rejects. Use the global fetch - it honours NODE_USE_ENV_PROXY - with a native timeout.
   const nativeFetch: typeof fetch = (url, init) => {
     const { signal: _polyfilled, compress: _c, ...rest } = (init ?? {}) as RequestInit & { compress?: boolean };
@@ -37,18 +37,18 @@ export async function startBot(token: string, webAppUrl: string | undefined, log
 
   bot.catch((err) => log.error({ err: err.error }, 'telegram bot error'));
 
-  // Verify the token up front so a misconfiguration is visible at startup, not on first message.
+  // AI: Verify the token up front so a misconfiguration is visible at startup, not on first message.
   try {
     const me = await bot.api.getMe();
     log.info(`telegram bot: @${me.username} connected`);
   } catch (err) {
-    // Never log the raw error: grammY embeds the bot token in request URLs.
+    // AI: Never log the raw error: grammY embeds the bot token in request URLs.
     const reason = err instanceof Error ? err.message.replace(/bot\d+:[\w-]+/g, 'bot***') : String(err);
     log.error({ reason }, 'telegram bot: cannot reach api.telegram.org (check token / proxy: NODE_USE_ENV_PROXY=1)');
     return bot;
   }
 
-  // Long polling is fine for a single worker replica; switch to webhooks behind Caddy for many.
+  // AI: Long polling is fine for a single worker replica; switch to webhooks behind Caddy for many.
   void bot.start({ onStart: (me) => log.info(`telegram bot: @${me.username} polling`) });
   return bot;
 }

@@ -10,7 +10,7 @@ const IdParam = z.object({ id: z.string().uuid() });
 const ReplySchema = z.object({ text: z.string().trim().min(1).max(4000) });
 
 /**
- * Operator console: the built-in "specialist side". Escalated tickets land here; an operator
+ * AI: Operator console: the built-in "specialist side". Escalated tickets land here; an operator
  * answers into the user's chat (push via the notification topic) and closes the ticket.
  * Restricted to ADMIN_USERS. An external helpdesk (Naumen) can replace or complement this.
  */
@@ -18,7 +18,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   app.addHook('preHandler', app.requireAdmin);
 
   /**
-   * Work list, already grouped: 0 - the operator's own conversations, 1 - waiting for a first
+   * AI: Work list, already grouped: 0 - the operator's own conversations, 1 - waiting for a first
    * reply (longest wait first), 2 - closed.
    */
   app.get('/api/operator/tickets', async (req) => {
@@ -35,7 +35,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     };
   });
 
-  /** Live queue updates (SSE): a new escalation or a user message appears without reloading. */
+  /** AI: Live queue updates (SSE): a new escalation or a user message appears without reloading. */
   app.get('/api/operator/stream', { config: { rateLimit: false } }, async (req, reply) => {
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
@@ -58,7 +58,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   /**
-   * Hand the ticket back to the assistant: the operator decided it does not need a specialist.
+   * AI: Hand the ticket back to the assistant: the operator decided it does not need a specialist.
    * The assistant resumes and is not allowed to escalate this ticket again.
    */
   app.post('/api/operator/tickets/:id/handback', async (req, reply) => {
@@ -105,7 +105,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     };
   });
 
-  /** Operator reply -> stored in the chat, pushed to the messenger. */
+  /** AI: Operator reply -> stored in the chat, pushed to the messenger. */
   app.post('/api/operator/tickets/:id/reply', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = ReplySchema.safeParse(req.body);
@@ -130,7 +130,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     return { message: toChatMessage(saved) };
   });
 
-  /** Close as resolved by the operator. */
+  /** AI: Close as resolved by the operator. */
   app.post('/api/operator/tickets/:id/close', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const ticket = await ctx.tickets.getAny(id);

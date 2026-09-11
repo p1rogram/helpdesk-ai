@@ -1,9 +1,10 @@
-import type { Analysis, ChatStreamEvent, QuickReply, TicketCard, Tone } from '@helpdesk/shared';
+import type { Analysis, ChatStreamEvent, QuickReply, Scope, TicketCard, Tone } from '@helpdesk/shared';
 import { TOPICS } from '@helpdesk/shared';
 import type { TicketRow, UserRow } from '../../db/schema.js';
 import { eventBase, type EventBus } from '../events/index.js';
 import type { KnowledgeService, LoadedCatalog } from '../knowledge/index.js';
 import { LlmUnavailableError, type LlmService } from '../llm/index.js';
+import { extractFields } from './extract.js';
 import { inspectMessage, strongerTone } from '../safety/index.js';
 import { toCard, type TicketRepository } from '../tickets/repository.js';
 import type { HelpdeskConnector } from '../helpdesk/index.js';
@@ -36,7 +37,7 @@ export interface EngineDeps {
 }
 
 /**
- * The dialog engine is a deterministic state machine. The LLM is consulted for exactly two
+ * AI: The dialog engine is a deterministic state machine. The LLM is consulted for exactly two
  * things - understanding the message (structured) and phrasing a grounded solution - and
  * every decision (ask / solve / escalate / close) is made here, in code. That makes the
  * behaviour testable, cheap and impossible to talk out of its role.
@@ -46,15 +47,19 @@ export interface EngineDeps {
 export class DialogEngine {
   constructor(private readonly d: EngineDeps) {}
 
-  async *handle(ticket: TicketRow, user: UserRow, rawText: string): AsyncGenerator<ChatStreamEvent> {
-    const catalog = await this.d.knowledge.catalog(ticket.tenantId);
+  async *handle(
+    ticket: TicketRow,
+    user: UserRow,
+    rawText: string,
+    scope: Scope = 'full',
+  ): AsyncGenerator<ChatStreamEvent> {
+    const catalog = await this.d.knowledge.catalog(ticket.tenantId, scope);
     const text = rawText.trim();
     const isCmd = text.startsWith('__');
 
-    // Persist what the user said (commands are stored with a readable label).
     await this.d.tickets.addMessage(ticket.id, 'user', isCmd ? labelFor(text, catalog) : text, isCmd ? { command: text } : {});
 
-    // A specialist owns this dialogue: the assistant must not speak over them. The message is
+    // AI: A specialist owns this dialogue: the assistant must not speak over them. The message is
     // stored and pushed to the operator console; the client gets a silent acknowledgement.
     if (ticket.state === 'escalated') {
       if (isCmd) {
@@ -70,7 +75,7 @@ export class DialogEngine {
       yield { type: 'ack', ticket: toCard(touched, catalog) };
       return;
     }
-    // Closed tickets do not continue - the client offers "new ticket".
+    // AI: Closed tickets do not continue - the client offers "new ticket".
     if (ticket.state === 'closed') {
       yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
       return;
@@ -99,7 +104,7 @@ export class DialogEngine {
     }
     if (text === CMD.human || text === CMD.escalate) {
       if (ticket.escalationBlocked) {
-        // The operator already reviewed this ticket and sent it back - do not re-queue it.
+        // AI: The operator already reviewed this ticket and sent it back - do not re-queue it.
         yield* this.reply(ticket, catalog, T.escalationBlocked(), ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY);
         return;
       }
@@ -116,7 +121,7 @@ export class DialogEngine {
       return;
     }
     if (isCmd) {
-      // Unknown / stale command - ignore politely.
+      // AI: Unknown / stale command - ignore politely.
       yield* this.reply(ticket, catalog, T.afterSolution(), ticket.state === 'solving' ? QR_AFTER_SOLUTION : undefined);
       return;
     }
@@ -136,7 +141,7 @@ export class DialogEngine {
     }
 
     if (ticket.state === 'offer_escalation' && !isCmd) {
-      // The user kept typing instead of choosing: treat it as new information about the problem.
+      // AI: The user kept typing instead of choosing: treat it as new information about the problem.
       ticket = await this.d.tickets.update(ticket.id, { state: ticket.articleId ? 'solving' : 'intake', pendingEscalation: null });
     }
 
@@ -167,15 +172,14 @@ export class DialogEngine {
       analysis = await this.fallbackAnalyze(catalog, ticket, text);
     }
 
-    // Merge what we learned into the ticket.
     const tone = strongerTone(safety.toneHint, analysis.tone);
     const fields = { ...ticket.fields, ...cleanFields(analysis.fields) };
     if (ticket.state === 'clarifying' && ticket.pendingField && !fields[ticket.pendingField]) {
-      // The user answered our question in free form - keep the raw answer.
+      // AI: The user answered our question in free form - keep the raw answer.
       fields[ticket.pendingField] = text.slice(0, 200);
     }
-    // Summary: never from chit-chat; refine while the problem is still being understood, freeze once solving.
-    const keepSummary = analysis.offTopic || ticket.state === 'solving';
+    // AI: Summary: never from chit-chat; refine while the problem is still being understood, freeze once solving.
+    const keepSummary = analysis.offTopic || analysis.asksToClose === true || ticket.state === 'solving';
     ticket = await this.d.tickets.update(ticket.id, {
       fields,
       tone,
@@ -192,8 +196,9 @@ export class DialogEngine {
       yield* this.escalate(ticket, user, catalog, 'user_request');
       return;
     }
-    if (analysis.reportsResolved && ticket.state === 'solving') {
-      yield* this.resolve(ticket, user, catalog);
+    if ((analysis.reportsResolved && ticket.state === 'solving') || analysis.asksToClose) {
+      // AI: An explicit "close it" finishes the request even before a solution was shown.
+      yield* this.resolve(ticket, user, catalog, analysis.asksToClose === true ? 'user_request' : 'helped');
       return;
     }
     if (analysis.offTopic && (!ticket.categoryId || ticket.state === 'clarifying')) {
@@ -201,13 +206,12 @@ export class DialogEngine {
       return;
     }
 
-    // Category decision (only while not yet decided).
     if (!ticket.categoryId) {
       const known = catalog.categoryById.has(analysis.categoryId);
       if (known && analysis.confidence >= this.d.config.confidenceThreshold) {
         ticket = await this.setCategory(ticket, user, catalog, analysis.categoryId, analysis.confidence);
       } else if (ticket.state === 'choosing_category') {
-        // Second miss in a row: do not loop, offer a hand-over with what we have.
+        // AI: Second miss in a row: do not loop, offer a hand-over with what we have.
         yield* this.offerEscalation(ticket, catalog, 'low_confidence');
         return;
       } else {
@@ -222,7 +226,7 @@ export class DialogEngine {
       }
     }
 
-    // In "solving" state: a complaint means the steps did not help; anything else is a detail we note.
+    // AI: In "solving" state: a complaint means the steps did not help; anything else is a detail we note.
     if (ticket.state === 'solving') {
       if (NEGATIVE.test(text.toLowerCase()) || text.length > 80) {
         yield* this.nextSolution(ticket, user, catalog, text);
@@ -237,7 +241,7 @@ export class DialogEngine {
 
   // ---------- transitions ----------
 
-  /** Ask the next required clarification or search for a solution. */
+  /** AI: Ask the next required clarification or search for a solution. */
   private async *advance(
     ticket: TicketRow,
     user: UserRow,
@@ -246,6 +250,20 @@ export class DialogEngine {
     llmDown = false,
   ): AsyncGenerator<ChatStreamEvent> {
     const category = catalog.categoryById.get(ticket.categoryId!)!;
+
+    // AI: Pull identifiers the user already named (dorm number, room) out of the message before
+    // deciding what to ask - and stop early if the value cannot exist (e.g. a dorm that was never built).
+    const found = extractFields(category.clarify, lastText);
+    if (Object.keys(found.fields).length) {
+      ticket = await this.d.tickets.update(ticket.id, { fields: { ...ticket.fields, ...found.fields } });
+    }
+    if (found.reject) {
+      ticket = await this.d.tickets.update(ticket.id, { state: 'clarifying', pendingField: found.reject.fieldId });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      yield* this.reply(ticket, catalog, found.reject.message);
+      return;
+    }
+
     const missing = category.clarify.filter((f) => f.required && !ticket.fields[f.id]);
     if (missing.length && ticket.clarificationsAsked < this.d.config.maxClarifications) {
       const field = missing[0]!;
@@ -306,7 +324,7 @@ export class DialogEngine {
     let noSolution = false;
     if (!failed) {
       try {
-        // Buffer the first few characters: the model may open with [NO_SOLUTION] (article does not fit).
+        // AI: Buffer the first few characters: the model may open with [NO_SOLUTION] (article does not fit).
         let head = '';
         let decided = false;
         for await (const chunk of this.d.llm.solve(catalog, {
@@ -346,13 +364,13 @@ export class DialogEngine {
       }
     }
     if (noSolution) {
-      // The model judged the best article irrelevant: do not show it, offer a hand-over honestly.
+      // AI: The model judged the best article irrelevant: do not show it, offer a hand-over honestly.
       ticket = await this.d.tickets.update(ticket.id, { articleId: null, state: 'intake' });
       yield* this.offerEscalation(ticket, catalog, 'no_solution');
       return;
     }
     if (failed || !streamed.trim()) {
-      // Deterministic fallback: article steps verbatim. The chat never dies with the LLM.
+      // AI: Deterministic fallback: article steps verbatim. The chat never dies with the LLM.
       const fb = (streamed.trim() ? '\n\n' : '') + T.solutionFallback(article);
       streamed += fb;
       yield { type: 'delta', text: fb };
@@ -360,7 +378,7 @@ export class DialogEngine {
     text += streamed.trim();
 
     if (article.escalateAfter) {
-      // The article itself says a specialist finishes the job: deliver the steps, then ask
+      // AI: The article itself says a specialist finishes the job: deliver the steps, then ask
       // whether to create the request (two `done` events; the client appends both).
       yield* this.finish(ticket, catalog, text, undefined, { articleId: article.id });
       yield* this.offerEscalation(ticket, catalog, 'article_requires_specialist');
@@ -383,7 +401,7 @@ export class DialogEngine {
     const ranked = await this.d.knowledge.search(ticket.tenantId, query, { categoryId: ticket.categoryId!, limit: 5 });
     const top = ranked[0]?.score ?? 0;
     const next = ranked.find((r) => !tried.includes(r.article.id));
-    // Only offer a second article when it is a comparable match to the best one; otherwise stop guessing.
+    // AI: Only offer a second article when it is a comparable match to the best one; otherwise stop guessing.
     if (!next || next.score < 0.6 * top || tried.length >= 2) {
       yield* this.offerEscalation(ticket, catalog, 'solution_failed');
       return;
@@ -391,7 +409,12 @@ export class DialogEngine {
     yield* this.solve(ticket, user, catalog, lastText, false, T.nextArticle(next.article));
   }
 
-  private async *resolve(ticket: TicketRow, user: UserRow, catalog: LoadedCatalog): AsyncGenerator<ChatStreamEvent> {
+  private async *resolve(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+    reason: 'helped' | 'user_request' = 'helped',
+  ): AsyncGenerator<ChatStreamEvent> {
     ticket = await this.d.tickets.update(ticket.id, { state: 'closed', resolved: true, closedAt: new Date() });
     const card = toCard(ticket, catalog);
     await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
@@ -400,11 +423,11 @@ export class DialogEngine {
       ticket: card,
     });
     yield { type: 'meta', ticket: card };
-    yield* this.reply(ticket, catalog, T.resolved(card), QR_CLOSED);
+    yield* this.reply(ticket, catalog, T.resolved(card, reason), QR_CLOSED);
   }
 
   /**
-   * The assistant never creates a request on its own: it explains why it cannot go further and
+   * AI: The assistant never creates a request on its own: it explains why it cannot go further and
    * asks. Only an explicit "yes" (or the user asking for a human) creates the external request.
    */
   private async *offerEscalation(
@@ -413,7 +436,7 @@ export class DialogEngine {
     reason: EscalationReason,
   ): AsyncGenerator<ChatStreamEvent> {
     if (ticket.escalationBlocked) {
-      // A specialist decided this ticket stays with the assistant; never offer to escalate again.
+      // AI: A specialist decided this ticket stays with the assistant; never offer to escalate again.
       yield* this.reply(ticket, catalog, T.escalationBlocked(), ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY);
       return;
     }
@@ -429,7 +452,7 @@ export class DialogEngine {
     reason: EscalationReason,
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'status', text: 'Создаю заявку…' };
-    // Create the request in the external helpdesk first, so the card shows the real number.
+    // AI: Create the request in the external helpdesk first, so the card shows the real number.
     let external: { externalId: string; url?: string } | null = null;
     try {
       const transcript = (await this.d.tickets.listMessages(ticket.id, 60))
@@ -440,7 +463,7 @@ export class DialogEngine {
         transcript,
       });
     } catch (err) {
-      // The chat must not fail because the helpdesk is down: keep the internal id, retry later via events.
+      // AI: The chat must not fail because the helpdesk is down: keep the internal id, retry later via events.
       this.d.log.warn({ ticketId: ticket.id, err: (err as Error).message }, 'helpdesk request creation failed');
     }
     ticket = await this.d.tickets.update(ticket.id, {
@@ -499,7 +522,7 @@ export class DialogEngine {
 
   // ---------- helpers ----------
 
-  /** Save an assistant message and emit `done`. */
+  /** AI: Save an assistant message and emit `done`. */
   private async *reply(
     ticket: TicketRow,
     catalog: LoadedCatalog,
@@ -540,7 +563,7 @@ export class DialogEngine {
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
   }
 
-  /** LLM-less understanding: lexical match against the KB decides category and confidence. */
+  /** AI: LLM-less understanding: lexical match against the KB decides category and confidence. */
   private async fallbackAnalyze(catalog: LoadedCatalog, ticket: TicketRow, text: string): Promise<Analysis> {
     const hits = await this.d.knowledge.search(ticket.tenantId, text, { limit: 3 });
     const best = hits[0];
@@ -548,7 +571,7 @@ export class DialogEngine {
     const confidence = ticket.categoryId ? 1 : best ? Math.min(0.95, 0.5 + best.score / 10) : 0;
     const lower = text.toLowerCase();
     const offTopic = isSmalltalk(text) || (!ticket.categoryId && !best);
-    // Fill clarifying fields whose options are literally mentioned ("из дома" -> location).
+    // AI: Fill clarifying fields whose options are literally mentioned ("из дома" -> location).
     const fields: Record<string, string> = {};
     const category = catalog.categoryById.get(categoryId);
     for (const f of category?.clarify ?? []) {
@@ -576,7 +599,7 @@ function isSmalltalk(text: string): boolean {
   return text.trim().length <= 40 && SMALLTALK.test(text.trim());
 }
 
-/** "Из дома / удалённо" is mentioned when any of its meaningful words appears in the text. */
+/** AI: "Из дома / удалённо" is mentioned when any of its meaningful words appears in the text. */
 function optionMentioned(option: string, lowerText: string): boolean {
   const words = option
     .toLowerCase()
@@ -585,9 +608,9 @@ function optionMentioned(option: string, lowerText: string): boolean {
   return words.some((w) => lowerText.includes(w));
 }
 
-/** Marker the model emits when the retrieved article does not fit the problem. */
+/** AI: Marker the model emits when the retrieved article does not fit the problem. */
 const NO_SOLUTION = '[NO_SOLUTION]';
-/** Below this BM25 score the best article is noise, not a match. */
+/** AI: Below this BM25 score the best article is noise, not a match. */
 const MIN_SOLUTION_SCORE = 1.5;
 
 const NEGATIVE =

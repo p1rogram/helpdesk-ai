@@ -1,7 +1,7 @@
 import type { KbArticle } from '@helpdesk/shared';
 
 /**
- * Lightweight lexical retrieval over the tenant knowledge base (BM25-style scoring with a
+ * AI: Lightweight lexical retrieval over the tenant knowledge base (BM25-style scoring with a
  * crude Russian prefix stemmer). Sub-millisecond for thousands of articles, deterministic,
  * no external services. Upgrade path: pgvector embeddings behind the same `search()` signature.
  */
@@ -22,7 +22,7 @@ const STOP = new Set([
   'над', 'больше', 'тот', 'через', 'эти', 'нас', 'про', 'всего', 'них', 'какая', 'много', 'разве', 'эту', 'моя',
   'свою', 'этой', 'перед', 'иногда', 'лучше', 'чуть', 'том', 'нельзя', 'такой', 'им', 'более', 'всегда', 'конечно',
   'всю', 'между', 'у', 'мне', 'мой', 'моё', 'мои', 'the', 'a', 'an', 'is', 'to', 'of',
-  // chat filler that carries no topical signal
+  // AI: chat filler that carries no topical signal
   'могу', 'можете', 'нужно', 'нужен', 'нужна', 'хочу', 'помогите', 'пожалуйста', 'здравствуйте', 'добрый', 'день',
   'подскажите', 'вопрос', 'проблема', 'почему', 'какой', 'какие', 'это', 'мне', 'меня', 'него', 'него',
 ]);
@@ -36,7 +36,7 @@ export function tokenize(text: string, opts: { keepShort?: boolean } = {}): stri
     .map(stem);
 }
 
-/** Prefix stemmer: good enough to match "подключиться" ~ "подключается" ~ "подключение". */
+/** AI: Prefix stemmer: good enough to match "подключиться" ~ "подключается" ~ "подключение". */
 function stem(t: string): string {
   if (/^[a-z0-9]+$/.test(t)) return t; // latin tokens (vpn, moodle, wifi) untouched
   return t.length > 6 ? t.slice(0, 6) : t.length > 4 ? t.slice(0, 4) : t;
@@ -55,7 +55,7 @@ export class KnowledgeIndex {
 
   constructor(articles: KbArticle[]) {
     for (const a of articles) {
-      // Field weighting: title and symptoms describe the problem, steps describe the fix -
+      // AI: Field weighting: title and symptoms describe the problem, steps describe the fix -
       // a word in the steps must not outrank the same word in another article's title.
       const tf = new Map<string, number>();
       let len = 0;
@@ -77,7 +77,7 @@ export class KnowledgeIndex {
   search(query: string, opts: { categoryId?: string; limit?: number; exclude?: Set<string> } = {}): ScoredArticle[] {
     const q = tokenize(query, { keepShort: true });
     if (!q.length) return [];
-    // Autocomplete behaviour: a query token matches an index term exactly or as its prefix
+    // AI: Autocomplete behaviour: a query token matches an index term exactly or as its prefix
     // ("v" -> vpn/vap, "vp" -> vpn, "мудл" -> мудла). Prefix hits are weighted below exact ones.
     const terms = [...this.df.keys()];
     const expansions = q.map((t) => {

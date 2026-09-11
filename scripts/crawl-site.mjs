@@ -9,7 +9,10 @@
  *
  * Options:
  *   --start <url>     seed URL (repeatable)
- *   --allow <prefix>  only follow links starting with this prefix (repeatable; default = seeds' origins)
+ *   --allow <prefix>  stay inside this URL prefix, matched on a path boundary (repeatable;
+ *                     default = the origins of the seeds). "https://tpu.ru/student" allows
+ *                     /student and /student/faq/, but not /students-club.
+ *   --deny <prefix>   cut a subsection out of the allowed scope (repeatable)
  *   --max <n>         max pages (default 200)
  *   --delay <ms>      pause between requests (default 400 - be polite)
  *   --out <file>      JSONL output (default data/raw/site.jsonl)
@@ -22,15 +25,16 @@ import { dirname } from 'node:path';
 import * as cheerio from 'cheerio';
 
 const args = process.argv.slice(2);
-const opt = { start: [], allow: [], max: 200, delay: 400, out: 'data/raw/site.jsonl' };
+const opt = { start: [], allow: [], deny: [], max: 200, delay: 400, out: 'data/raw/site.jsonl' };
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   const v = args[i + 1];
-  if (a === '--start') opt.start.push(v), i++;
-  else if (a === '--allow') opt.allow.push(v), i++;
-  else if (a === '--max') opt.max = Number(v), i++;
-  else if (a === '--delay') opt.delay = Number(v), i++;
-  else if (a === '--out') opt.out = v, i++;
+  if (a === '--start') { opt.start.push(v); i++; }
+  else if (a === '--allow') { opt.allow.push(v); i++; }
+  else if (a === '--deny') { opt.deny.push(v); i++; }
+  else if (a === '--max') { opt.max = Number(v); i++; }
+  else if (a === '--delay') { opt.delay = Number(v); i++; }
+  else if (a === '--out') { opt.out = v; i++; }
 }
 if (!opt.start.length) {
   console.error('need at least one --start <url>');
@@ -66,7 +70,18 @@ const normalize = (href, base) => {
     return null;
   }
 };
-const allowed = (u) => opt.allow.some((p) => u.startsWith(p));
+/**
+ * Scope check on a PATH BOUNDARY, so `--allow https://tpu.ru/student` takes /student and
+ * /student/faq/ but never /students-club. A trailing slash in the prefix is optional.
+ * `--deny` cuts subsections out of an allowed scope (e.g. --deny https://tpu.ru/student/news).
+ */
+const inScope = (u, prefixes) =>
+  prefixes.some((raw) => {
+    const p = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+    return u === p || u.startsWith(p + '/') || u.startsWith(p + '?');
+  });
+// Seeds are always crawled, even when the allow prefix is written with a trailing slash.
+const allowed = (u) => (opt.start.includes(u) || inScope(u, opt.allow)) && !inScope(u, opt.deny);
 
 const queue = [...opt.start];
 let done = 0;

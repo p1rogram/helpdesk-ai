@@ -3,17 +3,17 @@ import type { ApiClient } from '../lib/api';
 import type { PlatformAdapter } from '../lib/platform';
 
 type Providers = { guest: boolean; sso: boolean; ldap: boolean; email: boolean };
-type Mode = 'menu' | 'ldap' | 'email' | 'guest';
+type Mode = 'menu' | 'ldap' | 'email' | 'guest' | 'student';
 const MODES = ['sso', 'ldap', 'email', 'guest'] as const;
 
 /**
- * Browser login. Inside a messenger the login is silent; here the user picks what the
+ * AI: Browser login. Inside a messenger the login is silent; here the user picks what the
  * organisation enabled: SSO (redirect), domain login/password (LDAP), e-mail code, or guest demo.
  */
 export function LoginScreen(props: {
   api: ApiClient;
   platform: PlatformAdapter;
-  /** Sphere override from the URL (?tenant=...); default sphere otherwise. */
+  /** AI: Sphere override from the URL (?tenant=...); default sphere otherwise. */
   tenant?: string;
   error: string | null;
   onLoggedIn: () => void;
@@ -39,9 +39,9 @@ export function LoginScreen(props: {
         setProviders(p.providers);
         setSsoLabel(p.ssoLabel);
         setDomains(p.emailDomains);
-        // A single non-SSO provider opens directly.
+        // AI: A single non-SSO provider opens directly.
         const enabled = MODES.filter((k) => p.providers[k]);
-        const only = enabled.length === 1 ? enabled[0] : undefined;
+        const only = enabled.length === 1 && enabled[0] !== 'guest' ? enabled[0] : undefined;
         if (only && only !== 'sso') setMode(only);
       })
       .catch(() => setProviders({ guest: true, sso: false, ldap: false, email: false }));
@@ -89,9 +89,12 @@ export function LoginScreen(props: {
           {providers.ldap && <button onClick={() => setMode('ldap')}>Логин и пароль организации</button>}
           {providers.email && <button onClick={() => setMode('email')}>Код на корпоративную почту</button>}
           {providers.guest && (
-            <button className="btn-secondary" onClick={() => setMode('guest')}>
-              Демо-вход (гость)
-            </button>
+            <>
+              <button onClick={() => setMode('student')}>Я студент или сотрудник ТПУ</button>
+              <button className="btn-secondary" onClick={() => setMode('guest')}>
+                Я гость — вопросы о поступлении и контакты
+              </button>
+            </>
           )}
           {enabledCount === 0 && <div className="empty">Вход в браузере не настроен. Откройте помощника из Telegram.</div>}
         </>
@@ -168,19 +171,21 @@ export function LoginScreen(props: {
         </>
       )}
 
-      {mode === 'guest' && (
+      {(mode === 'guest' || mode === 'student') && (
         <>
           <div className="sub" style={{ color: 'var(--muted)' }}>
-            Демо-режим без проверки личности.
+            {mode === 'guest'
+              ? 'Гостю доступны публичные темы: поступление, контакты, адреса, режим работы, заселение.'
+              : 'Полный доступ ко всем темам поддержки. В демо-режиме личность не проверяется — на проде здесь вход по учётной записи ТПУ.'}
           </div>
           <input placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)} />
           <button
             disabled={busy}
             onClick={() =>
               run(async () => {
-                await api.loginDev(name || 'Гость', props.tenant);
+                await api.loginDev(name || (mode === 'guest' ? 'Гость' : 'Студент'), props.tenant, mode === 'guest' ? 'guest' : 'full');
                 props.onLoggedIn();
-              }, 'Гостевой вход отключён на сервере.')
+              }, 'Вход отключён на сервере.')
             }
           >
             Войти

@@ -5,7 +5,7 @@ import { AuthError } from '../modules/auth/index.js';
 import { rolesFor, type CorporateIdentity } from '../modules/auth/corporate.js';
 
 /**
- * Corporate login routes. Which ones exist depends on what the organisation provided:
+ * AI: Corporate login routes. Which ones exist depends on what the organisation provided:
  *   GET  /api/auth/providers            -> what the client should offer
  *   GET  /api/auth/sso/start            -> redirect to the IdP (OIDC)
  *   GET  /api/auth/sso/callback         -> IdP returns here; we redirect to the app with the token
@@ -43,7 +43,7 @@ export async function corporateAuthRoutes(app: FastifyInstance, ctx: AppContext)
       try {
         const { identity, returnTo } = await oidc.finishLogin(q.data.code, q.data.state);
         const token = await issueCorporate(ctx, identity);
-        // Token travels in the URL fragment: never sent to the server again, not logged by proxies.
+        // AI: Token travels in the URL fragment: never sent to the server again, not logged by proxies.
         return reply.redirect(`${returnTo}#token=${encodeURIComponent(token)}`);
       } catch (err) {
         if (err instanceof AuthError) return reply.code(401).send({ error: 'sso_failed', message: err.message });
@@ -95,7 +95,7 @@ export async function corporateAuthRoutes(app: FastifyInstance, ctx: AppContext)
   }
 }
 
-/** Corporate identities share the `corp` platform; roles come from organisation groups. */
+/** AI: Corporate identities share the `corp` platform; roles come from organisation groups. */
 async function issueCorporate(ctx: AppContext, identity: CorporateIdentity): Promise<string> {
   const user = await ctx.tickets.upsertUser('corp', identity.id, identity.displayName);
   const roles = rolesFor(identity, ctx.config.operatorGroups);
@@ -109,7 +109,7 @@ async function issueCorporate(ctx: AppContext, identity: CorporateIdentity): Pro
   });
 }
 
-/** Only allow returning to our own app origin (open-redirect protection). */
+/** AI: Only allow returning to our own app origin (open-redirect protection). */
 function safeReturnTo(candidate: string | undefined, appUrl: string | undefined): string {
   const fallback = appUrl ?? '/';
   if (!candidate) return fallback;

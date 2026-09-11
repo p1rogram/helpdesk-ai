@@ -15,7 +15,7 @@ export async function buildApp(config: AppConfig): Promise<{ app: FastifyInstanc
   const app = Fastify({
     logger: {
       level: config.LOG_LEVEL,
-      // Never log request bodies: they contain user dialogue (PII).
+      // AI: Never log request bodies: they contain user dialogue (PII).
       serializers: { req: (r) => ({ method: r.method, url: r.url, id: r.id }) },
       ...(config.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : {}),
     },

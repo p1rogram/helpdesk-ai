@@ -1,15 +1,15 @@
 /**
- * Platform adapter. One interface, one implementation per messenger. The rest of the app
+ * AI: Platform adapter. One interface, one implementation per messenger. The rest of the app
  * never touches window.Telegram / vkBridge / MAX directly. Adding VK or MAX = one more file.
  */
 export type PlatformKind = 'telegram' | 'vk' | 'max' | 'web';
 
 export interface PlatformAdapter {
   kind: PlatformKind;
-  /** Opaque auth payload verified by the server (Telegram: initData). */
+  /** AI: Opaque auth payload verified by the server (Telegram: initData). */
   authPayload(): string | null;
   displayName(): string | null;
-  /** Theme colours from the host app, as CSS variables. */
+  /** AI: Theme colours from the host app, as CSS variables. */
   themeVars(): Record<string, string>;
   isDark(): boolean;
   ready(): void;
@@ -71,7 +71,7 @@ interface VkBridgeLike {
 }
 
 /**
- * VK Mini Apps: launch params arrive in the URL and are verified server-side; UI hooks go through
+ * AI: VK Mini Apps: launch params arrive in the URL and are verified server-side; UI hooks go through
  * vk-bridge (loaded by the host). Only the pieces used by this app are wired; the rest is no-op.
  */
 function vkAdapter(bridge: VkBridgeLike | undefined): PlatformAdapter {
@@ -95,7 +95,7 @@ interface MaxWebApp {
   expand?(): void;
 }
 
-/** MAX Mini Apps expose a Telegram-like `WebApp` object; the adapter mirrors the Telegram one. */
+/** AI: MAX Mini Apps expose a Telegram-like `WebApp` object; the adapter mirrors the Telegram one. */
 function maxAdapter(m: MaxWebApp): PlatformAdapter {
   return {
     kind: 'max',
@@ -127,7 +127,7 @@ function webAdapter(): PlatformAdapter {
 
 export function detectPlatform(): PlatformAdapter {
   const tg = window.Telegram?.WebApp;
-  // initData is empty when the page is opened outside Telegram even though the SDK loaded.
+  // AI: initData is empty when the page is opened outside Telegram even though the SDK loaded.
   if (tg && tg.initData) return telegramAdapter(tg);
   const mx = window.Max?.WebApp;
   if (mx && mx.initData) return maxAdapter(mx);

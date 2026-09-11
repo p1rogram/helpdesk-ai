@@ -9,7 +9,7 @@ export interface KafkaBusOptions {
 }
 
 /**
- * Kafka-backed bus (KRaft cluster, no ZooKeeper). Partition key = ticketId keeps per-ticket
+ * AI: Kafka-backed bus (KRaft cluster, no ZooKeeper). Partition key = ticketId keeps per-ticket
  * ordering; consumer groups give horizontal scaling of workers.
  */
 export class KafkaEventBus implements EventBus {
@@ -26,7 +26,7 @@ export class KafkaEventBus implements EventBus {
     });
   }
 
-  /** Idempotent: creates topics with sane partition counts if they do not exist. */
+  /** AI: Idempotent: creates topics with sane partition counts if they do not exist. */
   async ensureTopics(): Promise<void> {
     const admin = this.kafka.admin();
     await admin.connect();
@@ -81,7 +81,7 @@ export class KafkaEventBus implements EventBus {
         try {
           await handler(JSON.parse(message.value.toString()) as TopicPayloads[T]);
         } catch (err) {
-          // Poison messages must not stall the partition; log and move on.
+          // AI: Poison messages must not stall the partition; log and move on.
           this.opts.log?.error(err, `kafka: handler failed for ${topic}`);
         }
       },

@@ -1,7 +1,7 @@
 {
   "id": "tpu",
   "sphere": "Техническая поддержка Томского политехнического университета",
-  "organisation": "Единая служба технической поддержки ТПУ (help.tpu.ru). Пользователи — студенты (очной, заочной и очно-заочной форм), преподаватели и сотрудники. Ключевые сервисы: корпоративная учётная запись ТПУ (единый логин/пароль для всех сервисов домена tpu.ru); Личный кабинет студента https://lk.tpu.ru и портал https://portal.tpu.ru; обучающая платформа LMS Moodle (https://stud.lms.tpu.ru — очная форма, https://eor.lms.tpu.ru — заочная/очно-заочная); корпоративная почта https://ex2.tpu.ru/SOGo/ (адрес login@tpu.ru); расписание https://rasp.tpu.ru и https://ro-rasp.tpu.ru; оплата услуг https://wildfly.tpu.ru/pay; VPN (Cisco AnyConnect, ssl.tpu.ru); сетевые диски; корпоративная печать MyQ; удалённые приложения vap.tpu.ru; справочник сотрудников staff.tpu.ru; библиотека НТБ https://lib.tpu.ru; заселение в общежития https://dormbook.tpu.ru; приёмная комиссия https://abiturient.tpu.ru. Телефон поддержки +7 (3822) 701-811 (внутр. 2828), help@tpu.ru. Единый деканат (Центр по работе со студентами): ул. Белинского, 53а, оф. 117, +7 (3822) 706-350, dekanat@tpu.ru. Официальный сайт: https://tpu.ru.",
+  "organisation": "Единая служба технической поддержки ТПУ (help.tpu.ru). Пользователи — студенты (очной, заочной и очно-заочной форм), преподаватели и сотрудники. Ключевые сервисы: корпоративная учётная запись ТПУ (единый логин/пароль для всех сервисов домена tpu.ru); Личный кабинет студента https://lk.tpu.ru и портал https://portal.tpu.ru; обучающая платформа LMS Moodle (https://stud.lms.tpu.ru — очная форма, https://eor.lms.tpu.ru — заочная/очно-заочная); корпоративная почта https://ex2.tpu.ru/SOGo/ (адрес login@tpu.ru); расписание https://rasp.tpu.ru и https://ro-rasp.tpu.ru; оплата услуг https://wildfly.tpu.ru/pay; VPN (Cisco AnyConnect, ssl.tpu.ru); сетевые диски; корпоративная печать MyQ; удалённые приложения vap.tpu.ru; справочник сотрудников staff.tpu.ru; библиотека НТБ https://lib.tpu.ru; заселение в общежития https://dormbook.tpu.ru; приёмная комиссия https://abiturient.tpu.ru. Телефон поддержки +7 (3822) 701-811 (внутр. 2828), help@tpu.ru. Единый деканат (Центр по работе со студентами): ул. Белинского, 53а, оф. 117, +7 (3822) 706-350, dekanat@tpu.ru. Официальный сайт: https://tpu.ru. Общежития (действующие номера 1, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19): №1 — пр. Ленина, 45, №5 — ул. Пирогова, 18, №6 — ул. Пирогова, 18а, №7 — ул. Усова, 13а, №10 — ул. Вершинина, 31, №11 — ул. Вершинина, 33, №12 — ул. Вершинина, 37, №13 — ул. Вершинина, 39, №14 — ул. Вершинина, 39а, №15 — ул. Аркадия Иванова, 8, №16 — ул. Вершинина, 46, №17 — ул. Вершинина, 48, №18 — ул. Усова, 15б, №19 — ул. Усова, 21/2. Общежитие №2 закрыто на ремонт до 2027 года; общежитий №3, 4, 8, 9 нет. Отдел студенческих общежитий: ул. Вершинина, 37, +7 (3822) 60-62-05.",
   "language": "ru",
   "categories": [
     {
@@ -151,13 +151,34 @@
     {
       "id": "campus",
       "name": "Кампус и общежития",
-      "description": "Общежития и корпуса: заселение и документы, оплата и правила проживания, электричество, вода и отопление, вентиляция, видеонаблюдение, пожарная безопасность, бытовая техника общего пользования, ремонт, бронирование помещений.",
+      "description": "Общежития и корпуса: список общежитий и адреса, заведующие, заселение и документы, оплата и правила проживания, электричество, вода и отопление, вентиляция, видеонаблюдение, пожарная безопасность, бытовая техника общего пользования, ремонт, бронирование помещений.",
       "priority": "normal",
       "clarify": [
         {
           "id": "building",
-          "question": "Укажите корпус или номер общежития и номер комнаты/аудитории.",
-          "required": true
+          "question": "Укажите номер общежития и комнату (действующие: №1, №5, №6, №7, №10, №11, №12, №13, №14, №15, №16, №17, №18, №19) либо корпус и аудиторию.",
+          "required": true,
+          "extract": {
+            "pattern": "(?:общежити[а-яё]*|общаг[а-яё]*|общеж\\.?)\\s*(?:№|n|#|номер)?\\s*(\\d{1,2})\\b|(\\d{1,2})\\s*[-а-яё]{0,3}\\s*(?:общежити[а-яё]*|общаг[а-яё]*)",
+            "format": "общежитие №$1",
+            "allow": [
+              "1",
+              "5",
+              "6",
+              "7",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19"
+            ],
+            "reject": "Общежития №{value} в ТПУ нет. Действующие общежития: №1, №5, №6, №7, №10, №11, №12, №13, №14, №15, №16, №17, №18, №19. Общежитие №2 закрыто на капитальный ремонт до 2027 года, общежитий №3, 4, 8 и 9 не существует. Проверьте номер и напишите его ещё раз — или назовите адрес, я подскажу номер."
+          }
         },
         {
           "id": "urgency",
@@ -166,7 +187,7 @@
             "Да, срочно",
             "Нет, плановая проблема"
           ],
-          "required": true
+          "required": false
         }
       ]
     },
@@ -232,7 +253,8 @@
       ],
       "notApplicableWhen": "Пользователь хочет сменить или восстановить пароль — см. статью про смену пароля.",
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486611"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486611",
+      "audience": "internal"
     },
     {
       "id": "account-change-password",
@@ -247,7 +269,8 @@
         "После смены пароля обновите его в почте на телефоне, Wi-Fi и VPN."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12271401"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12271401",
+      "audience": "internal"
     },
     {
       "id": "account-locked",
@@ -261,7 +284,8 @@
         "Если блокировка повторяется, а вы не ошибались с паролем — это может быть попытка взлома. Сообщите по телефону (3822) 70-16-16, указав учётную запись, ФИО, должность и время блокировки."
       ],
       "escalateAfter": true,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12271401"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12271401",
+      "audience": "internal"
     },
     {
       "id": "lms-login",
@@ -275,7 +299,8 @@
         "Если система выдаёт ошибку логина/пароля — проверьте раскладку и Caps Lock; после 3 неверных попыток подождите 20 минут."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486610"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486610",
+      "audience": "internal"
     },
     {
       "id": "lms-start",
@@ -288,7 +313,8 @@
         "Выполняйте задания в порядке рейтинг-плана: доступ к следующим заданиям открыт, но проходной балл нужен по каждому."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486613"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486613",
+      "audience": "internal"
     },
     {
       "id": "lms-attempts",
@@ -302,7 +328,8 @@
         "Если преподаватель не отвечает 5 рабочих дней — заявка передаётся в поддержку, специалисты проверят ситуацию."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486617"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486617",
+      "audience": "internal"
     },
     {
       "id": "lms-grades",
@@ -315,7 +342,8 @@
         "Индикация выполнения — галочки рядом с заданием: синяя — задание выполнено, но не оценивается; красная — набрано меньше 55% от запланированных баллов; зелёная — больше 55%."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486616"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486616",
+      "audience": "internal"
     },
     {
       "id": "lms-teacher-not-responding",
@@ -328,7 +356,8 @@
         "Если срок прошёл, а ответа или проверки нет — заявка передаётся в поддержку: специалисты свяжутся с преподавателем и оповестят вас."
       ],
       "escalateAfter": true,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486625"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486625",
+      "audience": "internal"
     },
     {
       "id": "lms-exam",
@@ -341,7 +370,8 @@
         "Убедитесь заранее, что все задания курса закрыты на проходной балл (см. «Оценки»), иначе тест не откроется."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486609"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486609",
+      "audience": "internal"
     },
     {
       "id": "lms-video-upload",
@@ -354,7 +384,8 @@
         "Создайте текстовый документ со ссылкой и прикрепите его к заданию."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486620"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486620",
+      "audience": "internal"
     },
     {
       "id": "lms-laz",
@@ -367,7 +398,8 @@
         "Вопросы по конкретной дисциплине задавайте преподавателю на форуме курса или в Едином деканате своей школы."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$6313002"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$6313002",
+      "audience": "internal"
     },
     {
       "id": "portal-login",
@@ -380,7 +412,8 @@
         "При ошибке входа проверьте раскладку и Caps Lock; после 3 неверных попыток подождите 15–20 минут."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$6313004"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$6313004",
+      "audience": "internal"
     },
     {
       "id": "portal-gradebook",
@@ -395,7 +428,8 @@
         "Если в зачётке нет данных или есть ошибка в перечне дисциплин/баллах — заявка передаётся в Единый деканат через услугу «Оценки и успеваемость»."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486606"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486606",
+      "audience": "internal"
     },
     {
       "id": "portal-grades-error",
@@ -407,7 +441,8 @@
         "Сверьте перечень дисциплин с учебным планом в Личном кабинете.",
         "Если ошибка подтверждается (нет дисциплины, некорректный балл) — заявка передаётся специалистам: укажите дисциплину, семестр и что именно неверно."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "study-schedule",
@@ -420,7 +455,8 @@
         "Если в расписании ошибка (нет занятий, неверная аудитория) — сообщите в Единый деканат своей школы или оставьте заявку «Сессия (зачёт/экзамен, расписание)»."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486602"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486602",
+      "audience": "public"
     },
     {
       "id": "study-session-dates",
@@ -433,7 +469,8 @@
         "Расписание экзаменов конкретной группы публикуется на https://rasp.tpu.ru/ ближе к сессии."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486604"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486604",
+      "audience": "public"
     },
     {
       "id": "study-practice",
@@ -446,7 +483,8 @@
         "Вопросы по прохождению задайте преподавателю на форуме курса или в Центре практической подготовки и трудоустройства: для ИШИТР, ШИП, УОД, заочного и очно-заочного отделений — Анфиногенова И. Д., +7 (3822) 606-203, вн. 5095, mash@tpu.ru; для ИШЭ, ИЯТШ, ИШПР, ИШНКБ, ЮТИ, ИШХБМТ, ИШНПТ — Бредихина Г. В., +7 (3822) 606-203, вн. 3073, bgv@tpu.ru."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486626"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486626",
+      "audience": "internal"
     },
     {
       "id": "study-documents",
@@ -461,7 +499,8 @@
         "Подробнее: https://tpu.ru/student/transfers-and-restorations/references-and-extracts/; дубликаты документов: https://tpu.ru/student/transfers-and-restorations/dublikaty-dokumentov/."
       ],
       "escalateAfter": true,
-      "source": "https://tpu.ru/student/transfers-and-restorations/references-and-extracts/"
+      "source": "https://tpu.ru/student/transfers-and-restorations/references-and-extracts/",
+      "audience": "internal"
     },
     {
       "id": "study-social",
@@ -476,7 +515,8 @@
         "Если стипендия не пришла или назначена неверно — Центр социальной работы: пр. Ленина, 45, 1 этаж, +7 (3822) 60-64-64, пн–чт 14:00–17:00, пт 14:00–16:00. Подробнее: https://tpu.ru/student/scholarship/."
       ],
       "escalateAfter": false,
-      "source": "https://tpu.ru/student/scholarship/"
+      "source": "https://tpu.ru/student/scholarship/",
+      "audience": "internal"
     },
     {
       "id": "network-vpn-setup",
@@ -492,7 +532,8 @@
         "После работы отключайтесь (Disconnect): число одновременных VPN-сеансов ограничено."
       ],
       "escalateAfter": false,
-      "source": "https://staff.tpu.ru/html/vpn"
+      "source": "https://staff.tpu.ru/html/vpn",
+      "audience": "internal"
     },
     {
       "id": "network-vpn-not-connecting",
@@ -508,7 +549,8 @@
         "Если подключиться не удалось — заявка передаётся специалистам (категория «Программные комплексы», подкатегория «Удалённый доступ»): приложите текст ошибки клиента."
       ],
       "escalateAfter": false,
-      "source": "https://staff.tpu.ru/html/vpn"
+      "source": "https://staff.tpu.ru/html/vpn",
+      "audience": "internal"
     },
     {
       "id": "network-drives",
@@ -523,7 +565,8 @@
         "В окне учётных данных перед логином укажите TPU\\ (например, TPU\\ivanov) и введите корпоративный пароль."
       ],
       "escalateAfter": false,
-      "source": "https://staff.tpu.ru/html/drive"
+      "source": "https://staff.tpu.ru/html/drive",
+      "audience": "internal"
     },
     {
       "id": "network-vap",
@@ -536,7 +579,8 @@
         "Если нужного приложения нет в списке — доступ к нему запрашивается заявкой «Удалённые приложения (vap.tpu.ru)»."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486622"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486622",
+      "audience": "internal"
     },
     {
       "id": "network-wifi",
@@ -550,7 +594,8 @@
         "Проверьте, есть ли сеть у соседей/коллег рядом: если нет ни у кого — это сбой оборудования.",
         "Если проблема сохраняется — заявка передаётся в «Телефония и сети»: укажите корпус/общежитие, комнату и устройство."
       ],
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "email-setup",
@@ -563,7 +608,8 @@
         "Для настройки почтовой программы или телефона нужны параметры серверов — их выдаёт поддержка: заявка «Электронная почта» с указанием устройства и программы.",
         "После смены пароля ТПУ обновите его в почтовом клиенте, иначе учётная запись будет блокироваться."
       ],
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "email-problems",
@@ -577,7 +623,8 @@
         "Если письма не уходят из почтовой программы, но работают в браузере — проблема в настройках клиента.",
         "Если проблема сохраняется — заявка передаётся в «Электронная почта»: укажите адрес, время и текст ошибки."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "it-admin-rights",
@@ -591,7 +638,8 @@
         "Основание: приказ ТПУ № 235-7/об от 23.08.2022 и ФЗ № 149-ФЗ."
       ],
       "escalateAfter": true,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12259102"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12259102",
+      "audience": "internal"
     },
     {
       "id": "it-software-install",
@@ -603,7 +651,8 @@
         "Оформляется заявка «ПО, компьютерная и оргтехника»: укажите название программы, корпус, кабинет и инвентарный номер компьютера (наклейка на корпусе).",
         "Для ПО, требующего лицензии, потребуется согласование — специалист уточнит."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "it-myq-print",
@@ -618,7 +667,8 @@
         "Подробная инструкция: https://print.tpu.ru/myq/guide."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12214901"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$12214901",
+      "audience": "internal"
     },
     {
       "id": "it-hardware-broken",
@@ -630,7 +680,8 @@
         "Для принтера/МФУ: проверьте бумагу, тонер и отсутствие ошибок на экране; отмените зависшие задания в очереди печати.",
         "Если не помогло — заявка передаётся в «ПО, компьютерная и оргтехника»: укажите корпус, кабинет и номер с наклейки на оборудовании (по нему специалист найдёт устройство)."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "it-bbb",
@@ -643,7 +694,8 @@
         "При проблемах со звуком/видео проверьте разрешения браузера на микрофон и камеру и используйте актуальный Chrome/Edge.",
         "Техническая поддержка мероприятий и оборудование аудиторий — заявка «Мультимедийное оборудование для мероприятий»."
       ],
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "campus-repair",
@@ -652,11 +704,12 @@
       "symptoms": "не работает розетка, нет света, перегорела лампочка, течёт кран, нет горячей воды, холодно в комнате, не работает плита, сломалась стиральная машина, холодильник не морозит, нет отопления, душно вентиляция",
       "steps": [
         "Если есть угроза безопасности (искрение, запах гари, протечка на электрику) — немедленно сообщите дежурному по общежитию/корпусу и отключите прибор.",
-        "Для бытовых заявок укажите номер общежития или корпуса, комнату/аудиторию и суть проблемы.",
+        "Укажите номер общежития (действующие: №1, №5, №6, №7, №10, №11, №12, №13, №14, №15, №16, №17, №18, №19) и комнату — либо корпус и аудиторию. Если номера нет в списке, уточните адрес: помощник подскажет по адресу.",
         "Заявка передаётся в службу содержания кампуса: «Электричество», «Водоснабжение и отопление», «Вентиляция», «Обслуживание общежитий/корпусов» — по типу проблемы.",
         "Статус заявки можно отслеживать на help.tpu.ru в разделе «Мои запросы»."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "campus-booking",
@@ -668,7 +721,8 @@
         "Укажите дату, время, число участников, цель мероприятия и желаемый корпус/помещение.",
         "Заявка передаётся ответственному за помещения; подтверждение придёт в ответе на заявку."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "access-lost-pass",
@@ -683,7 +737,8 @@
         "После этого обратитесь с паспортом в Бюро пропусков: ул. Вершинина, 39, вход с правой стороны здания. Пропуск изготавливается в день обращения."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$6721603"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$6721603",
+      "audience": "internal"
     },
     {
       "id": "access-request",
@@ -696,7 +751,8 @@
         "Для дашбордов BI дополнительно требуется подписанное обязательство о неразглашении персональных данных (скан прилагается к заявке).",
         "Заявка передаётся специалисту; после согласования доступ появится, о чём вас уведомят."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "library-antiplagiat",
@@ -709,7 +765,8 @@
         "Проверка работ выполняется через услугу «Антиплагиат и проверка работ»; вопросы по конкретной работе — научному руководителю."
       ],
       "escalateAfter": false,
-      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486619"
+      "source": "https://help.tpu.ru/portal/article.html?kb=KB$2486619",
+      "audience": "internal"
     },
     {
       "id": "library-services",
@@ -722,7 +779,8 @@
         "Утеря книги оформляется через услугу «Утеря книги» — библиотека сообщит порядок замены.",
         "Индексы УДК/ББК для публикаций — услуга «Индексы УДК/ББК»."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "library-publications",
@@ -735,7 +793,8 @@
         "Размещение работ в электронном архиве ТПУ и ЭБС — «Электронный архив ТПУ», «Размещение в ЭБС научных докладов, ВКР».",
         "Заявка передаётся специалистам НТБ."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "general-contacts",
@@ -749,7 +808,8 @@
         "Техподдержка: https://help.tpu.ru, +7 (3822) 701-811 (внутр. 2828), help@tpu.ru."
       ],
       "escalateAfter": false,
-      "source": "https://tpu.ru/university/feedback/"
+      "source": "https://tpu.ru/university/feedback/",
+      "audience": "public"
     },
     {
       "id": "general-complaint",
@@ -761,7 +821,8 @@
         "Заявления и изменения личных данных (ФИО, телефон, адрес) — через «Подать заявление» и «Изменения в личных данных».",
         "Опишите ситуацию, укажите подразделение и, при наличии, приложите документы. Заявка передаётся ответственному подразделению."
       ],
-      "escalateAfter": true
+      "escalateAfter": true,
+      "audience": "internal"
     },
     {
       "id": "general-anticorruption",
@@ -776,7 +837,8 @@
         "Анонимность обращения и защита заявителя обеспечиваются Антикоррупционной политикой ТПУ. Если ситуация срочная и есть угроза — обращайтесь также в правоохранительные органы."
       ],
       "escalateAfter": true,
-      "source": "https://tpu.ru/anticorruption/"
+      "source": "https://tpu.ru/anticorruption/",
+      "audience": "public"
     },
     {
       "id": "general-services-links",
@@ -794,7 +856,8 @@
         "Для входа во все сервисы используется единая корпоративная учётная запись ТПУ."
       ],
       "source": "https://tpu.ru/student/faq/",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "public"
     },
     {
       "id": "study-material-support",
@@ -808,7 +871,8 @@
         "Дополнительно помощь оказывает Профком студентов через председателей профбюро. Основание — Положение об оказании материальной поддержки (приказ № 87-1 от 27.03.2024)."
       ],
       "source": "https://tpu.ru/student/support",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "study-academic-leave",
@@ -822,7 +886,8 @@
         "Выход из отпуска — по окончании срока или досрочно по заявлению; группа для продолжения обучения отображается в личном кабинете. Подробнее: https://tpu.ru/student/transfers-and-restorations/vacations/."
       ],
       "escalateAfter": true,
-      "source": "https://tpu.ru/student/transfers-and-restorations/vacations/"
+      "source": "https://tpu.ru/student/transfers-and-restorations/vacations/",
+      "audience": "internal"
     },
     {
       "id": "study-restoration",
@@ -836,7 +901,8 @@
         "Заявление и консультации — Центр по работе со студентами (Единый деканат): +7 (3822) 70-63-50, пр. Ленина, 30. Подробнее: https://tpu.ru/student/transfers-and-restorations/restoration/."
       ],
       "escalateAfter": true,
-      "source": "https://tpu.ru/student/transfers-and-restorations/restoration/"
+      "source": "https://tpu.ru/student/transfers-and-restorations/restoration/",
+      "audience": "internal"
     },
     {
       "id": "study-transfer",
@@ -850,7 +916,8 @@
         "Куда обращаться: Центр по работе со студентами, +7 (3822) 70-63-50. Перевод из другого вуза: https://tpu.ru/education/transfer-to-tpu/. Подробнее: https://tpu.ru/student/transfers-and-restorations/transfers-in-tpu/."
       ],
       "escalateAfter": true,
-      "source": "https://tpu.ru/student/transfers-and-restorations/transfers-in-tpu/"
+      "source": "https://tpu.ru/student/transfers-and-restorations/transfers-in-tpu/",
+      "audience": "internal"
     },
     {
       "id": "campus-dorm-checkin",
@@ -865,7 +932,8 @@
         "Вопросы: колл-центр +7 (3822) 70-17-76 (15 августа – 4 сентября, 9:00–18:00), zsr@tpu.ru. Подробнее: https://tpu.ru/student/campus-host."
       ],
       "source": "https://tpu.ru/student/campus-host",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "public"
     },
     {
       "id": "campus-dorm-rules",
@@ -879,7 +947,8 @@
         "Спорные ситуации и вопросы выселения решает администрация общежития (пн–чт 8:30–17:45, пт 8:30–16:30); общие вопросы — zsr@tpu.ru. Подробнее: https://tpu.ru/student/campus-host."
       ],
       "source": "https://tpu.ru/student/campus-host",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "general-medical",
@@ -893,7 +962,8 @@
         "Иностранным студентам нужен полис ДМС на весь учебный год. Также работает санаторий-профилакторий ТПУ. Подробнее: https://tpu.ru/student/med-obsl/."
       ],
       "source": "https://tpu.ru/student/med-obsl/",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "general-psychologist",
@@ -906,7 +976,8 @@
         "Если состояние тяжёлое прямо сейчас: телефон доверия Томска +7 (3822) 44-44-44, экстренная психологическая помощь +7 (3822) 41-19-99 — круглосуточно."
       ],
       "source": "https://tpu.ru/student/psychologist",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "general-foreign-students",
@@ -920,7 +991,8 @@
         "Контакты: приёмная комиссия для иностранных граждан +7 (3822) 60-99-09, abiturient@tpu.ru, пр. Ленина, 30, каб. 131в (пн–чт 9:00–17:30, пт 9:00–16:00); Центр по работе со студентами +7 (3822) 70-63-50."
       ],
       "escalateAfter": true,
-      "source": "https://tpu.ru/student/foreigners/"
+      "source": "https://tpu.ru/student/foreigners/",
+      "audience": "internal"
     },
     {
       "id": "general-admission",
@@ -933,7 +1005,8 @@
         "Контакты: 8 800 350-28-09 (граждане РФ), +7 (3822) 60-99-09 (иностранные граждане), abiturient@tpu.ru; главный корпус, каб. 131в, пн–чт 9:00–17:30, пт 9:00–16:00."
       ],
       "source": "https://abiturient.tpu.ru/",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "public"
     },
     {
       "id": "library-reader",
@@ -947,7 +1020,8 @@
         "Помощь: +7 (3822) 60-63-51, lib-help@tpu.ru, lib-info@tpu.ru; FAQ: https://lib.tpu.ru/html/faq."
       ],
       "source": "https://lib.tpu.ru/html/inforeader",
-      "escalateAfter": false
+      "escalateAfter": false,
+      "audience": "internal"
     },
     {
       "id": "library-hours",
@@ -960,6 +1034,23 @@
         "Центр информации и консультаций (3 эт., ауд. 311): 9:00–18:00 будни; центр копирования (2 эт., ауд. 210): 9:00–20:00, сб–вс 10:00–18:00. Летом режим меняется: https://lib.tpu.ru/html/time-table."
       ],
       "source": "https://lib.tpu.ru/html/time-table",
+      "escalateAfter": false,
+      "audience": "public"
+    },
+    {
+      "id": "campus-dorm-list",
+      "categoryId": "campus",
+      "title": "Общежития ТПУ: номера, адреса и заведующие",
+      "symptoms": "какие есть общежития, список общежитий, адрес общежития, где находится общежитие, номер общежития, как проехать в общежитие, кто заведующий общежитием, контакты заведующего, телефон общежития, комендант общежития, вершинина, пирогова, усова, аркадия иванова",
+      "steps": [
+        "Действующие общежития ТПУ и адреса: №1 — пр. Ленина, 45, №5 — ул. Пирогова, 18, №6 — ул. Пирогова, 18а, №7 — ул. Усова, 13а, №10 — ул. Вершинина, 31, №11 — ул. Вершинина, 33, №12 — ул. Вершинина, 37, №13 — ул. Вершинина, 39, №14 — ул. Вершинина, 39а, №15 — ул. Аркадия Иванова, 8, №16 — ул. Вершинина, 46, №17 — ул. Вершинина, 48, №18 — ул. Усова, 15б, №19 — ул. Усова, 21/2. Общежитие №2 закрыто на капитальный ремонт до 2027 года; общежитий №3, 4, 8, 9 не существует.",
+        "Заведующие: №1 — Устюгова Лариса Станиславовна (+7 (3822) 70-17-77 вн. 3394, ustyugova@tpu.ru); №5 — Чередниченко Ирина Васильевна (+7 (3822) 60-64-45, вн. 3376, cherednichenko12@tpu.ru); №6 — Подольская Мария Викторовна (+7 (3822) 70-17-77 вн. 3371, vaisbek@tpu.ru); №7 — Лобинский Фёдор Анатольевич (+7 (3822) 70-17-77 вн. 3379, lobinskiy@tpu.ru); №10 — Ларионова Светлана Ивановна (+7 (3822) 60-64-52, вн. 3389, larionova@tpu.ru); №11 — Налейкина Лариса Николаевна (+7 (3822) 60-64-51, вн. 3387, naleykinal@tpu.ru); №12 — Казакова Елена Геннадьевна (+7 (3822) 60-64-43, вн. 3383, eleka@tpu.ru); №13 — Агалакова Наталья Михайловна (+7 (3822) 70-17-77 вн. 3385, agalakovanm@tpu.ru); №14 — Макаревич Елена Николаевна (+7 (3822) 60-64-49, вн. 3381, enm61@tpu.ru); №15 — Сухинина Ирина Олеговна (+7 (3822) 70-18-31, вн. 4801, sio@tpu.ru); №16 — Симагина Лада Александровна (+7 (3822) 70-17-77 вн. 3363, simagina1@tpu.ru); №17 — Жуликова Мария Михайловна (+7 (3822) 70-17-77 вн. 3365, kom13a@tpu.ru); №18 — Подольская Мария Викторовна (+7 (3822) 70-17-77 вн. 3371, vaisbek@tpu.ru); №19 — Караван Марина Леонидовна (+7 (3822) 60-64-54, вн. 3367, kml@tpu.ru)",
+        "Отдел студенческих общежитий: ул. Вершинина, 37 (справа от основного входа), +7 (3822) 60-62-05, +7 (3822) 70-18-25.",
+        "Паспортный стол студгородка (регистрация, миграционный учёт): ул. Вершинина, 39, вход со двора.",
+        "Бытовые неисправности решаются заявкой через help.tpu.ru — укажите номер общежития и комнату; организационные вопросы — заведующему общежитием."
+      ],
+      "audience": "public",
+      "source": "https://tpu.ru/tpu-life/campus/",
       "escalateAfter": false
     }
   ]

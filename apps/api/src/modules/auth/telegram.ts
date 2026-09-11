@@ -15,7 +15,7 @@ export interface VerifiedInitData {
 }
 
 /**
- * Validates Telegram Mini App `initData` exactly as documented:
+ * AI: Validates Telegram Mini App `initData` exactly as documented:
  * secret = HMAC_SHA256(key="WebAppData", msg=bot_token)
  * hash   = HMAC_SHA256(key=secret, msg=data_check_string)
  * data_check_string = sorted "key=value" pairs (except hash) joined by "\n".

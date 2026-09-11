@@ -12,7 +12,29 @@ node scripts/crawl-site.mjs \
   --max 400 --delay 400 --out data/raw/tpu-site.jsonl
 ```
 
-- `--start` — откуда начинать, `--allow` — внутри каких префиксов ходить (иначе разбежится по всему сайту).
+### Как ограничить обход подкаталогом
+
+`--allow` задаёт границу: краулер не выйдет за указанный префикс. Сравнение идёт **по границе пути**,
+поэтому `--allow https://tpu.ru/student` берёт `/student` и `/student/faq/`, но не `/students-club`.
+Слэш в конце можно писать или не писать — результат одинаковый.
+
+```bash
+# только раздел /student и всё, что под ним
+node scripts/crawl-site.mjs --start https://tpu.ru/student --allow https://tpu.ru/student --max 200 --out data/raw/student.jsonl
+
+# несколько разделов сразу
+node scripts/crawl-site.mjs   --start https://tpu.ru/student --start https://tpu.ru/education   --allow https://tpu.ru/student --allow https://tpu.ru/education --max 300 --out data/raw/tpu.jsonl
+
+# раздел целиком, но без новостей и архива (--deny вырезает подразделы)
+node scripts/crawl-site.mjs --start https://tpu.ru/student --allow https://tpu.ru/student   --deny https://tpu.ru/student/news --deny https://tpu.ru/student/archive --max 200 --out data/raw/student.jsonl
+
+# другой поддомен — это отдельный запуск со своим --allow
+node scripts/crawl-site.mjs --start https://lib.tpu.ru --allow https://lib.tpu.ru --max 100 --out data/raw/lib.jsonl
+```
+
+- Если `--allow` не указать, границей станут домены стартовых ссылок (весь `tpu.ru`) — так собирать долго.
+- Ссылки за пределы области всё равно записываются в поле `links`, но не обходятся — по ним видно,
+  куда стоит запустить следующий проход.
 - Можно запускать повторно: уже собранные URL пропускаются, файл дополняется.
 - Полезные разделы: `/student`, `/education`, `/university/campus` (если есть), `lib.tpu.ru`,
   `abiturient.tpu.ru`, `staff.tpu.ru/html` (инструкции для сотрудников), `tpu.ru/anticorruption`.

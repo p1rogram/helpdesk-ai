@@ -4,7 +4,7 @@ import nodemailer, { type Transporter } from 'nodemailer';
 import { AuthError } from './telegram.js';
 
 /**
- * Corporate identity socket. The assistant needs to know WHO the user is in the organisation
+ * AI: Corporate identity socket. The assistant needs to know WHO the user is in the organisation
  * (student / staff, groups for the operator role). Three providers cover what an IT department
  * can realistically hand over; all of them yield the same CorporateIdentity and the same JWT.
  *
@@ -16,11 +16,11 @@ import { AuthError } from './telegram.js';
  * OIDC never sees them; email codes are hashed and expire.
  */
 export interface CorporateIdentity {
-  /** Stable id inside the organisation (login / sub / e-mail local part). */
+  /** AI: Stable id inside the organisation (login / sub / e-mail local part). */
   id: string;
   displayName: string;
   email?: string;
-  /** Group memberships (LDAP memberOf / OIDC groups claim) - mapped to roles by the app. */
+  /** AI: Group memberships (LDAP memberOf / OIDC groups claim) - mapped to roles by the app. */
   groups: string[];
 }
 
@@ -29,13 +29,13 @@ export interface CorporateIdentity {
 // ---------------------------------------------------------------------------
 
 export interface OidcOptions {
-  /** Issuer URL; `/.well-known/openid-configuration` is fetched from it. */
+  /** AI: Issuer URL; `/.well-known/openid-configuration` is fetched from it. */
   issuer: string;
   clientId: string;
   clientSecret?: string;
   redirectUri: string;
   scopes?: string;
-  /** Claim names - differ between IdPs (Keycloak: preferred_username / groups; ADFS: upn / role). */
+  /** AI: Claim names - differ between IdPs (Keycloak: preferred_username / groups; ADFS: upn / role). */
   claims?: { id?: string; name?: string; email?: string; groups?: string };
   fetchImpl?: typeof fetch;
 }
@@ -72,7 +72,7 @@ export class OidcProvider {
     return this.discovery;
   }
 
-  /** Step 1: build the redirect URL. `state` binds the callback to this login attempt. */
+  /** AI: Step 1: build the redirect URL. `state` binds the callback to this login attempt. */
   async startLogin(returnTo: string): Promise<string> {
     const d = await this.config();
     const state = randomBytes(24).toString('base64url');
@@ -92,7 +92,7 @@ export class OidcProvider {
     return `${d.authorization_endpoint}?${q.toString()}`;
   }
 
-  /** Step 2: exchange the code, read the identity. */
+  /** AI: Step 2: exchange the code, read the identity. */
   async finishLogin(code: string, state: string): Promise<{ identity: CorporateIdentity; returnTo: string }> {
     const p = this.pending.get(state);
     if (!p || Date.now() - p.createdAt > 10 * 60_000) throw new AuthError('oidc: unknown or expired state');
@@ -115,7 +115,7 @@ export class OidcProvider {
     if (!tok.ok) throw new AuthError(`oidc: token exchange failed (${tok.status})`);
     const tokens = (await tok.json()) as { access_token?: string; id_token?: string };
 
-    // Prefer userinfo (fresh, includes groups on most IdPs); fall back to id_token claims.
+    // AI: Prefer userinfo (fresh, includes groups on most IdPs); fall back to id_token claims.
     let claims: Record<string, unknown> = {};
     if (d.userinfo_endpoint && tokens.access_token) {
       const ui = await this.fetchImpl(d.userinfo_endpoint, {
@@ -147,7 +147,7 @@ export class OidcProvider {
   }
 }
 
-/** id_token payload without signature verification - acceptable only because it came straight from the token endpoint over TLS. */
+/** AI: id_token payload without signature verification - acceptable only because it came straight from the token endpoint over TLS. */
 function decodeJwtPayload(jwt: string): Record<string, unknown> {
   const part = jwt.split('.')[1];
   if (!part) return {};
@@ -167,13 +167,13 @@ function str(v: unknown): string | undefined {
 // ---------------------------------------------------------------------------
 
 export interface LdapOptions {
-  /** ldaps://dc.tpu.ru:636 (LDAPS strongly preferred; plain ldap:// only inside a trusted network). */
+  /** AI: ldaps://dc.tpu.ru:636 (LDAPS strongly preferred; plain ldap:// only inside a trusted network). */
   url: string;
-  /** How the login becomes a bind DN / UPN. `{login}` is replaced. AD: `{login}@tpu.ru` or `TPU\\{login}`. */
+  /** AI: How the login becomes a bind DN / UPN. `{login}` is replaced. AD: `{login}@tpu.ru` or `TPU\\{login}`. */
   bindTemplate: string;
-  /** Where to search the user entry after a successful bind (for name / mail / groups). */
+  /** AI: Where to search the user entry after a successful bind (for name / mail / groups). */
   baseDn: string;
-  /** Filter with `{login}`; AD: `(sAMAccountName={login})`, OpenLDAP: `(uid={login})`. */
+  /** AI: Filter with `{login}`; AD: `(sAMAccountName={login})`, OpenLDAP: `(uid={login})`. */
   searchFilter?: string;
   attributes?: { name?: string; email?: string; groups?: string };
   tlsRejectUnauthorized?: boolean;
@@ -195,7 +195,7 @@ export class LdapProvider {
       tlsOptions: { rejectUnauthorized: this.o.tlsRejectUnauthorized ?? true },
     });
     try {
-      // The bind IS the password check. Credentials are used once and never persisted.
+      // AI: The bind IS the password check. Credentials are used once and never persisted.
       await client.bind(this.o.bindTemplate.replace('{login}', clean), password);
       const a = this.o.attributes ?? {};
       const nameAttr = a.name ?? 'displayName';
@@ -217,7 +217,7 @@ export class LdapProvider {
       };
     } catch (err) {
       if (err instanceof AuthError) throw err;
-      // Invalid credentials and connection problems both end here; do not leak which.
+      // AI: Invalid credentials and connection problems both end here; do not leak which.
       throw new AuthError('ldap: authentication failed');
     } finally {
       await client.unbind().catch(() => {});
@@ -230,7 +230,7 @@ export class LdapProvider {
 // ---------------------------------------------------------------------------
 
 export interface EmailCodeOptions {
-  /** Allowed mail domains, e.g. ["tpu.ru"]. */
+  /** AI: Allowed mail domains, e.g. ["tpu.ru"]. */
   domains: string[];
   smtp: { host: string; port: number; secure: boolean; user?: string; pass?: string; from: string };
   ttlSeconds?: number;
@@ -291,7 +291,7 @@ export class EmailCodeProvider {
   }
 }
 
-/** Map organisation groups to app roles. `operatorGroups` = DNs / names that grant the operator console. */
+/** AI: Map organisation groups to app roles. `operatorGroups` = DNs / names that grant the operator console. */
 export function rolesFor(identity: CorporateIdentity, operatorGroups: Set<string>): string[] {
   const roles: string[] = [];
   const hit = identity.groups.some((g) => operatorGroups.has(g) || operatorGroups.has(g.split(',')[0]?.replace(/^CN=/i, '') ?? ''));

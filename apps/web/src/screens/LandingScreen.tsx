@@ -1,24 +1,44 @@
+import { Icon } from '../components/Icon';
+import type { ThemeMode } from '../lib/theme';
+
 /**
- * Public landing for the website. Shown in a plain browser before login; inside a messenger
- * the app skips straight to the chat. Copy is deliberately short - the product is the chat.
+ * AI: Public landing for the website. Shown in a plain browser before login; inside a messenger
+ * the app goes straight to the chat.
  */
-export function LandingScreen(props: { sphere: string; botUrl?: string; onStart: () => void }) {
+export function LandingScreen(props: {
+  sphere: string;
+  botUrl?: string;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+  onStart: () => void;
+}) {
+  const themeIcon = props.theme === 'light' ? 'sun' : props.theme === 'dark' ? 'moon' : 'auto';
   return (
     <div className="landing">
+      <div className="brandline">
+        <span className="brand">
+          <Icon name="bot" size={20} />
+        </span>
+        <div style={{ flex: 1, fontWeight: 700 }}>Помоги мне</div>
+        <button className="icon-btn" onClick={props.onToggleTheme} aria-label="Переключить тему">
+          <Icon name={themeIcon} size={18} />
+        </button>
+      </div>
+
       <section className="hero">
         <div className="eyebrow">{props.sphere || 'Виртуальная поддержка'}</div>
         <h1>Помощник поддержки, который решает, а не переспрашивает</h1>
         <p>
-          Опишите проблему своими словами — помощник определит, к чему она относится, задаст только нужные
-          уточнения и даст пошаговое решение из базы знаний. Если решить самостоятельно нельзя, по вашему
-          согласию создаст заявку специалисту.
+          Опишите проблему своими словами — помощник определит, к чему она относится, задаст только нужные уточнения и
+          даст пошаговое решение из базы знаний. Если решить самостоятельно нельзя, по вашему согласию создаст заявку
+          специалисту.
         </p>
         <div className="cta">
-          <button className="primary" onClick={props.onStart}>
+          <button className="btn" onClick={props.onStart}>
             Начать в браузере
           </button>
           {props.botUrl && (
-            <a className="secondary" href={props.botUrl} target="_blank" rel="noopener noreferrer">
+            <a className="btn secondary" href={props.botUrl} target="_blank" rel="noopener noreferrer">
               Открыть в Telegram
             </a>
           )}

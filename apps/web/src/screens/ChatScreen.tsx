@@ -7,6 +7,7 @@ import { MessageBubble } from '../components/MessageBubble';
 import { QuickReplies } from '../components/QuickReplies';
 import { RatingStars } from '../components/RatingStars';
 import { TicketCardPanel } from '../components/TicketCardPanel';
+import { CategoryBadge } from '../components/CategoryBadge';
 
 const NEW_TICKET = '__new';
 
@@ -15,7 +16,7 @@ export function ChatScreen(props: {
   platform: PlatformAdapter;
   ticketId?: string;
   onTicketChange?: (id: string) => void;
-  /** Fired whenever the ticket card changes (state, summary) - lets the sidebar refresh. */
+  /** AI: Fired whenever the ticket card changes (state, summary) - lets the sidebar refresh. */
   onTicketUpdate?: () => void;
 }) {
   const { api, platform } = props;
@@ -27,6 +28,9 @@ export function ChatScreen(props: {
   const [error, setError] = useState<string | null>(null);
   const [showCard, setShowCard] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // AI: Id of the ticket actually on screen. The prop can lag one render behind when a new chat
+  // is created here, and without this guard the effect below would reload the previous ticket.
+  const loadedRef = useRef<string | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(
@@ -34,8 +38,10 @@ export function ChatScreen(props: {
       setError(null);
       try {
         const r = id ? await api.getTicket(id) : await api.openTicket(fresh);
+        loadedRef.current = r.ticket.id;
         setTicket(r.ticket);
         setMessages(r.messages);
+        setStatus(null);
         props.onTicketChange?.(r.ticket.id);
       } catch {
         setError('Не удалось загрузить обращение. Проверьте соединение.');
@@ -45,6 +51,7 @@ export function ChatScreen(props: {
   );
 
   useEffect(() => {
+    if (props.ticketId && props.ticketId === loadedRef.current) return;
     void load(props.ticketId);
   }, [load, props.ticketId]);
 
@@ -52,7 +59,7 @@ export function ChatScreen(props: {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, streaming]);
 
-  // While a specialist owns the ticket, poll for their replies (a push arrives in Telegram too).
+  // AI: While a specialist owns the ticket, poll for their replies (a push arrives in Telegram too).
   useEffect(() => {
     if (!ticket || ticket.state !== 'escalated') return;
     const id = ticket.id;
@@ -69,15 +76,24 @@ export function ChatScreen(props: {
   }, [api, ticket?.id, ticket?.state]);
 
   const send = async (text: string, label?: string) => {
-    if (!ticket || busy) return;
+    if (busy) return;
+    // AI: A new chat can always be started, even before the first ticket has loaded.
+    if (!ticket && text !== NEW_TICKET) return;
     if (text === NEW_TICKET) {
-      await load(undefined, true);
+      setBusy(true);
+      try {
+        await load(undefined, true);
+      } finally {
+        setBusy(false);
+      }
       return;
     }
+    if (!ticket) return;
+    const ticketId = ticket.id;
     setBusy(true);
     setError(null);
     platform.haptic('light');
-    // Optimistic user bubble (commands show their label).
+    // AI: Optimistic user bubble (commands show their label).
     setMessages((m) => [
       ...m,
       { id: `tmp-${Date.now()}`, role: 'user', content: label ?? text, createdAt: new Date().toISOString() },
@@ -86,10 +102,10 @@ export function ChatScreen(props: {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      for await (const ev of api.sendMessage(ticket.id, text, ac.signal)) {
+      for await (const ev of api.sendMessage(ticketId, text, ac.signal)) {
         if (ev.type === 'meta') setTicket(ev.ticket);
         else if (ev.type === 'ack') {
-          // A specialist owns the chat: the message was delivered, the assistant stays silent.
+          // AI: A specialist owns the chat: the message was delivered, the assistant stays silent.
           setStreaming(null);
           setStatus(null);
           setTicket(ev.ticket);
@@ -124,20 +140,19 @@ export function ChatScreen(props: {
   return (
     <>
       {ticket && (
-        <div style={{ padding: '8px 12px 0', display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
-          <StateChip ticket={ticket} />
-          {ticket.categoryName && <span className="chip">{ticket.categoryName}</span>}
-          {ticket.confidence !== null && (
-            <span title="Уверенность системы">
-              <span className="conf">
-                <i style={{ width: `${Math.round(ticket.confidence * 100)}%` }} />
-              </span>{' '}
-              {Math.round(ticket.confidence * 100)}%
-            </span>
-          )}
-          <span style={{ flex: 1 }} />
-          <button className="iconbtn" onClick={() => setShowCard((v) => !v)}>
-            {showCard ? 'Скрыть карточку' : 'Карточка'}
+        <div className="toolbar three">
+          <button className="pill-btn accent" disabled={busy} onClick={() => send(NEW_TICKET)}>
+            Новый чат
+          </button>
+          <div className="centre">
+            {ticket.categoryName ? (
+              <CategoryBadge categoryId={ticket.categoryId} name={ticket.categoryName} confidence={ticket.confidence} />
+            ) : (
+              <StateChip ticket={ticket} />
+            )}
+          </div>
+          <button className="pill-btn" onClick={() => setShowCard((v) => !v)}>
+            {showCard ? 'Скрыть' : 'Карточка'}
           </button>
         </div>
       )}
@@ -165,7 +180,7 @@ export function ChatScreen(props: {
         disabled={busy || !ticket || closed}
         placeholder={
           closed
-            ? 'Обращение закрыто — нажмите «Новое обращение»'
+            ? 'Обращение закрыто'
             : ticket?.state === 'escalated'
               ? 'Написать специалисту…'
               : 'Опишите проблему…'
@@ -178,10 +193,10 @@ export function ChatScreen(props: {
 
 function StateChip({ ticket }: { ticket: TicketCard }) {
   const map: Record<TicketCard['state'], [string, string]> = {
-    intake: ['Новое', ''],
+    intake: ['Новое', 'accent'],
     clarifying: ['Уточнение', 'warn'],
     choosing_category: ['Выбор категории', 'warn'],
-    solving: ['Решение', ''],
+    solving: ['Решение', 'accent'],
     offer_escalation: ['Создать заявку?', 'warn'],
     closed: ['Решено', 'ok'],
     escalated: ['У специалиста', 'danger'],

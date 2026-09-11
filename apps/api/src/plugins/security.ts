@@ -21,7 +21,7 @@ declare module 'fastify' {
 }
 
 /**
- * Edge protections in one place:
+ * AI: Edge protections in one place:
  *  - helmet: security headers (CSP is set by the web app's own server; API returns JSON only)
  *  - cors: allow-list of origins (Mini App origin + local dev)
  *  - rate-limit: per authenticated user, falling back to IP - protects the LLM budget
@@ -32,9 +32,9 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
 
   await app.register(cors, {
     origin: (origin, cb) => {
-      // Same-origin / server-to-server requests have no Origin header.
+      // AI: Same-origin / server-to-server requests have no Origin header.
       if (!origin || cfg.corsOrigins.includes(origin)) return cb(null, true);
-      // Unknown origin: answer without CORS headers (browser blocks it) instead of a 500.
+      // AI: Unknown origin: answer without CORS headers (browser blocks it) instead of a 500.
       cb(null, false);
     },
     credentials: false,
@@ -47,7 +47,7 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
     max: cfg.RATE_LIMIT_PER_MINUTE,
     timeWindow: '1 minute',
     keyGenerator: (req) => {
-      // Prefer the user id from a valid token; anonymous traffic is limited per IP.
+      // AI: Prefer the user id from a valid token; anonymous traffic is limited per IP.
       try {
         const claims = app.jwt.decode<SessionClaims>(bearer(req) ?? '');
         if (claims?.sub) return `u:${claims.sub}`;

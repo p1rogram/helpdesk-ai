@@ -1,5 +1,5 @@
 /**
- * Tolerant JSON extraction for model output. Handles: bare JSON, ```json fences, prose before or
+ * AI: Tolerant JSON extraction for model output. Handles: bare JSON, ```json fences, prose before or
  * after the object. Returns `undefined` when nothing parseable is found (caller validates with Zod).
  */
 export function extractJson(text: string): unknown {

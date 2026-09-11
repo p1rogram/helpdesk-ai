@@ -9,7 +9,7 @@ import type {
 const TOKEN_KEY = 'helpdesk.token';
 
 /**
- * Thin typed client. On the website the JWT is kept in localStorage so a page refresh keeps the
+ * AI: Thin typed client. On the website the JWT is kept in localStorage so a page refresh keeps the
  * session (the token itself is short-lived and verified server-side); inside a messenger the
  * platform re-authenticates on every open, so nothing is persisted there.
  */
@@ -48,7 +48,7 @@ export class ApiClient {
     return this.token !== null;
   }
 
-  /** Adopt a token issued out-of-band (SSO callback puts it in the URL fragment). */
+  /** AI: Adopt a token issued out-of-band (SSO callback puts it in the URL fragment). */
   setToken(token: string) {
     this.token = token;
     this.remember();
@@ -85,7 +85,7 @@ export class ApiClient {
     return r;
   }
 
-  /** VK / MAX: opaque signed payload from the host app. */
+  /** AI: VK / MAX: opaque signed payload from the host app. */
   async loginPlatform(platform: 'vk' | 'max', payload: string, tenant?: string): Promise<AuthResponse> {
     const r = await this.post<AuthResponse>(`/api/auth/${platform}${tenant ? `?tenant=${tenant}` : ''}`, { payload });
     this.token = r.token;
@@ -93,15 +93,22 @@ export class ApiClient {
     return r;
   }
 
-  async loginDev(name: string, tenant?: string): Promise<AuthResponse> {
-    const r = await this.post<AuthResponse>(`/api/auth/dev${tenant ? `?tenant=${tenant}` : ''}`, { name });
+  async loginDev(name: string, tenant?: string, scope: 'guest' | 'full' = 'full'): Promise<AuthResponse> {
+    const r = await this.post<AuthResponse>(`/api/auth/dev${tenant ? `?tenant=${tenant}` : ''}`, { name, scope });
     this.token = r.token;
     this.remember();
     return r;
   }
 
   me() {
-    return this.get<{ id: string; platform: string; displayName: string; tenant: string; isAdmin: boolean }>('/api/me');
+    return this.get<{
+      id: string;
+      platform: string;
+      displayName: string;
+      tenant: string;
+      scope: 'guest' | 'full';
+      isAdmin: boolean;
+    }>('/api/me');
   }
 
   operatorTickets() {
@@ -111,19 +118,19 @@ export class ApiClient {
           user: { displayName: string; platform: string };
           lastMessageAt: string | null;
           unanswered: boolean;
-          /** 0 - in progress, 1 - waiting for first reply, 2 - closed. */
+          /** AI: 0 - in progress, 1 - waiting for first reply, 2 - closed. */
           group: 0 | 1 | 2;
         }
       >;
     }>('/api/operator/tickets');
   }
 
-  /** Hand the ticket back to the assistant (no specialist needed). */
+  /** AI: Hand the ticket back to the assistant (no specialist needed). */
   operatorHandback(id: string) {
     return this.post<{ ticket: TicketCard }>(`/api/operator/tickets/${id}/handback`, {});
   }
 
-  /** Live queue updates. Calls `onChange` whenever anything in this tenant's queue changes. */
+  /** AI: Live queue updates. Calls `onChange` whenever anything in this tenant's queue changes. */
   operatorStream(onChange: (ticketId: string | null) => void, signal: AbortSignal): void {
     const run = async () => {
       while (!signal.aborted) {
@@ -155,7 +162,7 @@ export class ApiClient {
           /* connection dropped - retry below */
         }
         if (signal.aborted) return;
-        // Reconnect after a short pause (server restart, proxy timeout, sleeping laptop).
+        // AI: Reconnect after a short pause (server restart, proxy timeout, sleeping laptop).
         await new Promise((r) => setTimeout(r, 3000));
       }
     };
@@ -180,7 +187,7 @@ export class ApiClient {
     return this.get<{ tenants: Array<{ id: string; sphere: string }>; default: string; botUrl?: string }>('/api/tenants');
   }
 
-  /** Opens the current ticket (server reuses an open one); `fresh` forces a new ticket. */
+  /** AI: Opens the current ticket (server reuses an open one); `fresh` forces a new ticket. */
   openTicket(fresh = false) {
     return this.post<{ ticket: TicketCard; messages: ChatMessage[] }>(`/api/tickets${fresh ? '?new=1' : ''}`, {});
   }
@@ -207,7 +214,7 @@ export class ApiClient {
     );
   }
 
-  /** POST + SSE over fetch (EventSource is GET-only). Yields parsed events. */
+  /** AI: POST + SSE over fetch (EventSource is GET-only). Yields parsed events. */
   async *sendMessage(ticketId: string, text: string, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
     const res = await fetch(`${this.base}/api/tickets/${ticketId}/messages`, {
       method: 'POST',

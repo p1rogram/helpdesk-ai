@@ -3,7 +3,7 @@ import { TicketCardSchema, ToneSchema } from './dialog.js';
 import { PlatformSchema } from './api.js';
 
 /**
- * Domain events. Published by the API, consumed by workers via Kafka.
+ * AI: Domain events. Published by the API, consumed by workers via Kafka.
  * Topic naming: <domain>.<entity>.<version>. Partition key: ticketId (ordering per ticket).
  */
 export const TOPICS = {
@@ -21,7 +21,7 @@ const base = {
 
 export const TicketEventSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('ticket.created'), ticket: TicketCardSchema }),
-  /** Anything that changes what an operator should see (new user message, hand-back, reply). */
+  /** AI: Anything that changes what an operator should see (new user message, hand-back, reply). */
   z.object({ ...base, type: z.literal('ticket.updated'), tenantId: z.string() }),
   z.object({
     ...base,

@@ -1,13 +1,13 @@
 import type { Tone } from '@helpdesk/shared';
 
 /**
- * Cheap, deterministic pre-checks that run before any LLM call.
+ * AI: Cheap, deterministic pre-checks that run before any LLM call.
  * - profanity / aggression -> tone hint (the model confirms, engine decides what to do)
  * - prompt-injection markers -> logged metric; the architecture already treats user text as data
  * Nothing here blocks the user: an upset person still gets help, just with a calmer voice.
  */
 
-// Stems, normalised (ё->е, latin look-alikes). Intentionally short - false positives cost more than misses.
+// AI: Stems, normalised (ё->е, latin look-alikes). Intentionally short - false positives cost more than misses.
 const PROFANITY_STEMS = [
   'бля', 'блят', 'блт', 'хрен', 'хуй', 'хуе', 'хуя', 'пизд', 'ебал', 'ебан', 'ебат', 'ебт', 'ёбан', 'заеб', 'уеб', 'пидор', 'пидар',
   'мудак', 'мудил', 'сука', 'суки', 'сучк', 'гандон', 'говн', 'дерьм', 'жопа', 'нахер', 'нахуй', 'похуй', 'хер',

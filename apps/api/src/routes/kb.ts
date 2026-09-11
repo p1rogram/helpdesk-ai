@@ -9,12 +9,12 @@ const SearchQuery = z.object({
   limit: z.coerce.number().int().min(1).max(20).default(5),
 });
 
-/** Public (authenticated) knowledge base: categories and search - "поиск по базе знаний". */
+/** AI: Public (authenticated) knowledge base: categories and search - "поиск по базе знаний". */
 export async function kbRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.addHook('preHandler', app.authenticate);
 
   app.get('/api/kb/categories', async (req) => {
-    const catalog = await ctx.knowledge.catalog(req.user.tenant);
+    const catalog = await ctx.knowledge.catalog(req.user.tenant, req.user.scope ?? 'full');
     return {
       tenant: { id: catalog.id, sphere: catalog.sphere },
       categories: catalog.categories.map((c) => ({ id: c.id, name: c.name, description: c.description })),
@@ -27,6 +27,7 @@ export async function kbRoutes(app: FastifyInstance, ctx: AppContext): Promise<v
     const hits = await ctx.knowledge.search(req.user.tenant, q.data.q, {
       categoryId: q.data.category,
       limit: q.data.limit,
+      scope: req.user.scope ?? 'full',
     });
     const results: KbSearchResult[] = hits.map((h) => ({
       id: h.article.id,
@@ -40,7 +41,7 @@ export async function kbRoutes(app: FastifyInstance, ctx: AppContext): Promise<v
 
   app.get('/api/kb/articles/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string().max(128) }).parse(req.params);
-    const article = await ctx.knowledge.article(req.user.tenant, id);
+    const article = await ctx.knowledge.article(req.user.tenant, id, req.user.scope ?? 'full');
     if (!article) return reply.code(404).send({ error: 'not_found' });
     return { article };
   });

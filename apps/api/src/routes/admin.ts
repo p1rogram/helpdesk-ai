@@ -4,7 +4,7 @@ import { KbArticleSchema } from '@helpdesk/shared';
 import type { AppContext } from '../context.js';
 
 /**
- * Catalog administration. Changing the sphere = importing a catalog JSON here - no deploy,
+ * AI: Catalog administration. Changing the sphere = importing a catalog JSON here - no deploy,
  * no file edits on the server. Restricted to ADMIN_USERS.
  */
 export async function adminRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -19,7 +19,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext): Promis
     return { id: c.id, sphere: c.sphere, organisation: c.organisation, language: c.language, version: c.version, categories: c.categories, articles: c.articles };
   });
 
-  /** Full import / replace of a tenant catalog (body = catalog JSON). */
+  /** AI: Full import / replace of a tenant catalog (body = catalog JSON). */
   app.post('/api/admin/catalog/import', { bodyLimit: 4 * 1024 * 1024 }, async (req, reply) => {
     try {
       const loaded = await ctx.catalogs.upsert(req.body);

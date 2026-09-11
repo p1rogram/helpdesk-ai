@@ -1,23 +1,34 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from './lib/api';
 import { detectPlatform, type PlatformAdapter } from './lib/platform';
+import { applyTheme, getThemeMode, setThemeMode, watchSystemTheme, type ThemeMode } from './lib/theme';
+import { useSwipeNavigation } from './lib/swipe';
+import { BottomNav, type NavItem } from './components/BottomNav';
+import { Icon } from './components/Icon';
 import { ChatScreen } from './screens/ChatScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { KbScreen } from './screens/KbScreen';
-import { LoginScreen } from './screens/LoginScreen';
 import { LandingScreen } from './screens/LandingScreen';
+import { LoginScreen } from './screens/LoginScreen';
 import { OperatorScreen } from './screens/OperatorScreen';
+import { ProfileScreen } from './screens/ProfileScreen';
 
-type Screen = { name: 'chat'; ticketId?: string } | { name: 'history' } | { name: 'kb' } | { name: 'operator' };
+type Tab = 'chat' | 'history' | 'kb' | 'operator' | 'profile';
 
 export function App() {
   const platform = useMemo<PlatformAdapter>(() => detectPlatform(), []);
   const api = useMemo(() => new ApiClient('', platform.kind === 'web'), [platform]);
   const urlTenant = useMemo(() => new URLSearchParams(window.location.search).get('tenant') ?? undefined, []);
+
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [screen, setScreen] = useState<Screen>({ name: 'chat' });
-  const [sphere, setSphere] = useState('');
+  const [restoring, setRestoring] = useState(platform.kind === 'web' && api.authenticated);
+  const [showLanding, setShowLanding] = useState(true);
+
+  const [tab, setTab] = useState<Tab>('chat');
+  // AI: -1 / 1 - which way the last switch went, so the new pane slides in from that side.
+  const [slide, setSlide] = useState<1 | -1>(1);
+  const [openTicketId, setOpenTicketId] = useState<string | undefined>(undefined);
   const [currentTicket, setCurrentTicketState] = useState<string | undefined>(() => {
     try {
       return localStorage.getItem('helpdesk.ticket') ?? undefined;
@@ -34,22 +45,41 @@ export function App() {
       /* ignore */
     }
   };
-  const [restoring, setRestoring] = useState(platform.kind === 'web' && api.authenticated);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showLanding, setShowLanding] = useState(true);
   const [historyVersion, setHistoryVersion] = useState(0);
-  const [botUrl, setBotUrl] = useState<string | undefined>(undefined);
 
-  // Apply host theme (Telegram colours) and expand the Mini App.
+  const [sphere, setSphere] = useState('');
+  const [botUrl, setBotUrl] = useState<string | undefined>(undefined);
+  const [displayName, setDisplayName] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [scope, setScope] = useState<'guest' | 'full'>('full');
+  const screenRef = useRef<HTMLDivElement>(null);
+
+  // ---------------------------------------------------------------- theme ---
+  const [theme, setTheme] = useState<ThemeMode>(getThemeMode);
+  const refreshTheme = useCallback(
+    (mode: ThemeMode) => {
+      const hostDark = mode === 'auto' ? platform.isDark() : false;
+      applyTheme(mode, hostDark);
+    },
+    [platform],
+  );
   useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.theme = platform.isDark() ? 'dark' : 'light';
-    for (const [k, v] of Object.entries(platform.themeVars())) root.style.setProperty(k, v);
+    refreshTheme(theme);
+    return watchSystemTheme(() => refreshTheme(theme));
+  }, [theme, refreshTheme]);
+  const changeTheme = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    setTheme(mode);
+  };
+  const cycleTheme = () => changeTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light');
+
+  // AI: The product keeps its own palette; from the host we take only light/dark (see refreshTheme).
+  useEffect(() => {
     platform.ready();
     platform.expand();
   }, [platform]);
 
-  // Website: a stored session survives page refresh - validate it once, then continue where the user was.
+  // ----------------------------------------------------------------- auth ---
   useEffect(() => {
     if (!restoring) return;
     api
@@ -59,7 +89,6 @@ export function App() {
       .finally(() => setRestoring(false));
   }, [api, restoring]);
 
-  // SSO callback: the token arrives in the URL fragment (never hits server logs).
   useEffect(() => {
     const m = /[#&]token=([^&]+)/.exec(window.location.hash);
     if (m?.[1]) {
@@ -69,7 +98,6 @@ export function App() {
     }
   }, [api]);
 
-  // Telegram: silent login with signed initData. Web: show the guest login form.
   useEffect(() => {
     const payload = platform.authPayload();
     if (!payload) return;
@@ -83,26 +111,63 @@ export function App() {
     login
       .then(() => setAuthed(true))
       .catch((e: Error) => setAuthError(`Не удалось подтвердить сессию (${platform.kind}): ${e.message}`));
-  }, [api, platform]);
+  }, [api, platform, urlTenant]);
 
-  // Public info for the landing (no auth needed).
   useEffect(() => {
     api
       .tenants()
       .then((r) => {
-        const t = r.tenants.find((x) => x.id === r.default) ?? r.tenants[0];
+        const t = r.tenants.find((x) => x.id === (urlTenant ?? r.default)) ?? r.tenants[0];
         if (t) setSphere(t.sphere);
         setBotUrl(r.botUrl);
       })
       .catch(() => {});
-  }, [api]);
+  }, [api, urlTenant]);
 
   useEffect(() => {
     if (!authed) return;
-    api.categories().then((r) => setSphere(r.tenant.sphere)).catch(() => {});
-    api.me().then((m) => setIsAdmin(m.isAdmin)).catch(() => {});
+    api
+      .me()
+      .then((m) => {
+        setIsAdmin(m.isAdmin);
+        setDisplayName(m.displayName);
+        setScope(m.scope);
+      })
+      .catch(() => {});
+    api
+      .categories()
+      .then((r) => setSphere(r.tenant.sphere))
+      .catch(() => {});
   }, [api, authed]);
 
+  // AI: Swipe left/right moves between the bottom tabs; the hook ignores mostly-vertical
+  // gestures and anything started inside a horizontally scrolling strip.
+  const tabKeys = useMemo<Tab[]>(
+    () => (isAdmin ? ['chat', 'history', 'kb', 'operator', 'profile'] : ['chat', 'history', 'kb', 'profile']),
+    [isAdmin],
+  );
+  const goToTab = useCallback(
+    (next: Tab) =>
+      setTab((current) => {
+        if (next === current) return current;
+        setSlide(tabKeys.indexOf(next) > tabKeys.indexOf(current) ? 1 : -1);
+        return next;
+      }),
+    [tabKeys],
+  );
+  const swipeTo = useCallback(
+    (direction: 1 | -1) =>
+      setTab((current) => {
+        const next = tabKeys.indexOf(current) + direction;
+        if (next < 0 || next >= tabKeys.length) return current;
+        setSlide(direction);
+        return tabKeys[next]!;
+      }),
+    [tabKeys],
+  );
+  useSwipeNavigation(screenRef, swipeTo, authed);
+
+  // ---------------------------------------------------------------- render --
   if (restoring) {
     return (
       <div className="app">
@@ -112,12 +177,28 @@ export function App() {
   }
 
   if (!authed && platform.kind === 'web' && showLanding && !window.location.hash.includes('token=')) {
-    return <LandingScreen sphere={sphere} botUrl={botUrl} onStart={() => setShowLanding(false)} />;
+    return (
+      <LandingScreen
+        sphere={sphere}
+        botUrl={botUrl}
+        theme={theme}
+        onToggleTheme={cycleTheme}
+        onStart={() => setShowLanding(false)}
+      />
+    );
   }
 
   if (!authed) {
     return (
       <div className="app">
+        <Header
+          sphere={sphere}
+          online={false}
+          theme={theme}
+          onToggleTheme={cycleTheme}
+          onOpenProfile={() => {}}
+          showProfile={false}
+        />
         <LoginScreen
           api={api}
           platform={platform}
@@ -132,60 +213,125 @@ export function App() {
     );
   }
 
+  const LABELS: Record<Tab, { label: string; icon: NavItem['icon'] }> = {
+    chat: { label: 'Чат', icon: 'chat' },
+    history: { label: 'История', icon: 'history' },
+    kb: { label: 'База знаний', icon: 'book' },
+    operator: { label: 'Оператор', icon: 'shield' },
+    profile: { label: 'Профиль', icon: 'user' },
+  };
+  const items: NavItem[] = tabKeys.map((k) => ({ key: k, ...LABELS[k] }));
+  const paneClass = `pane slide-${slide > 0 ? 'left' : 'right'}`;
+
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="titles">
-          <div className="title">Помощник поддержки</div>
-          <div className="sub" title={sphere}>
-            {sphere.replace(/^Техническая поддержка /, '') || '…'}
-          </div>
+    <div className={`app${tab === 'operator' ? ' wide' : ''}`}>
+      <Header
+        sphere={sphere}
+        online
+        theme={theme}
+        onToggleTheme={cycleTheme}
+        onOpenProfile={() => setTab('profile')}
+        showProfile
+      />
+
+      {/* AI: Every tab stays mounted and keeps its state (scroll, drafts, live subscriptions);
+          switching only toggles visibility, so nothing is re-fetched or re-rendered from scratch. */}
+      <div className="screen" ref={screenRef} data-tab={tab}>
+        <div className={paneClass} hidden={tab !== 'chat'}>
+          <ChatScreen
+            api={api}
+            platform={platform}
+            ticketId={openTicketId ?? currentTicket}
+            onTicketChange={(id) => {
+              setCurrentTicket(id);
+              setOpenTicketId(undefined);
+              setHistoryVersion((v) => v + 1);
+            }}
+            onTicketUpdate={() => setHistoryVersion((v) => v + 1)}
+          />
         </div>
-        <nav className="tabs">
-          <button className={screen.name === 'chat' ? 'active' : ''} onClick={() => setScreen({ name: 'chat' })}>
-            Чат
-          </button>
-          <button className={screen.name === 'history' ? 'active' : ''} onClick={() => setScreen({ name: 'history' })}>
-            История
-          </button>
-          <button className={screen.name === 'kb' ? 'active' : ''} onClick={() => setScreen({ name: 'kb' })}>
-            Поиск
-          </button>
-          {isAdmin && (
-            <button className={screen.name === 'operator' ? 'active' : ''} onClick={() => setScreen({ name: 'operator' })}>
-              Оператор
-            </button>
-          )}
-        </nav>
-      </header>
-      {screen.name === 'chat' && (
-        <div className="chat-layout">
-          <aside className="sidebar">
-            <HistoryScreen
-              api={api}
-              compact
-              refreshKey={historyVersion}
-              activeId={screen.ticketId ?? currentTicket}
-              onOpen={(id) => setScreen({ name: 'chat', ticketId: id })}
-            />
-          </aside>
-          <div className="chat-main">
-            <ChatScreen
-              api={api}
-              platform={platform}
-              ticketId={screen.ticketId ?? currentTicket}
-              onTicketChange={(id) => {
-                setCurrentTicket(id);
-                setHistoryVersion((v) => v + 1);
-              }}
-              onTicketUpdate={() => setHistoryVersion((v) => v + 1)}
-            />
-          </div>
+        <div className={paneClass} hidden={tab !== 'history'}>
+          <HistoryScreen
+            api={api}
+            active={tab === 'history'}
+            refreshKey={historyVersion}
+            activeId={openTicketId ?? currentTicket}
+            onOpen={(id) => {
+              setOpenTicketId(id);
+              setTab('chat');
+            }}
+          />
         </div>
-      )}
-      {screen.name === 'history' && <HistoryScreen api={api} onOpen={(id) => setScreen({ name: 'chat', ticketId: id })} />}
-      {screen.name === 'kb' && <KbScreen api={api} />}
-      {screen.name === 'operator' && <OperatorScreen api={api} />}
+        <div className={paneClass} hidden={tab !== 'kb'}>
+          <KbScreen api={api} />
+        </div>
+        {isAdmin && (
+          <div className={paneClass} hidden={tab !== 'operator'}>
+            <OperatorScreen api={api} />
+          </div>
+        )}
+        <div className={paneClass} hidden={tab !== 'profile'}>
+          <ProfileScreen
+            platform={platform}
+            displayName={displayName}
+            sphere={sphere}
+            isAdmin={isAdmin}
+            scope={scope}
+            theme={theme}
+            onTheme={changeTheme}
+            onLogout={
+              platform.kind === 'web'
+                ? () => {
+                    api.logout();
+                    setCurrentTicket(undefined);
+                    setAuthed(false);
+                    setShowLanding(true);
+                  }
+                : undefined
+            }
+          />
+        </div>
+      </div>
+
+      <BottomNav items={items} active={tab} onSelect={(k) => goToTab(k as Tab)} />
     </div>
+  );
+}
+
+function Header(props: {
+  sphere: string;
+  online: boolean;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+  onOpenProfile: () => void;
+  showProfile: boolean;
+}) {
+  const themeIcon = props.theme === 'light' ? 'sun' : props.theme === 'dark' ? 'moon' : 'auto';
+  return (
+    <header className="topbar">
+      <span className="brand">
+        <Icon name="bot" size={20} />
+      </span>
+      <div className="titles">
+        <div className="title">Помоги мне</div>
+        <div className="sub">
+          <span className={`dot${props.online ? '' : ' off'}`} />
+          {props.sphere.replace(/^Техническая поддержка /, '') || 'Виртуальная поддержка'}
+        </div>
+      </div>
+      <button
+        className="icon-btn"
+        onClick={props.onToggleTheme}
+        title={`Тема: ${props.theme === 'auto' ? 'авто' : props.theme === 'dark' ? 'тёмная' : 'светлая'}`}
+        aria-label="Переключить тему"
+      >
+        <Icon name={themeIcon} size={18} />
+      </button>
+      {props.showProfile && (
+        <button className="icon-btn" onClick={props.onOpenProfile} aria-label="Профиль">
+          <Icon name="user" size={18} />
+        </button>
+      )}
+    </header>
   );
 }

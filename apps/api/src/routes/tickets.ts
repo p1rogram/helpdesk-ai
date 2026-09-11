@@ -12,11 +12,11 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
   app.addHook('preHandler', app.authenticate);
 
   /**
-   * Open the current ticket: reuse the latest open one (so re-opening the app or switching tabs
+   * AI: Open the current ticket: reuse the latest open one (so re-opening the app or switching tabs
    * never spawns empty tickets); `?new=1` forces a fresh one. Abandoned empty tickets are pruned.
    */
   app.post('/api/tickets', async (req) => {
-    const catalog = await ctx.knowledge.catalog(req.user.tenant);
+    const catalog = await ctx.knowledge.catalog(req.user.tenant, req.user.scope ?? 'full');
     const forceNew = z.object({ new: z.string().optional() }).parse(req.query ?? {}).new === '1';
     const existing = forceNew ? undefined : await ctx.tickets.latestOpen(req.user.sub);
     if (existing && existing.tenantId === req.user.tenant) {
@@ -34,11 +34,11 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     return { ticket: toCard(ticket, catalog), messages: [toChatMessage(greeting)] };
   });
 
-  /** History of the user - "вернуться к предыдущему обращению". */
+  /** AI: History of the user - "вернуться к предыдущему обращению". */
   app.get('/api/tickets', async (req) => {
-    const catalog = await ctx.knowledge.catalog(req.user.tenant);
+    const catalog = await ctx.knowledge.catalog(req.user.tenant, req.user.scope ?? 'full');
     const rows = await ctx.tickets.listForUser(req.user.sub, 30);
-    // Hide tickets that never got a problem statement (greeting only).
+    // AI: Hide tickets that never got a problem statement (greeting only).
     return { tickets: rows.filter((t) => t.summary || t.state !== 'intake').map((t) => toCard(t, catalog)) };
   });
 
@@ -51,7 +51,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     return { ticket: toCard(ticket, catalog), messages: msgs.map(toChatMessage) };
   });
 
-  /** Send a message; the answer streams back as Server-Sent Events. */
+  /** AI: Send a message; the answer streams back as Server-Sent Events. */
   app.post('/api/tickets/:id/messages', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = SendMessageRequestSchema.safeParse(req.body);
@@ -70,7 +70,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     const send = (ev: ChatStreamEvent) => reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
     const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), 15_000);
     try {
-      for await (const ev of ctx.engine.handle(ticket, user, body.data.text)) send(ev);
+      for await (const ev of ctx.engine.handle(ticket, user, body.data.text, req.user.scope ?? 'full')) send(ev);
     } catch (err) {
       req.log.error(err, 'dialog engine failed');
       send({ type: 'error', message: 'Не удалось обработать сообщение. Попробуйте ещё раз.' });
@@ -81,7 +81,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     return reply;
   });
 
-  /** Rate the answer (1..5) - "оценка ответа". */
+  /** AI: Rate the answer (1..5) - "оценка ответа". */
   app.post('/api/tickets/:id/rating', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = RateRequestSchema.safeParse(req.body);

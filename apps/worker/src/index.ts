@@ -8,7 +8,7 @@ import { AnalyticsConsumer } from './consumers/analytics.js';
 import { NotifierConsumer } from './consumers/notifier.js';
 
 /**
- * Worker process = Kafka consumers + Telegram bot. Scales independently of the API:
+ * AI: Worker process = Kafka consumers + Telegram bot. Scales independently of the API:
  * run N replicas, Kafka consumer groups spread partitions across them.
  *
  *  support.notification.v1 -> notifier  (sends Telegram messages: "ticket handed to a specialist")

@@ -14,7 +14,7 @@ import { CatalogRepository, KnowledgeService } from '../modules/knowledge/index.
 import { LlmService, LlmUnavailableError } from '../modules/llm/index.js';
 import { TicketRepository } from '../modules/tickets/repository.js';
 
-/** Scripted LLM: returns canned analyses, streams a fixed solution. */
+/** AI: Scripted LLM: returns canned analyses, streams a fixed solution. */
 class FakeLlm extends LlmService {
   queue: Array<Partial<Analysis> | Error> = [];
   constructor() {
@@ -99,7 +99,7 @@ describe('DialogEngine', () => {
     expect(r1.text).toMatch(/Откуда вы подключаетесь/);
     expect(r1.quick.map((q) => q.label)).toContain('Из дома / удалённо');
 
-    // Quick-reply option answers the pending field deterministically - no LLM call is made.
+    // AI: Quick-reply option answers the pending field deterministically - no LLM call is made.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const r2 = await collect(engine.handle(t2, user, 'Из дома / удалённо'));
     expect(llm.queue.length).toBe(0);
@@ -107,7 +107,7 @@ describe('DialogEngine', () => {
     expect(r2.ticket.articleId).toMatch(/^network-vpn/);
     expect(r2.text).toContain('Шаг из модели');
     expect(r2.quick.map((q) => q.value)).toEqual([CMD.helped, CMD.notHelped, CMD.human]);
-    // Exactly one clarification was asked - the second field is optional.
+    // AI: Exactly one clarification was asked - the second field is optional.
     expect((await tickets.get(ticket.id, user.id))!.clarificationsAsked).toBe(1);
   });
 
@@ -177,7 +177,7 @@ describe('DialogEngine', () => {
 
   it('never creates a request on its own: offers escalation and waits for consent', async () => {
     const { user, ticket } = await fresh();
-    // Category known, but nothing in the KB matches -> the assistant asks instead of escalating.
+    // AI: Category known, but nothing in the KB matches -> the assistant asks instead of escalating.
     llm.queue.push({ categoryId: 'general', confidence: 0.9, summary: 'Спор с соседом по комнате из-за шума ночью', fields: {} });
     const r1 = await collect(engine.handle(ticket, user, 'Сосед по общаге шумит ночью, что делать?'));
     if (r1.ticket.state === 'offer_escalation') {
@@ -188,7 +188,7 @@ describe('DialogEngine', () => {
       expect(r2.ticket.state).toBe('intake');
       expect(r2.ticket.escalated).toBe(false);
     } else {
-      // A KB article matched - still no request was created without asking.
+      // AI: A KB article matched - still no request was created without asking.
       expect(r1.ticket.escalated).toBe(false);
     }
   });
@@ -200,7 +200,7 @@ describe('DialogEngine', () => {
     expect(r.ticket.state).toBe('escalated');
     expect(r.ticket.handledBy).toBe('operator');
 
-    // A follow-up message must NOT produce an assistant answer - it belongs to the operator.
+    // AI: A follow-up message must NOT produce an assistant answer - it belongs to the operator.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const events: ChatStreamEvent[] = [];
     for await (const e of engine.handle(t2, user, 'Ещё деталь: логин ivanov')) events.push(e);
@@ -213,7 +213,7 @@ describe('DialogEngine', () => {
 
   it('never escalates again once the operator handed the ticket back', async () => {
     const { user, ticket } = await fresh();
-    // Operator hand-back: assistant resumes, escalation forbidden for this ticket.
+    // AI: Operator hand-back: assistant resumes, escalation forbidden for this ticket.
     await tickets.update(ticket.id, { handledBy: 'ai', escalationBlocked: true, state: 'intake' });
     const t1 = (await tickets.get(ticket.id, user.id))!;
     const r1 = await collect(engine.handle(t1, user, CMD.human));
@@ -221,7 +221,7 @@ describe('DialogEngine', () => {
     expect(r1.ticket.escalated).toBe(false);
     expect(r1.text).toMatch(/специалист уже принял решение/i);
 
-    // Even an explicit "I want a human" from the analysis is refused.
+    // AI: Even an explicit "I want a human" from the analysis is refused.
     llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'x' });
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const r2 = await collect(engine.handle(t2, user, 'Хочу живого человека'));

@@ -1,16 +1,16 @@
 import type { TicketCard } from '@helpdesk/shared';
 
 /**
- * External helpdesk integration. The assistant collects a structured ticket card; when the user
+ * AI: External helpdesk integration. The assistant collects a structured ticket card; when the user
  * agrees to escalate, the card becomes a real request in the organisation's service desk and a
  * specialist picks it up there - the assistant never "is" the specialist.
  *
  * One interface, one implementation per system. Adding Jira / ServiceDesk Plus / 1С = one file.
  */
 export interface ExternalRequest {
-  /** Number the user sees ("102723") - the same as in the helpdesk UI. */
+  /** AI: Number the user sees ("102723") - the same as in the helpdesk UI. */
   externalId: string;
-  /** Deep link to the request in the helpdesk (shown in the card). */
+  /** AI: Deep link to the request in the helpdesk (shown in the card). */
   url?: string;
 }
 
@@ -19,7 +19,7 @@ export interface HelpdeskConnector {
   createRequest(card: TicketCard, context: { userDisplayName: string; transcript: string }): Promise<ExternalRequest>;
 }
 
-/** Dev / demo: no external system - the internal short id is shown instead. */
+/** AI: Dev / demo: no external system - the internal short id is shown instead. */
 export class NoopHelpdesk implements HelpdeskConnector {
   readonly kind = 'none';
   async createRequest(card: TicketCard): Promise<ExternalRequest> {
@@ -28,19 +28,19 @@ export class NoopHelpdesk implements HelpdeskConnector {
 }
 
 export interface NaumenOptions {
-  /** e.g. https://help.tpu.ru */
+  /** AI: e.g. https://help.tpu.ru */
   baseUrl: string;
-  /** Access key issued by the Naumen SMP administrator (REST API user). */
+  /** AI: Access key issued by the Naumen SMP administrator (REST API user). */
   accessKey: string;
-  /** Service (slmService$NNN) the request is created in - a mapping per category can be added. */
+  /** AI: Service (slmService$NNN) the request is created in - a mapping per category can be added. */
   defaultServiceId: string;
-  /** Optional: category id -> slmService id, so the request lands in the right queue. */
+  /** AI: Optional: category id -> slmService id, so the request lands in the right queue. */
   serviceByCategory?: Record<string, string>;
   fetchImpl?: typeof fetch;
 }
 
 /**
- * Naumen Service Desk (the platform behind help.tpu.ru). Uses the SMP REST API:
+ * AI: Naumen Service Desk (the platform behind help.tpu.ru). Uses the SMP REST API:
  *   POST {base}/sd/services/rest/create/serviceCall?accessKey=...   body = attributes JSON
  * Attribute names (service, description, priority, client...) depend on the TPU installation's
  * metaclass configuration - confirm them with the Naumen administrator; only the transport is fixed.
@@ -85,7 +85,7 @@ export class NaumenHelpdesk implements HelpdeskConnector {
         shortDescr: (card.summary ?? 'Обращение из виртуального помощника').slice(0, 200),
         descriptionRTF: description,
         priority: card.priority === 'high' ? 'high' : card.priority === 'low' ? 'low' : 'normal',
-        // Correlation key: lets the helpdesk push status updates back to the right chat.
+        // AI: Correlation key: lets the helpdesk push status updates back to the right chat.
         externalId: card.id,
       }),
       signal: AbortSignal.timeout(15_000),

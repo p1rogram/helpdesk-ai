@@ -15,7 +15,7 @@ export interface DbHandle {
 }
 
 /**
- * Postgres in production, embedded PGlite (same SQL dialect) when DATABASE_URL is empty.
+ * AI: Postgres in production, embedded PGlite (same SQL dialect) when DATABASE_URL is empty.
  * Same schema, same queries - zero-install dev/demo mode without Docker.
  */
 export async function connectDb(opts: { url?: string; pgliteDir: string }): Promise<DbHandle> {
@@ -30,15 +30,15 @@ export async function connectDb(opts: { url?: string; pgliteDir: string }): Prom
 }
 
 /**
- * Idempotent bootstrap DDL. For a hackathon this beats a migration toolchain: one file,
+ * AI: Idempotent bootstrap DDL. For a hackathon this beats a migration toolchain: one file,
  * runs on every boot, safe to re-run. drizzle-kit migrations can replace it later.
  */
 export async function ensureSchema(db: Db): Promise<void> {
-  // One statement per call: PGlite (and pg prepared statements) reject multi-command strings.
+  // AI: One statement per call: PGlite (and pg prepared statements) reject multi-command strings.
   for (const stmt of DDL) {
     await db.execute(sql.raw(stmt));
   }
-  // Additive migrations for databases created before these columns existed.
+  // AI: Additive migrations for databases created before these columns existed.
   for (const col of [
     'external_id TEXT',
     'external_url TEXT',
@@ -48,6 +48,7 @@ export async function ensureSchema(db: Db): Promise<void> {
   ]) {
     await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
   }
+  await db.execute(sql.raw("ALTER TABLE kb_articles ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'internal'"));
 }
 
 const DDL: string[] = [
@@ -78,6 +79,7 @@ const DDL: string[] = [
       steps JSONB NOT NULL,
       not_applicable_when TEXT,
       escalate_after BOOLEAN NOT NULL DEFAULT false,
+      audience TEXT NOT NULL DEFAULT 'internal',
       source TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (tenant_id, id)

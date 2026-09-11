@@ -14,7 +14,7 @@ import {
 import type { ClarifyingField } from '@helpdesk/shared';
 
 /**
- * Drizzle schema. Every query goes through the query builder -> parameterised SQL,
+ * AI: Drizzle schema. Every query goes through the query builder -> parameterised SQL,
  * so SQL injection is impossible by construction (no string concatenation anywhere).
  *
  * Multi-tenancy: a tenant is a "sphere" (TPU, corporate IT, ISP...). Catalog rows and
@@ -28,7 +28,7 @@ export const tenants = pgTable('tenants', {
   sphere: text('sphere').notNull(),
   organisation: text('organisation').notNull(),
   language: text('language').notNull().default('ru'),
-  /** Bumped on every catalog change - used for cache invalidation and prompt-cache keys. */
+  /** AI: Bumped on every catalog change - used for cache invalidation and prompt-cache keys. */
   version: integer('version').notNull().default(1),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -62,6 +62,7 @@ export const kbArticles = pgTable(
     steps: jsonb('steps').$type<string[]>().notNull(),
     notApplicableWhen: text('not_applicable_when'),
     escalateAfter: boolean('escalate_after').notNull().default(false),
+    audience: text('audience').notNull().default('internal'),
     source: text('source'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -100,23 +101,23 @@ export const tickets = pgTable(
     fields: jsonb('fields').$type<Record<string, string>>().notNull().default({}),
     tone: text('tone').notNull().default('neutral'),
     clarificationsAsked: integer('clarifications_asked').notNull().default(0),
-    /** Clarifying field the last question was about (answer maps to this key). */
+    /** AI: Clarifying field the last question was about (answer maps to this key). */
     pendingField: text('pending_field'),
-    /** Current article shown to the user. */
+    /** AI: Current article shown to the user. */
     articleId: text('article_id'),
-    /** Articles already tried and rejected ("not helped"). */
+    /** AI: Articles already tried and rejected ("not helped"). */
     triedArticles: jsonb('tried_articles').$type<string[]>().notNull().default([]),
     resolved: boolean('resolved').notNull().default(false),
     escalated: boolean('escalated').notNull().default(false),
     escalationReason: text('escalation_reason'),
-    /** 'ai' | 'operator' - while 'operator' the assistant does not answer in this ticket. */
+    /** AI: 'ai' | 'operator' - while 'operator' the assistant does not answer in this ticket. */
     handledBy: text('handled_by').notNull().default('ai'),
-    /** Operator returned the ticket to the assistant and forbade escalating it again. */
+    /** AI: Operator returned the ticket to the assistant and forbade escalating it again. */
     escalationBlocked: boolean('escalation_blocked').notNull().default(false),
-    /** Request number / link in the external helpdesk after escalation. */
+    /** AI: Request number / link in the external helpdesk after escalation. */
     externalId: text('external_id'),
     externalUrl: text('external_url'),
-    /** Why the assistant offered escalation (kept while the user decides). */
+    /** AI: Why the assistant offered escalation (kept while the user decides). */
     pendingEscalation: text('pending_escalation'),
     rating: integer('rating'),
     ratingComment: text('rating_comment'),
@@ -142,7 +143,7 @@ export const messages = pgTable(
   (t) => [index('messages_ticket_created').on(t.ticketId, t.createdAt)],
 );
 
-/** Aggregates maintained by the analytics worker (Kafka consumer). */
+/** AI: Aggregates maintained by the analytics worker (Kafka consumer). */
 export const dailyStats = pgTable(
   'daily_stats',
   {

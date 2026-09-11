@@ -15,7 +15,7 @@ import { EmailCodeProvider, LdapProvider, OidcProvider } from './modules/auth/co
 import { OperatorHub } from './modules/operator/hub.js';
 import type { FastifyInstance } from 'fastify';
 
-/** Composition root: every dependency is built once here and injected explicitly. */
+/** AI: Composition root: every dependency is built once here and injected explicitly. */
 export interface AppContext {
   config: AppConfig;
   dbHandle: DbHandle;
@@ -29,7 +29,7 @@ export interface AppContext {
   helpdesk: HelpdeskConnector;
   operatorHub: OperatorHub;
   corporate: { oidc: OidcProvider | null; ldap: LdapProvider | null; email: EmailCodeProvider | null };
-  /** Set by buildApp - needed to sign tokens from route modules. */
+  /** AI: Set by buildApp - needed to sign tokens from route modules. */
   app: FastifyInstance;
   close(): Promise<void>;
 }
@@ -79,7 +79,7 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
 
   const tickets = new TicketRepository(dbHandle.db);
 
-  // Live channel for operator consoles, fed by the event bus (works across API replicas on Kafka).
+  // AI: Live channel for operator consoles, fed by the event bus (works across API replicas on Kafka).
   const operatorHub = new OperatorHub();
   await operatorHub.attach(events, async (ticketId) => (await tickets.getAny(ticketId))?.tenantId ?? null);
 

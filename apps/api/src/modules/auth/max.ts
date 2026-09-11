@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AuthError } from './telegram.js';
 
 /**
- * MAX (max.ru) Mini Apps. The platform follows the Telegram WebApp model: the client receives
+ * AI: MAX (max.ru) Mini Apps. The platform follows the Telegram WebApp model: the client receives
  * signed init data with `user`, `auth_date` and `hash`; the secret is derived from the bot token.
  *
  * The exact derivation string is taken from the MAX developer documentation at integration time

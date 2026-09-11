@@ -1,7 +1,7 @@
 import type { Category, KbArticle, QuickReply, TicketCard } from '@helpdesk/shared';
 
 /**
- * Deterministic assistant texts. No LLM cost, no variance, always polite.
+ * AI: Deterministic assistant texts. No LLM cost, no variance, always polite.
  * Quick-reply values prefixed with "__" are engine commands, never sent to the model.
  */
 export const CMD = {
@@ -20,10 +20,11 @@ export const QR_AFTER_SOLUTION: QuickReply[] = [
   { label: 'Нужен специалист', value: CMD.human },
 ];
 
-export const QR_CLOSED: QuickReply[] = [{ label: 'Новое обращение', value: CMD.newTicket }];
+/** AI: Nothing at the bottom after a closed ticket - a new chat is started from the header button. */
+export const QR_CLOSED: QuickReply[] = [];
 
-/** Escalation is blocked for this ticket: the only way out is a fresh request. */
-export const QR_NEW_ONLY: QuickReply[] = [{ label: 'Новое обращение', value: CMD.newTicket }];
+/** AI: Escalation is blocked for this ticket: the only way out is a fresh request. */
+export const QR_NEW_ONLY: QuickReply[] = [];
 
 export const QR_HELPED_ONLY: QuickReply[] = [
   { label: 'Помогло', value: CMD.helped },
@@ -35,10 +36,7 @@ export const QR_OFFER_ESCALATION: QuickReply[] = [
   { label: 'Не нужно', value: CMD.dismiss },
 ];
 
-export const QR_CLOSED_OR_NEW: QuickReply[] = [
-  { label: 'Нужен специалист', value: CMD.human },
-  { label: 'Новое обращение', value: CMD.newTicket },
-];
+export const QR_CLOSED_OR_NEW: QuickReply[] = [{ label: 'Нужен специалист', value: CMD.human }];
 
 export const T = {
   greeting: (sphere: string) =>
@@ -71,7 +69,7 @@ export const T = {
   clarifyButtons: (options?: string[]): QuickReply[] | undefined =>
     options?.map((o) => ({ label: o, value: o })),
 
-  /** LLM-less fallback: article steps verbatim. */
+  /** AI: LLM-less fallback: article steps verbatim. */
   solutionFallback: (article: KbArticle) =>
     [`Похоже, это «${article.title}». Попробуйте по шагам:`, ...article.steps.map((s, i) => `${i + 1}. ${s}`)].join(
       '\n',
@@ -83,15 +81,15 @@ export const T = {
 
   nextArticle: (article: KbArticle) => `Понял. Есть ещё один вариант — «${article.title}»:`,
 
-  resolved: (card: TicketCard) =>
+  resolved: (card: TicketCard, reason: 'helped' | 'user_request' = 'helped') =>
     [
-      `Отлично, рад, что помогло!`,
+      reason === 'user_request' ? `Готово, закрываю обращение.` : `Отлично, рад, что помогло!`,
       `Коротко, что было: ${card.summary ?? '—'} (${card.categoryName ?? '—'}) — решено.`,
       ``,
       `Если не сложно, оцените ответ — это помогает делать помощника лучше.`,
     ].join('\n'),
 
-  /** Asked before any request is created - the user decides. */
+  /** AI: Asked before any request is created - the user decides. */
   offerEscalation: (reason: EscalationReason) =>
     [
       escalationLead[reason],
@@ -125,7 +123,7 @@ export const T = {
       .join('\n'),
 
 
-  /** The operator returned the ticket and asked to solve it here. */
+  /** AI: The operator returned the ticket and asked to solve it here. */
   handedBackToAi: (operator: string) =>
     [
       `Специалист ${operator} посмотрел обращение и передал его мне — по этому вопросу помощь специалиста не требуется.`,
@@ -138,7 +136,7 @@ export const T = {
       `Опишите подробнее, что не получается — попробуем вместе. Если проблема другая, создайте новое обращение.`,
     ].join('\n'),
 
-  closedHint: () => `Это обращение уже закрыто. Нажмите «Новое обращение», чтобы описать другую проблему.`,
+  closedHint: () => `Это обращение уже закрыто. Нажмите «Новый чат» вверху, чтобы описать другую проблему.`,
 
   llmDown: () =>
     `Сейчас я работаю в упрощённом режиме, но всё равно постараюсь помочь.`,

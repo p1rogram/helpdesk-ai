@@ -11,7 +11,7 @@ export interface TopicPayloads {
 }
 
 /**
- * Transport-agnostic event bus. Business code depends on this interface only.
+ * AI: Transport-agnostic event bus. Business code depends on this interface only.
  * Implementations: MemoryEventBus (dev/tests), KafkaEventBus (prod).
  */
 export interface EventBus {

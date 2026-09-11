@@ -10,7 +10,7 @@ export async function healthRoutes(app: FastifyInstance, ctx: AppContext): Promi
     uptime: Math.round(process.uptime()),
   }));
 
-  /** Public tenant info for the client bootstrap (no auth: only non-sensitive data). */
+  /** AI: Public tenant info for the client bootstrap (no auth: only non-sensitive data). */
   app.get('/api/tenants', async () => ({
     tenants: await ctx.catalogs.listTenants(),
     default: ctx.config.DEFAULT_TENANT,

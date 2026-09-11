@@ -3,7 +3,7 @@ import type { TicketCard } from '@helpdesk/shared';
 const PRIORITY = { low: 'низкий', normal: 'обычный', high: 'высокий' } as const;
 const TONE = { neutral: 'спокойный', frustrated: 'раздражён', abusive: 'грубый' } as const;
 
-/** "Автоматическое формирование карточки обращения" - what a specialist receives. */
+/** AI: "Автоматическое формирование карточки обращения" - what a specialist receives. */
 export function TicketCardPanel({ ticket }: { ticket: TicketCard }) {
   return (
     <div className="card" style={{ marginTop: 8 }}>
@@ -39,7 +39,22 @@ export function TicketCardPanel({ ticket }: { ticket: TicketCard }) {
       <span className="k">Статья</span>
       <span>{ticket.articleTitle ?? '—'}</span>
       <span className="k">Статус</span>
-      <span>{ticket.resolved ? 'решено' : ticket.escalated ? 'у специалиста' : 'в работе'}</span>
+      <span>
+        <span className={`chip ${ticket.resolved ? 'ok' : ticket.escalated ? 'danger' : 'accent'}`}>
+          {ticket.resolved ? 'Решено' : ticket.escalated ? 'У специалиста' : 'В работе'}
+        </span>
+      </span>
+      <span className="k">Оценка</span>
+      <span>
+        {ticket.rating === null ? (
+          '—'
+        ) : (
+          <span className="rating">
+            {'★'.repeat(ticket.rating)}
+            <span className="rest">{'★'.repeat(5 - ticket.rating)}</span>
+          </span>
+        )}
+      </span>
       <span className="k">Создано</span>
       <span>{new Date(ticket.createdAt).toLocaleString('ru-RU')}</span>
     </div>

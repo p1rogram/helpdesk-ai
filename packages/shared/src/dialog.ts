@@ -18,33 +18,35 @@ export const PrioritySchema = z.enum(['low', 'normal', 'high']);
 export type Priority = z.infer<typeof PrioritySchema>;
 
 /**
- * Structured output of the "analyze" LLM call. Everything the engine needs to decide
+ * AI: Structured output of the "analyze" LLM call. Everything the engine needs to decide
  * the next step. The engine - not the model - owns the control flow.
  */
 export const AnalysisSchema = z.object({
-  /** One of catalog category ids, or "unknown" when nothing fits. */
+  /** AI: One of catalog category ids, or "unknown" when nothing fits. */
   categoryId: z.string(),
-  /** 0..1 - how sure the model is about the category. */
+  /** AI: 0..1 - how sure the model is about the category. */
   confidence: z.number().min(0).max(1),
-  /** One-sentence problem statement in the language of the user, for the ticket card. */
+  /** AI: One-sentence problem statement in the language of the user, for the ticket card. */
   summary: z.string(),
-  /** Extracted values for the clarifying fields of the category (id -> value). */
+  /** AI: Extracted values for the clarifying fields of the category (id -> value). */
   fields: z.record(z.string(), z.string()),
   tone: ToneSchema,
-  /** The message is not a support request (greeting, chit-chat, thanks, jokes, prompt games). */
+  /** AI: The message is not a support request (greeting, chit-chat, thanks, jokes, prompt games). */
   offTopic: z.boolean(),
-  /** When offTopic: a short, warm, human reply in the language of the user (1-2 sentences) that gently steers back to the problem. */
+  /** AI: When offTopic: a short, warm, human reply in the language of the user (1-2 sentences) that gently steers back to the problem. */
   smalltalkReply: z.string().optional(),
-  /** User explicitly says the problem is solved. */
+  /** AI: User explicitly says the problem is solved. */
   reportsResolved: z.boolean(),
-  /** User explicitly asks for a human. */
+  /** AI: User asks to finish / close the request ("закрой заявку", "всё, спасибо, закрывай"). */
+  asksToClose: z.boolean().optional(),
+  /** AI: User explicitly asks for a human. */
   asksForHuman: z.boolean(),
 });
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
 export const QuickReplySchema = z.object({
   label: z.string(),
-  /** Value sent back as the message of the user. */
+  /** AI: Value sent back as the message of the user. */
   value: z.string(),
 });
 export type QuickReply = z.infer<typeof QuickReplySchema>;
@@ -65,11 +67,11 @@ export const TicketCardSchema = z.object({
   resolved: z.boolean(),
   escalated: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
-  /** Who owns the dialogue right now. While 'operator', the assistant stays silent. */
+  /** AI: Who owns the dialogue right now. While 'operator', the assistant stays silent. */
   handledBy: z.enum(['ai', 'operator']),
-  /** The operator handed this ticket back to the assistant and declined further escalation. */
+  /** AI: The operator handed this ticket back to the assistant and declined further escalation. */
   escalationBlocked: z.boolean(),
-  /** Request number in the external helpdesk (help.tpu.ru), once created. */
+  /** AI: Request number in the external helpdesk (help.tpu.ru), once created. */
   externalId: z.string().nullable(),
   externalUrl: z.string().nullable(),
   createdAt: z.string(),

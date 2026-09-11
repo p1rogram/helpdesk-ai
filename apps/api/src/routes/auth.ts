@@ -4,11 +4,15 @@ import { TelegramAuthRequestSchema, type AuthResponse, type Platform } from '@he
 import type { AppContext } from '../context.js';
 import { AuthError } from '../modules/auth/index.js';
 
-const DevAuthSchema = z.object({ name: z.string().min(1).max(64) });
+const DevAuthSchema = z.object({
+  name: z.string().min(1).max(64),
+  /** AI: The website offers two doors: a guest (public questions only) and an organisation user. */
+  scope: z.enum(['guest', 'full']).default('full'),
+});
 const TenantQuery = z.object({ tenant: z.string().regex(/^[a-z0-9-]{2,32}$/).optional() });
 
 export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  /** Telegram Mini App: the client posts window.Telegram.WebApp.initData; we verify the HMAC. */
+  /** AI: Telegram Mini App: the client posts window.Telegram.WebApp.initData; we verify the HMAC. */
   app.post('/api/auth/telegram', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
     const verifier = ctx.verifiers.get('telegram');
     if (!verifier) return reply.code(503).send({ error: 'telegram_auth_disabled' });
@@ -25,7 +29,7 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
   });
 
   /**
-   * VK / MAX Mini Apps use the same contract as Telegram: the client posts the opaque signed
+   * AI: VK / MAX Mini Apps use the same contract as Telegram: the client posts the opaque signed
    * payload from the host app, the matching PlatformVerifier checks it, a session JWT is issued.
    */
   for (const platform of ['vk', 'max'] as const) {
@@ -45,14 +49,14 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
     });
   }
 
-  /** Guest login for browser demos. Only mounted when AUTH_DEV_BYPASS=true (refused in production). */
+  /** AI: Guest login for browser demos. Only mounted when AUTH_DEV_BYPASS=true (refused in production). */
   if (ctx.verifiers.has('web')) {
     app.post('/api/auth/dev', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
       const body = DevAuthSchema.safeParse(req.body);
       if (!body.success) return reply.code(400).send({ error: 'bad_request' });
       const { tenant } = TenantQuery.parse(req.query ?? {});
       const id = await ctx.verifiers.get('web')!.verify(body.data.name);
-      return issue(app, ctx, id, tenant);
+      return issue(app, ctx, id, tenant, body.data.scope);
     });
   }
 
@@ -61,10 +65,12 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
     platform: req.user.platform,
     displayName: req.user.name,
     tenant: req.user.tenant,
+    scope: req.user.scope ?? 'full',
     isAdmin:
-      ctx.config.OPERATOR_OPEN_ACCESS ||
+      req.user.scope !== 'guest' &&
+      (ctx.config.OPERATOR_OPEN_ACCESS ||
       ctx.config.adminUsers.has(`${req.user.platform}:${req.user.puid}`) ||
-      (req.user.roles?.includes('operator') ?? false),
+      (req.user.roles?.includes('operator') ?? false)),
   }));
 }
 
@@ -73,16 +79,19 @@ async function issue(
   ctx: AppContext,
   id: { platform: Platform; platformUserId: string; displayName: string },
   tenant?: string,
+  scope: 'guest' | 'full' = 'full',
 ): Promise<AuthResponse> {
   const tenantId = tenant ?? ctx.config.DEFAULT_TENANT;
   await ctx.knowledge.catalog(tenantId); // throws on unknown tenant
-  const user = await ctx.tickets.upsertUser(id.platform, id.platformUserId, id.displayName);
+  const puid = scope === 'guest' ? `guest:${id.platformUserId}` : id.platformUserId;
+  const user = await ctx.tickets.upsertUser(id.platform, puid, id.displayName);
   const token = app.jwt.sign({
     sub: user.id,
     platform: id.platform,
-    puid: id.platformUserId,
+    puid,
     name: id.displayName,
     tenant: tenantId,
+    scope,
   });
-  return { token, user: { id: user.id, platform: id.platform, displayName: id.displayName } };
+  return { token, user: { id: user.id, platform: id.platform, displayName: id.displayName, scope } };
 }

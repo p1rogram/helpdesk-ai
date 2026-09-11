@@ -12,7 +12,7 @@ export interface LoadedCatalog extends Catalog {
 }
 
 /**
- * Catalog lives in the database (editable via admin API at runtime); this repository
+ * AI: Catalog lives in the database (editable via admin API at runtime); this repository
  * keeps a per-tenant in-memory copy keyed by `tenants.version` so the hot path never
  * touches the DB. A catalog change bumps the version -> cache refreshes on next read.
  */
@@ -61,6 +61,7 @@ export class CatalogRepository {
         steps: a.steps,
         notApplicableWhen: a.notApplicableWhen ?? undefined,
         escalateAfter: a.escalateAfter,
+        audience: a.audience as 'public' | 'internal',
         source: a.source ?? undefined,
       })),
     };
@@ -74,7 +75,7 @@ export class CatalogRepository {
     return loaded;
   }
 
-  /** Full replace of a tenant catalog (import). Transactional; bumps version. */
+  /** AI: Full replace of a tenant catalog (import). Transactional; bumps version. */
   async upsert(input: unknown): Promise<LoadedCatalog> {
     const catalog = CatalogSchema.parse(input);
     validateCatalog(catalog);
@@ -120,6 +121,7 @@ export class CatalogRepository {
           steps: a.steps,
           notApplicableWhen: a.notApplicableWhen ?? null,
           escalateAfter: a.escalateAfter,
+          audience: a.audience,
           source: a.source ?? null,
         })),
       );
@@ -128,7 +130,7 @@ export class CatalogRepository {
     return (await this.get(catalog.id))!;
   }
 
-  /** Upsert a single article (admin edit) - bumps tenant version. */
+  /** AI: Upsert a single article (admin edit) - bumps tenant version. */
   async upsertArticle(tenantId: string, article: KbArticle): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx
@@ -143,6 +145,7 @@ export class CatalogRepository {
             steps: article.steps,
             notApplicableWhen: article.notApplicableWhen ?? null,
             escalateAfter: article.escalateAfter,
+            audience: article.audience,
             source: article.source ?? null,
             updatedAt: new Date(),
           },
@@ -166,7 +169,7 @@ export class CatalogRepository {
     this.cache.delete(tenantId);
   }
 
-  /** Import every data/catalog/*.json that is not yet in the DB. Existing tenants are untouched. */
+  /** AI: Import every data/catalog/*.json that is not yet in the DB. Existing tenants are untouched. */
   async seedFromDir(dir: string, log: { info(msg: string): void }, force = false): Promise<void> {
     const existing = new Set((await this.listTenants()).map((t) => t.id));
     let files: string[] = [];
