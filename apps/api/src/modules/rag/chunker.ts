@@ -49,7 +49,7 @@ export function chunkText(
       section = line;
       continue;
     }
-    // AI: An oversized paragraph is cut into sentence-aligned windows with overlap.
+    // AI: Слишком большой абзац режется на окна по границам предложений с перекрытием.
     const pieces = line.length <= max ? [line] : windows(line, max, overlap);
     for (const piece of pieces) {
       if (buf && buf.length + piece.length + 1 > target) {
@@ -72,19 +72,20 @@ export function chunkText(
   return out;
 }
 
-/** AI: Short caption-like line: no digits, no closing punctuation. */
+/** AI: Короткая строка-подпись: без цифр, без завершающей пунктуации. */
 function isLabel(line: string): boolean {
   return line.length >= 3 && line.length <= 70 && !/[.!?:;,]$/.test(line) && !/\d/.test(line);
 }
 
-/** AI: A label followed by a proper paragraph -> a heading. */
+/** AI: Подпись, за которой идёт полноценный абзац -> заголовок. */
 function isHeading(line: string, next: string | undefined): boolean {
   return isLabel(line) && next !== undefined && next.length > 80;
 }
 
 /**
- * AI: Site-wide boilerplate (menus, footers, breadcrumbs) repeats on every page and would match
- * every query. Lines shared by many pages are dropped before chunking; field labels are kept.
+ * AI: Общий для сайта шаблон (меню, подвалы, хлебные крошки) повторяется на каждой странице и
+ * совпадал бы с любым запросом. Строки, общие для многих страниц, удаляются до нарезки; подписи
+ * полей сохраняются.
  */
 export function stripBoilerplate(
   pages: string[],

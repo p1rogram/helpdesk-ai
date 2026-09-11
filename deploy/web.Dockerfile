@@ -1,4 +1,4 @@
-# AI: SPA build + Caddy in one image: nothing has to be built on the host.
+# AI: Сборка SPA + Caddy в одном образе: на хосте ничего собирать не нужно.
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

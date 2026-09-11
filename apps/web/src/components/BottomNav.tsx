@@ -6,7 +6,7 @@ export interface NavItem {
   icon: IconName;
 }
 
-/** AI: Mobile-first tab bar (Telegram Mini App and the website use the same one). */
+/** AI: Мобильная панель вкладок (Telegram Mini App и сайт используют одну и ту же). */
 export function BottomNav({
   items,
   active,

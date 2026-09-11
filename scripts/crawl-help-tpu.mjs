@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * help.tpu.ru knowledge-base collector (Naumen Service Desk portal, login required).
+ * Сборщик базы знаний help.tpu.ru (портал Naumen Service Desk, нужен вход).
  *
- * A real Chrome window opens; log in with your TPU account, then press Enter in the terminal.
- * The script then reads every knowledge-base article (title, tags, body text, links) and the
- * full service catalog, and writes them to JSON. Read-only: it never submits anything.
+ * Открывается настоящее окно Chrome; войдите под своей учётной записью ТПУ, затем нажмите Enter в
+ * терминале. Скрипт читает каждую статью базы знаний (заголовок, теги, текст, ссылки) и полный
+ * каталог услуг и записывает их в JSON. Только чтение: ничего не отправляет.
  *
- * Setup (once):   npm i -D playwright && npx playwright install chromium
- * Run:            node scripts/crawl-help-tpu.mjs --out data/raw/help-tpu.json
+ * Подготовка (один раз):   npm i -D playwright && npx playwright install chromium
+ * Запуск:                  node scripts/crawl-help-tpu.mjs --out data/raw/help-tpu.json
  *
- * Output: { "collectedAt", "services":[{name, description}], "articles":[{id,url,title,services,categories,body,links}] }
+ * Вывод: { "collectedAt", "services":[{name, description}],
+ * "articles":[{id,url,title,services,categories,body,links}] }
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -34,7 +35,7 @@ const page = await ctx.newPage();
 await page.goto(BASE);
 await ask('\nВойдите в help.tpu.ru в открывшемся окне, затем нажмите Enter здесь... ');
 
-// ---------- services catalog ----------
+// ---------- каталог услуг ----------
 await page.goto(BASE + 'navigator-services.html?activeTab=2', {
   waitUntil: 'domcontentloaded',
   timeout: 60000,
@@ -47,7 +48,7 @@ for (let i = 0; i < 40; i++) {
   await page.waitForTimeout(800);
 }
 const services = await page.evaluate(() => {
-  // AI: Each service card: name element followed by an optional description.
+  // AI: Каждая карточка услуги: элемент с названием, за ним необязательное описание.
   const items = [];
   document
     .querySelectorAll('a[href*="navigator-service-call"], a[href*="navigator-fields"]')
@@ -61,7 +62,7 @@ const services = await page.evaluate(() => {
 });
 console.log(`services: ${services.length}`);
 
-// ---------- article list ----------
+// ---------- список статей ----------
 await page.goto(BASE + 'articles.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(2000);
 const allTab = page.getByText('Все', { exact: true }).first();
@@ -83,7 +84,7 @@ const ids = await page.evaluate(() => {
 });
 console.log(`articles: ${ids.length}`);
 
-// ---------- each article ----------
+// ---------- каждая статья ----------
 const articles = [];
 for (const [i, id] of ids.entries()) {
   const url = `${BASE}article.html?kb=KB$${id}`;
@@ -104,7 +105,7 @@ for (const [i, id] of ids.entries()) {
         .map((a) => ({ text: a.textContent.trim().slice(0, 80), href: a.href }))
         .filter((l) => l.href && !/summernote/.test(l.href));
     } catch {
-      /* cross-origin */
+      /* другой origin */
     }
     return {
       title: lines[2] ?? '',

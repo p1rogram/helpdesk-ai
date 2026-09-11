@@ -1,8 +1,8 @@
 import type { Category, KbArticle, QuickReply, TicketCard } from '@helpdesk/shared';
 
 /**
- * AI: Deterministic assistant texts. No LLM cost, no variance, always polite.
- * Quick-reply values prefixed with "__" are engine commands, never sent to the model.
+ * AI: Детерминированные тексты помощника. Без затрат на модель, без вариативности, всегда вежливо.
+ * Значения кнопок с префиксом "__" - команды движка, в модель не отправляются.
  */
 export const CMD = {
   helped: '__helped',
@@ -12,7 +12,7 @@ export const CMD = {
   newTicket: '__new',
   escalate: '__escalate',
   dismiss: '__dismiss',
-  /** AI: The user withdraws the request (any state, including "with a specialist"). */
+  /** AI: Пользователь отзывает обращение (любое состояние, включая «у специалиста»). */
   close: '__close',
   keep: '__keep',
 } as const;
@@ -23,10 +23,10 @@ export const QR_AFTER_SOLUTION: QuickReply[] = [
   { label: 'Нужен специалист', value: CMD.human },
 ];
 
-/** AI: Nothing at the bottom after a closed ticket - a new chat is started from the header button. */
+/** AI: Ничего внизу после закрытого тикета - новый чат начинается кнопкой в шапке. */
 export const QR_CLOSED: QuickReply[] = [];
 
-/** AI: Escalation is blocked for this ticket: the only way out is a fresh request. */
+/** AI: Передача по этому тикету запрещена: единственный выход - новое обращение. */
 export const QR_NEW_ONLY: QuickReply[] = [];
 
 export const QR_HELPED_ONLY: QuickReply[] = [
@@ -42,12 +42,12 @@ export const QR_OFFER_ESCALATION: QuickReply[] = [
 export const QR_CLOSED_OR_NEW: QuickReply[] = [{ label: 'Нужен специалист', value: CMD.human }];
 
 /**
- * AI: While a specialist owns the ticket the user can still withdraw it - through the persistent
- * bar under the chat (survives the user's own messages), so no button in the message itself.
+ * AI: Пока тикет у специалиста, пользователь всё равно может его отозвать - через постоянную панель
+ * под чатом (она переживает его собственные сообщения), поэтому кнопки в самом сообщении нет.
  */
 export const QR_ESCALATED: QuickReply[] = [];
 
-/** AI: Asked when a message to the specialist sounds like "this is no longer relevant". */
+/** AI: Спрашивается, когда сообщение специалисту звучит как «это уже не актуально». */
 export const QR_CONFIRM_CLOSE: QuickReply[] = [
   { label: 'Закрыть обращение', value: CMD.close },
   { label: 'Оставить', value: CMD.keep },
@@ -85,14 +85,17 @@ export const T = {
 
   clarify: (question: string) => question,
 
-  /** AI: One question before the hand-over, so the specialist gets the ticket ready to work on. */
+  /**
+   * AI: Один вопрос перед передачей, чтобы специалист получил тикет, с которым можно сразу
+   * работать.
+   */
   clarifyBeforeEscalation: (question: string) =>
     `Передам специалисту. Чтобы он сразу приступил, уточните: ${lowerFirst(question)}`,
 
   clarifyButtons: (options?: string[]): QuickReply[] | undefined =>
     options?.map((o) => ({ label: o, value: o })),
 
-  /** AI: LLM-less fallback: article steps verbatim. */
+  /** AI: Запасной вариант без модели: шаги статьи дословно. */
   solutionFallback: (article: KbArticle) =>
     [
       `Похоже, это «${article.title}». Попробуйте по шагам:`,
@@ -113,25 +116,25 @@ export const T = {
       `Если не сложно, оцените ответ — это помогает делать помощника лучше.`,
     ].join('\n'),
 
-  /** AI: Confirmation for the "thanks for rating" line in the chat. */
+  /** AI: Подтверждение «спасибо за оценку» в чате. */
   rated: (rating: number) =>
     rating >= 4
       ? `Спасибо за оценку ${rating}/5! Рад, что смог помочь.`
       : `Спасибо за оценку ${rating}/5. Учту — постараюсь отвечать точнее.`,
 
-  /** AI: The user withdrew the request themselves. */
+  /** AI: Пользователь сам отозвал обращение. */
   closedByUser: (card: TicketCard) =>
     card.escalated
       ? `Обращение закрыто, специалист уведомлён. Если проблема вернётся — создайте новое обращение.`
       : `Обращение закрыто. Если проблема вернётся — создайте новое обращение.`,
 
-  /** AI: A message to the specialist that sounds like "no longer relevant" - ask, never guess. */
+  /** AI: Сообщение специалисту, похожее на «уже не актуально» - спрашиваем, никогда не гадаем. */
   confirmClose: () =>
     `Похоже, вопрос больше не актуален. Закрыть обращение? Специалист получит уведомление.`,
 
   keptOpen: () => `Хорошо, обращение остаётся у специалиста. Он ответит в этот чат.`,
 
-  /** AI: Asked before any request is created - the user decides. */
+  /** AI: Спрашивается до создания любой заявки - решает пользователь. */
   offerEscalation: (reason: EscalationReason) =>
     [
       escalationLead[reason],
@@ -166,14 +169,17 @@ export const T = {
       .filter(Boolean)
       .join('\n'),
 
-  /** AI: The operator returned the ticket and asked to solve it here. */
+  /** AI: Оператор вернул тикет и попросил решить здесь. */
   handedBackToAi: () =>
     [
       `Специалист посмотрел обращение и передал его мне — по этому вопросу помощь специалиста не требуется.`,
       `Давайте разберёмся здесь: уточните, что именно не получается, и я подскажу по шагам.`,
     ].join('\n'),
 
-  /** AI: Guests get answers, not requests: a specialist works only with identified users. */
+  /**
+   * AI: Гости получают ответы, а не заявки: специалист работает только с идентифицированными
+   * пользователями.
+   */
   guestNoEscalation: (reason: EscalationReason) =>
     [
       reason === 'user_request' ? '' : escalationLead[reason],
@@ -189,7 +195,7 @@ export const T = {
       `Опишите подробнее, что не получается — попробуем вместе. Если проблема другая, создайте новое обращение.`,
     ].join('\n'),
 
-  /** AI: A stale button pressed while a specialist owns the dialogue. */
+  /** AI: Устаревшая кнопка нажата, пока диалогом владеет специалист. */
   withOperator: () =>
     `Обращение у специалиста — он ответит в этот чат. Если хотите что-то добавить, просто напишите.`,
 

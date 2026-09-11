@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /**
- * Public site crawler (no login). Walks tpu.ru (or any site) inside allowed URL prefixes and
- * stores clean page text as JSONL - the raw material for knowledge-base articles / RAG.
+ * Краулер публичного сайта (без входа). Обходит tpu.ru (или любой сайт) в пределах разрешённых
+ * префиксов URL и сохраняет чистый текст страниц в JSONL - сырьё для статей базы знаний / RAG.
  *
- * Usage:
+ * Использование:
  *   node scripts/crawl-site.mjs --start https://tpu.ru/student --allow https://tpu.ru/student \
  *        --allow https://tpu.ru/university --max 300 --out data/raw/tpu-site.jsonl
  *
- * Options:
- *   --start <url>     seed URL (repeatable)
- *   --allow <prefix>  stay inside this URL prefix, matched on a path boundary (repeatable;
- *                     default = the origins of the seeds). "https://tpu.ru/student" allows
- *                     /student and /student/faq/, but not /students-club.
- *   --deny <prefix>   cut a subsection out of the allowed scope (repeatable)
- *   --max <n>         max pages (default 200)
- *   --delay <ms>      pause between requests (default 400 - be polite)
- *   --out <file>      JSONL output (default data/raw/site.jsonl)
+ * Параметры:
+ *   --start <url>     стартовый URL (можно повторять)
+ *   --allow <prefix>  оставаться внутри этого префикса URL, граница по пути (можно повторять;
+ *                     по умолчанию = origin стартовых URL). "https://tpu.ru/student" разрешает
+ *                     /student и /student/faq/, но не /students-club.
+ *   --deny <prefix>   вырезать подраздел из разрешённой области (можно повторять)
+ *   --max <n>         максимум страниц (по умолчанию 200)
+ *   --delay <ms>      пауза между запросами (по умолчанию 400 - будьте вежливы)
+ *   --out <file>      выходной JSONL (по умолчанию data/raw/site.jsonl)
  *
- * Output line: {"url","title","h1","text","headings":[...],"links":[...],"fetchedAt"}
- * Re-running appends only new URLs (already crawled ones are skipped).
+ * Строка вывода: {"url","title","h1","text","headings":[...],"links":[...],"fetchedAt"}
+ * Повторный запуск дописывает только новые URL (уже скачанные пропускаются).
  */
 import { readFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -63,7 +63,7 @@ if (existsSync(opt.out)) {
     try {
       seen.add(JSON.parse(line).url);
     } catch {
-      /* ignore */
+      /* игнорируем */
     }
   }
   console.log(`resuming: ${seen.size} pages already in ${opt.out}`);
@@ -76,7 +76,7 @@ const normalize = (href, base) => {
     u.hash = '';
     if (!/^https?:$/.test(u.protocol)) return null;
     if (SKIP_EXT.test(u.pathname)) return null;
-    // AI: drop tracking params
+    // AI: убираем параметры трекинга
     for (const k of [...u.searchParams.keys()])
       if (/^(utm_|yclid|fbclid|_ga)/.test(k)) u.searchParams.delete(k);
     return u.toString();
@@ -85,16 +85,16 @@ const normalize = (href, base) => {
   }
 };
 /**
- * Scope check on a PATH BOUNDARY, so `--allow https://tpu.ru/student` takes /student and
- * /student/faq/ but never /students-club. A trailing slash in the prefix is optional.
- * `--deny` cuts subsections out of an allowed scope (e.g. --deny https://tpu.ru/student/news).
+ * Проверка области на ГРАНИЦЕ ПУТИ, чтобы `--allow https://tpu.ru/student` брал /student и
+ * /student/faq/, но никогда /students-club. Завершающий слэш в префиксе необязателен. `--deny`
+ * вырезает подразделы из разрешённой области (например --deny https://tpu.ru/student/news).
  */
 const inScope = (u, prefixes) =>
   prefixes.some((raw) => {
     const p = raw.endsWith('/') ? raw.slice(0, -1) : raw;
     return u === p || u.startsWith(p + '/') || u.startsWith(p + '?');
   });
-// AI: Seeds are always crawled, even when the allow prefix is written with a trailing slash.
+// AI: Стартовые URL обходятся всегда, даже если разрешённый префикс записан с завершающим слэшем.
 const allowed = (u) => (opt.start.includes(u) || inScope(u, opt.allow)) && !inScope(u, opt.deny);
 
 const queue = [...opt.start];
@@ -108,8 +108,9 @@ while (queue.length && done < opt.max) {
   let html;
   try {
     const res = await fetch(url, {
-      // AI: A minimal header set: tpu.ru sits behind Qrator, which answers 503 to requests that
-      // imitate a full browser header block but are not one. Plain UA + Accept passes.
+      // AI: Минимальный набор заголовков: tpu.ru стоит за Qrator, который отвечает 503 на запросы,
+      // имитирующие полный набор заголовков браузера, но им не являющиеся. Простые UA + Accept
+      // проходят.
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',

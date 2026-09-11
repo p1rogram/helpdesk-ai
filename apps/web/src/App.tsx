@@ -36,7 +36,8 @@ export function App() {
   const [showLanding, setShowLanding] = useState(true);
 
   const [tab, setTab] = useState<Tab>('chat');
-  // AI: -1 / 1 - which way the last switch went, so the new pane slides in from that side.
+  // AI: -1 / 1 - в какую сторону было последнее переключение, чтобы новая панель въезжала с той
+  // стороны.
   const [slide, setSlide] = useState<1 | -1>(1);
   const [openTicketId, setOpenTicketId] = useState<string | undefined>(undefined);
   const [currentTicket, setCurrentTicketState] = useState<string | undefined>(() => {
@@ -52,7 +53,7 @@ export function App() {
       if (id) localStorage.setItem('helpdesk.ticket', id);
       else localStorage.removeItem('helpdesk.ticket');
     } catch {
-      /* ignore */
+      /* игнорируем */
     }
   };
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -64,7 +65,7 @@ export function App() {
   const [scope, setScope] = useState<'guest' | 'full'>('full');
   const screenRef = useRef<HTMLDivElement>(null);
 
-  // ---------------------------------------------------------------- theme ---
+  // ---------------------------------------------------------------- тема ---
   const [theme, setTheme] = useState<ThemeMode>(getThemeMode);
   const refreshTheme = useCallback(
     (mode: ThemeMode) => {
@@ -84,14 +85,14 @@ export function App() {
   const cycleTheme = () =>
     changeTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light');
 
-  // AI: The product keeps its own palette; from the host we take only light/dark (see refreshTheme).
+  // AI: У продукта своя палитра; от хоста берём только светлое/тёмное (см. refreshTheme).
   useEffect(() => {
     platform.ready();
     platform.expand();
   }, [platform]);
   useEffect(() => installSoundHooks(), []);
 
-  // ----------------------------------------------------------------- auth ---
+  // ----------------------------------------------------------------- вход ---
   useEffect(() => {
     if (!restoring) return;
     api
@@ -154,8 +155,8 @@ export function App() {
       .catch(() => {});
   }, [api, authed]);
 
-  // AI: Swipe left/right moves between the bottom tabs; the hook ignores mostly-vertical
-  // gestures and anything started inside a horizontally scrolling strip.
+  // AI: Свайп влево/вправо переключает нижние вкладки; хук игнорирует преимущественно вертикальные
+  // жесты и всё, что началось внутри горизонтально прокручиваемой полосы.
   const tabKeys = useMemo<Tab[]>(
     () =>
       isAdmin
@@ -184,7 +185,7 @@ export function App() {
   );
   useSwipeNavigation(screenRef, swipeTo, authed);
 
-  // ---------------------------------------------------------------- render --
+  // ---------------------------------------------------------------- рендер --
   if (restoring) {
     return (
       <div className="app">
@@ -256,8 +257,7 @@ export function App() {
         showProfile
       />
 
-      {/* AI: Every tab stays mounted and keeps its state (scroll, drafts, live subscriptions);
-          switching only toggles visibility, so nothing is re-fetched or re-rendered from scratch. */}
+      {/* AI: Каждая вкладка остаётся смонтированной и хранит своё состояние (прокрутка, черновики, живые подписки); переключение лишь меняет видимость, поэтому ничего не перезапрашивается и не рендерится с нуля. */}
       <div className="screen" ref={screenRef} data-tab={tab}>
         <div className={paneClass} hidden={tab !== 'chat'}>
           <ChatScreen

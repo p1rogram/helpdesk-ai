@@ -16,8 +16,8 @@ export interface DbHandle {
 }
 
 /**
- * AI: Postgres in production, embedded PGlite (same SQL dialect) when DATABASE_URL is empty.
- * Same schema, same queries - zero-install dev/demo mode without Docker.
+ * AI: В production - Postgres, при пустом DATABASE_URL - встроенный PGlite (тот же диалект SQL).
+ * Одна схема, одни запросы - dev/demo без Docker и без установки.
  */
 export async function connectDb(opts: { url?: string; pgliteDir: string }): Promise<DbHandle> {
   if (opts.url) {
@@ -25,22 +25,24 @@ export async function connectDb(opts: { url?: string; pgliteDir: string }): Prom
     const db = drizzlePg(pool, { schema }) as unknown as Db;
     return { db, kind: 'postgres', close: () => pool.end() };
   }
-  // AI: pgvector is bundled with PGlite, so dev and prod run the same vector SQL.
+  // AI: pgvector входит в PGlite, поэтому dev и prod выполняют один и тот же векторный SQL.
   const client = new PGlite(opts.pgliteDir, { extensions: { vector } });
   const db = drizzlePglite(client, { schema }) as unknown as Db;
   return { db, kind: 'pglite', close: () => client.close() };
 }
 
 /**
- * AI: Idempotent bootstrap DDL. For a hackathon this beats a migration toolchain: one file,
- * runs on every boot, safe to re-run. drizzle-kit migrations can replace it later.
+ * AI: Идемпотентный DDL при старте. Для хакатона это лучше инструментария миграций: один файл,
+ * выполняется при каждом запуске, безопасно повторять. Позже его могут заменить миграции
+ * drizzle-kit.
  */
 export async function ensureSchema(db: Db): Promise<void> {
-  // AI: One statement per call: PGlite (and pg prepared statements) reject multi-command strings.
+  // AI: По одному выражению на вызов: PGlite (и prepared statements в pg) не принимают строки с
+  // несколькими командами.
   for (const stmt of DDL) {
     await db.execute(sql.raw(stmt));
   }
-  // AI: Additive migrations for databases created before these columns existed.
+  // AI: Аддитивные миграции для баз, созданных до появления этих колонок.
   for (const col of [
     'external_id TEXT',
     'external_url TEXT',
@@ -141,9 +143,9 @@ const DDL: string[] = [
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`,
   `CREATE INDEX IF NOT EXISTS messages_ticket_created ON messages(ticket_id, created_at)`,
-  // AI: RAG corpus. Chunks of crawled documentation with their dense vector; the vector is a JSON
-  // float array so the same schema works in PGlite (dev) and Postgres (prod). Upgrade path for
-  // hundreds of thousands of chunks: pgvector column + HNSW index behind the same RagService API.
+  // AI: Корпус RAG. Фрагменты скачанной документации с их плотным вектором; вектор хранится
+  // JSON-массивом, чтобы одна схема работала и в PGlite (dev), и в Postgres (prod). Для сотен тысяч
+  // фрагментов - колонка pgvector + HNSW-индекс за тем же API RagService.
   `CREATE TABLE IF NOT EXISTS rag_chunks (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

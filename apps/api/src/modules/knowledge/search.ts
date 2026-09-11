@@ -1,9 +1,9 @@
 import type { KbArticle } from '@helpdesk/shared';
 
 /**
- * AI: Lightweight lexical retrieval over the tenant knowledge base (BM25-style scoring with a
- * crude Russian prefix stemmer). Sub-millisecond for thousands of articles, deterministic,
- * no external services. Upgrade path: pgvector embeddings behind the same `search()` signature.
+ * AI: Лёгкий лексический поиск по базе знаний тенанта (оценка в духе BM25 с грубым префиксным
+ * стеммером для русского). Доли миллисекунды на тысячи статей, детерминированно, без внешних
+ * сервисов. Путь роста: эмбеддинги pgvector за той же сигнатурой `search()`.
  */
 export interface ScoredArticle {
   article: KbArticle;
@@ -170,7 +170,7 @@ const STOP = new Set([
   'is',
   'to',
   'of',
-  // AI: chat filler that carries no topical signal
+  // AI: разговорный мусор без тематического сигнала
   'могу',
   'можете',
   'нужно',
@@ -223,8 +223,8 @@ export class KnowledgeIndex {
 
   constructor(articles: KbArticle[]) {
     for (const a of articles) {
-      // AI: Field weighting: title and symptoms describe the problem, steps describe the fix -
-      // a word in the steps must not outrank the same word in another article's title.
+      // AI: Веса полей: заголовок и симптомы описывают проблему, шаги - способ починки; слово в
+      // шагах не должно перевешивать то же слово в заголовке другой статьи.
       const tf = new Map<string, number>();
       let len = 0;
       const add = (text: string, w: number) => {

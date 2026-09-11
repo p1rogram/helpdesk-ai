@@ -1,10 +1,10 @@
 /**
- * AI: Personal-data gate for the knowledge corpus. Scans everything that ends up in the image
- * (data/catalog, data/raw) with the same rules the API applies at ingest and fails when a name
- * or a mobile number is found - a fresh crawl cannot be built into a release uncleaned.
+ * AI: Гейт персональных данных для корпуса знаний. Проверяет всё, что попадает в образ
+ * (data/catalog, data/raw), теми же правилами, что API применяет при индексации, и падает, если
+ * найдено имя или мобильный номер - свежий краул не может попасть в релиз неочищенным.
  *
- *   npm run build -w @helpdesk/api && node scripts/check-personal-data.mjs   # check
- *   node scripts/check-personal-data.mjs --fix                              # clean in place
+ *   npm run build -w @helpdesk/api && node scripts/check-personal-data.mjs   # проверка
+ *   node scripts/check-personal-data.mjs --fix                              # очистить на месте
  */
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -19,7 +19,7 @@ const walk = (p) => {
 };
 (roots.length ? roots : ['data/catalog', 'data/raw']).forEach(walk);
 
-/** AI: Redacts every string value of a JSON document, whatever its shape. */
+/** AI: Чистит каждое строковое значение JSON-документа, какой бы формы он ни был. */
 const deep = (v) => {
   if (typeof v === 'string') return redactNames(v);
   if (Array.isArray(v)) return v.map(deep);

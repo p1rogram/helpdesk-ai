@@ -6,7 +6,7 @@ import { AuthError } from '../modules/auth/index.js';
 
 const DevAuthSchema = z.object({
   name: z.string().min(1).max(64),
-  /** AI: The website offers two doors: a guest (public questions only) and an organisation user. */
+  /** AI: На сайте два входа: гость (только публичные вопросы) и пользователь организации. */
   scope: z.enum(['guest', 'full']).default('full'),
 });
 const TenantQuery = z.object({
@@ -17,7 +17,9 @@ const TenantQuery = z.object({
 });
 
 export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  /** AI: Telegram Mini App: the client posts window.Telegram.WebApp.initData; we verify the HMAC. */
+  /**
+   * AI: Telegram Mini App: клиент присылает window.Telegram.WebApp.initData; мы проверяем HMAC.
+   */
   app.post(
     '/api/auth/telegram',
     { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
@@ -39,8 +41,9 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
   );
 
   /**
-   * AI: VK / MAX Mini Apps use the same contract as Telegram: the client posts the opaque signed
-   * payload from the host app, the matching PlatformVerifier checks it, a session JWT is issued.
+   * AI: VK / MAX Mini Apps используют тот же контракт, что Telegram: клиент присылает непрозрачный
+   * подписанный payload от хост-приложения, соответствующий PlatformVerifier проверяет его,
+   * выдаётся JWT сессии.
    */
   for (const platform of ['vk', 'max'] as const) {
     app.post(
@@ -64,7 +67,7 @@ export async function authRoutes(app: FastifyInstance, ctx: AppContext): Promise
     );
   }
 
-  /** AI: Website login without an identity provider: guest (public topics) or demo student. */
+  /** AI: Вход на сайте без провайдера идентификации: гость (публичные темы) или демо-студент. */
   if (ctx.verifiers.has('web')) {
     app.post(
       '/api/auth/dev',

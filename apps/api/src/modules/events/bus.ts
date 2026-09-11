@@ -11,8 +11,8 @@ export interface TopicPayloads {
 }
 
 /**
- * AI: Transport-agnostic event bus. Business code depends on this interface only.
- * Implementations: MemoryEventBus (dev/tests), KafkaEventBus (prod).
+ * AI: Шина событий, не зависящая от транспорта. Бизнес-код зависит только от этого интерфейса.
+ * Реализации: MemoryEventBus (dev/тесты), KafkaEventBus (prod).
  */
 export interface EventBus {
   publish<T extends TopicName>(topic: T, key: string, event: TopicPayloads[T]): Promise<void>;

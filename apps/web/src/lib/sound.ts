@@ -1,10 +1,10 @@
 /**
- * AI: Sounds are opt-in per device and never touch the server. Two channels, each with its own
- * switch in the profile: short effects on taps (buttons, quick replies, send) and background
- * music. Files live in /public/sounds; a missing file fails silently - the app never breaks
- * because of audio. Browsers allow playback only after a user gesture, so both channels start
- * from a click: the effect itself is a click, the music is (re)started by the profile switch or
- * by the first tap after loading.
+ * AI: Звуки включаются по желанию на устройстве и не касаются сервера. Два канала, у каждого свой
+ * переключатель в профиле: короткие эффекты на нажатия (кнопки, быстрые ответы, отправка) и фоновая
+ * музыка. Файлы лежат в /public/sounds; отсутствующий файл тихо игнорируется - приложение никогда
+ * не ломается из-за аудио. Браузеры разрешают воспроизведение только после жеста пользователя,
+ * поэтому оба канала стартуют от клика: эффект сам по себе клик, музыка (пере)запускается
+ * переключателем в профиле или первым нажатием после загрузки.
  */
 export interface SoundSettings {
   sfx: boolean;
@@ -12,7 +12,7 @@ export interface SoundSettings {
 }
 
 const KEY = 'helpdesk.sound';
-/** AI: First source that exists wins: the team's mp3, otherwise the bundled wav placeholder. */
+/** AI: Побеждает первый существующий источник: mp3 команды, иначе встроенная wav-заглушка. */
 const SFX_SOURCES = ['/sounds/click.mp3', '/sounds/click.wav'];
 const MUSIC_SOURCES = ['/sounds/bg.mp3', '/sounds/bg.ogg'];
 const MUSIC_VOLUME = 0.2;
@@ -22,7 +22,7 @@ export function getSoundSettings(): SoundSettings {
     const raw = localStorage.getItem(KEY);
     if (raw) return { sfx: false, music: false, ...(JSON.parse(raw) as Partial<SoundSettings>) };
   } catch {
-    /* private mode or blocked storage - defaults below */
+    /* приватный режим или заблокированное хранилище - значения по умолчанию ниже */
   }
   return { sfx: false, music: false };
 }
@@ -31,7 +31,7 @@ export function setSoundSettings(s: SoundSettings): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
   } catch {
-    /* ignore */
+    /* игнорируем */
   }
   applySoundSettings(s);
 }
@@ -68,7 +68,7 @@ function musicElement(): HTMLAudioElement {
   return music;
 }
 
-/** AI: Short tap sound; overlapping taps restart it instead of queueing. */
+/** AI: Короткий звук нажатия; наложившиеся нажатия перезапускают его, а не ставят в очередь. */
 export function playTap(): void {
   if (!current.sfx) return;
   try {
@@ -76,11 +76,11 @@ export function playTap(): void {
     a.currentTime = 0;
     void a.play().catch(() => undefined);
   } catch {
-    /* ignore */
+    /* игнорируем */
   }
 }
 
-/** AI: Music is started here (needs a gesture); pause happens immediately on switch-off. */
+/** AI: Музыка запускается здесь (нужен жест); пауза происходит сразу при выключении. */
 export function applySoundSettings(s: SoundSettings): void {
   current = s;
   if (s.sfx) sfxElement().load();
@@ -94,8 +94,8 @@ export function applySoundSettings(s: SoundSettings): void {
 }
 
 /**
- * AI: One listener for the whole app: every real button tap makes the sound, and the same tap
- * is the user gesture that lets background music start after a page load.
+ * AI: Один слушатель на всё приложение: каждое настоящее нажатие кнопки даёт звук, и то же нажатие
+ * - жест пользователя, который позволяет фоновой музыке стартовать после загрузки страницы.
  */
 export function installSoundHooks(): () => void {
   applySoundSettings(getSoundSettings());

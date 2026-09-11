@@ -23,7 +23,10 @@ export function HistoryScreen(props: {
   onNew?: () => void;
   refreshKey?: number;
   activeId?: string;
-  /** AI: The pane stays mounted, so data is re-read when the tab becomes visible again. */
+  /**
+   * AI: Панель остаётся смонтированной, поэтому данные перечитываются, когда вкладка снова
+   * становится видимой.
+   */
   active?: boolean;
 }) {
   const [items, setItems] = useState<TicketCard[] | null>(null);

@@ -14,7 +14,7 @@ import { CatalogRepository, KnowledgeService } from '../modules/knowledge/index.
 import { LlmService, LlmUnavailableError } from '../modules/llm/index.js';
 import { TicketRepository } from '../modules/tickets/repository.js';
 
-/** AI: Scripted LLM: returns canned analyses, streams a fixed solution. */
+/** AI: Модель по сценарию: возвращает заготовленные анализы, стримит фиксированное решение. */
 class FakeLlm extends LlmService {
   queue: Array<Partial<Analysis> | Error> = [];
   constructor() {
@@ -111,7 +111,7 @@ describe('DialogEngine', () => {
     expect(r1.text).toMatch(/Откуда вы подключаетесь/);
     expect(r1.quick.map((q) => q.label)).toContain('Из дома / удалённо');
 
-    // AI: Quick-reply option answers the pending field deterministically - no LLM call is made.
+    // AI: Вариант из кнопки отвечает на ожидаемое поле детерминированно - модель не вызывается.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const r2 = await collect(engine.handle(t2, user, 'Из дома / удалённо'));
     expect(llm.queue.length).toBe(0);
@@ -119,7 +119,7 @@ describe('DialogEngine', () => {
     expect(r2.ticket.articleId).toMatch(/^network-vpn/);
     expect(r2.text).toContain('Шаг из модели');
     expect(r2.quick.map((q) => q.value)).toEqual([CMD.helped, CMD.notHelped, CMD.human]);
-    // AI: Exactly one clarification was asked - the second field is optional.
+    // AI: Задан ровно один уточняющий вопрос - второе поле необязательное.
     expect((await tickets.get(ticket.id, user.id))!.clarificationsAsked).toBe(1);
   });
 
@@ -155,7 +155,7 @@ describe('DialogEngine', () => {
     const { user, ticket } = await fresh();
     llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Заблокирован аккаунт' });
     const r1 = await collect(engine.handle(ticket, user, 'Позовите живого человека'));
-    // AI: Not escalated yet: the specialist would have to ask this first thing.
+    // AI: Пока не передано: специалисту пришлось бы первым делом спросить именно это.
     expect(r1.ticket.state).toBe('clarifying');
     expect(r1.text).toMatch(/Передам специалисту/);
     expect(r1.quick.map((q) => q.label)).toContain('Студент');
@@ -189,7 +189,7 @@ describe('DialogEngine', () => {
     });
     await collect(engine.handle(ticket, user, 'Позовите специалиста'));
 
-    // AI: "No longer relevant" is not closed on a guess - the assistant asks.
+    // AI: «Уже не актуально» не закрывается по догадке - помощник спрашивает.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const r2 = await collect(engine.handle(t2, user, 'уже не актуально, разобрался'));
     expect(r2.ticket.state).toBe('escalated');
@@ -223,7 +223,7 @@ describe('DialogEngine', () => {
 
   it('asks for the room in a dorm and refuses a building that does not exist', async () => {
     const { user, ticket } = await fresh();
-    // AI: The model copied a non-existent building into the fields - it must not survive.
+    // AI: Модель скопировала в поля несуществующий корпус - он не должен выжить.
     llm.queue.push({
       categoryId: 'campus',
       summary: 'Нет света',
@@ -237,7 +237,7 @@ describe('DialogEngine', () => {
     const r2 = await collect(engine.handle(t2, user, 'ой, общежитие 12'));
     llm.queue.push({ categoryId: 'campus', summary: 'Нет света', fields: {} });
     expect(r2.ticket.fields.building).toBe('общежитие №12');
-    // a dorm problem needs the room; a building would not
+    // проблема в общежитии требует комнату; для корпуса не требуется
     expect(r2.ticket.state).toBe('clarifying');
     expect(r2.ticket.state === 'clarifying' && r2.text).toMatch(/комнат/);
   });
@@ -313,7 +313,8 @@ describe('DialogEngine', () => {
 
   it('never creates a request on its own: offers escalation and waits for consent', async () => {
     const { user, ticket } = await fresh();
-    // AI: Category known, but nothing in the KB matches -> the assistant asks instead of escalating.
+    // AI: Категория известна, но в базе знаний ничего не подходит -> помощник спрашивает, а не
+    // передаёт.
     llm.queue.push({
       categoryId: 'general',
       confidence: 0.9,
@@ -331,20 +332,20 @@ describe('DialogEngine', () => {
       expect(r2.ticket.state).toBe('intake');
       expect(r2.ticket.escalated).toBe(false);
     } else {
-      // AI: A KB article matched - still no request was created without asking.
+      // AI: Статья базы знаний подошла - заявка всё равно не создана без вопроса.
       expect(r1.ticket.escalated).toBe(false);
     }
   });
 
   it('never lets a guest reach a specialist: no request, no operator, no such buttons', async () => {
     const { user, ticket } = await fresh();
-    // AI: free-text request for a human
+    // AI: просьба позвать человека свободным текстом
     llm.queue.push({ asksForHuman: true, categoryId: 'general', summary: 'Хочет оператора' });
     const r1 = await collect(engine.handle(ticket, user, 'Позовите оператора', 'guest'));
     expect(r1.ticket.state).not.toBe('escalated');
     expect(r1.ticket.escalated).toBe(false);
     expect(r1.text).toMatch(/гостевом режиме/);
-    // AI: the button commands are refused too
+    // AI: команды-кнопки тоже отклоняются
     for (const cmd of [CMD.human, CMD.escalate]) {
       const t = (await tickets.get(ticket.id, user.id))!;
       const r = await collect(engine.handle(t, user, cmd, 'guest'));
@@ -352,7 +353,7 @@ describe('DialogEngine', () => {
       expect(r.quick.map((q) => q.value)).not.toContain(CMD.human);
       expect(r.quick.map((q) => q.value)).not.toContain(CMD.escalate);
     }
-    // AI: a topic without a public article ends with contacts, not with an offer to create a request
+    // AI: тема без публичной статьи заканчивается контактами, а не предложением создать заявку
     const { user: u2, ticket: t2 } = await fresh();
     llm.queue.push({
       categoryId: 'general',
@@ -379,7 +380,7 @@ describe('DialogEngine', () => {
     expect(r.ticket.state).toBe('escalated');
     expect(r.ticket.handledBy).toBe('operator');
 
-    // AI: A follow-up message must NOT produce an assistant answer - it belongs to the operator.
+    // AI: Следующее сообщение НЕ должно порождать ответ помощника - оно принадлежит оператору.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const events: ChatStreamEvent[] = [];
     for await (const e of engine.handle(t2, user, 'Ещё деталь: логин ivanov')) events.push(e);
@@ -392,7 +393,7 @@ describe('DialogEngine', () => {
 
   it('never escalates again once the operator handed the ticket back', async () => {
     const { user, ticket } = await fresh();
-    // AI: Operator hand-back: assistant resumes, escalation forbidden for this ticket.
+    // AI: Возврат оператором: помощник продолжает, передача по этому тикету запрещена.
     await tickets.update(ticket.id, { handledBy: 'ai', escalationBlocked: true, state: 'intake' });
     const t1 = (await tickets.get(ticket.id, user.id))!;
     const r1 = await collect(engine.handle(t1, user, CMD.human));
@@ -400,7 +401,7 @@ describe('DialogEngine', () => {
     expect(r1.ticket.escalated).toBe(false);
     expect(r1.text).toMatch(/специалист уже принял решение/i);
 
-    // AI: Even an explicit "I want a human" from the analysis is refused.
+    // AI: Даже явное «хочу человека» из анализа отклоняется.
     llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'x' });
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const r2 = await collect(engine.handle(t2, user, 'Хочу живого человека'));

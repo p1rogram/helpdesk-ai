@@ -1,6 +1,7 @@
 /**
- * AI: Tolerant JSON extraction for model output. Handles: bare JSON, ```json fences, prose before or
- * after the object. Returns `undefined` when nothing parseable is found (caller validates with Zod).
+ * AI: Терпимое извлечение JSON из вывода модели. Понимает: голый JSON, ограждения ```json, текст до
+ * или после объекта. Возвращает `undefined`, если ничего разобрать не удалось (вызывающий код
+ * проверяет через Zod).
  */
 export function extractJson(text: string): unknown {
   const trimmed = text.trim();

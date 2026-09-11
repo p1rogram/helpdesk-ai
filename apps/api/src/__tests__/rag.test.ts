@@ -49,7 +49,10 @@ describe('chunker', () => {
   });
 });
 
-/** AI: Deterministic toy embedder: a bag of hand-picked concepts, so paraphrases land close together. */
+/**
+ * AI: Детерминированный игрушечный эмбеддер: мешок подобранных вручную понятий, чтобы парафразы
+ * оказывались рядом.
+ */
 class ToyEmbedder implements Embedder {
   readonly model = 'toy';
   readonly dims = 3;
@@ -98,28 +101,29 @@ describe('RagService', () => {
     await ensureSchema(h.db);
     await h.db.insert(tenants).values({ id: 't', sphere: 'test', organisation: 'org' });
     const rag = new RagService(h.db, new ToyEmbedder(), { info: () => {}, warn: () => {} });
-    // AI: PGlite ships pgvector: the dense half runs in the database here exactly as in production.
+    // AI: PGlite поставляется с pgvector: векторная половина здесь работает в базе ровно как в
+    // production.
     await rag.prepareStorage();
     expect(rag.denseBackend).toBe('pgvector');
 
     expect(await rag.ingest('t', docs)).toEqual({ chunks: 3, embedded: 3 });
-    // the same corpus again: nothing changed, nothing re-embedded
+    // тот же корпус ещё раз: ничего не изменилось, ничего не пересчитано
     expect(await rag.ingest('t', docs)).toEqual({ chunks: 3, embedded: 0 });
 
-    // paraphrase without shared words -> found by the dense half
+    // парафраз без общих слов -> найден векторной половиной
     const dense = await rag.search('t', 'не могу зайти', { limit: 3 });
     expect(dense[0]?.url).toBe('https://help.example/login');
 
-    // exact words -> lexical + dense agree
+    // точные слова -> лексика и векторы согласны
     const both = await rag.search('t', 'экскурсия в музей', { limit: 3 });
     expect(both[0]?.url).toBe('https://example/excursion');
     expect(both[0]!.lexical).toBeGreaterThan(0);
 
-    // guest never sees internal documentation
+    // гость никогда не видит внутреннюю документацию
     const guest = await rag.search('t', 'не могу зайти логин', { scope: 'guest', limit: 3 });
     expect(guest.every((p) => !p.url.startsWith('https://help.example'))).toBe(true);
 
-    // AI: Same corpus, no extension: the in-memory fallback ranks identically.
+    // AI: Тот же корпус без расширения: запасной вариант в памяти ранжирует так же.
     const plain = new RagService(h.db, new ToyEmbedder(), { info: () => {}, warn: () => {} });
     expect(plain.denseBackend).toBe('memory');
     expect((await plain.search('t', 'не могу зайти', { limit: 3 }))[0]?.url).toBe(
@@ -142,7 +146,7 @@ describe('RagService', () => {
 
     await replicaA.ingest('t', docs.slice(0, 1));
     expect((await replicaB.search('t', 'экскурсия в музей')).length).toBe(0);
-    // AI: B has an index in memory; A re-ingests; B notices through the database fingerprint.
+    // AI: У B индекс в памяти; A переиндексирует; B замечает это по отпечатку базы.
     await replicaA.ingest('t', docs);
     expect((await replicaB.search('t', 'экскурсия в музей'))[0]?.url).toBe(
       'https://example/excursion',

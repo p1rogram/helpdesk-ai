@@ -2,9 +2,10 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AuthError } from './telegram.js';
 
 /**
- * AI: VK Mini Apps launch parameters. The app receives them in the URL (`vk_user_id`, `vk_app_id`,
- * `vk_ts`, ..., `sign`); the signature is HMAC-SHA256 over the sorted `vk_*` query string with the
- * app's secret key, base64url-encoded. Docs: dev.vk.com/ru/mini-apps/development/launch-params-sign
+ * AI: Параметры запуска VK Mini Apps. Приложение получает их в URL (`vk_user_id`, `vk_app_id`,
+ * `vk_ts`, ..., `sign`); подпись - HMAC-SHA256 от отсортированной строки запроса `vk_*` секретным
+ * ключом приложения в base64url. Документация:
+ * dev.vk.com/ru/mini-apps/development/launch-params-sign
  */
 export interface VerifiedVkLaunch {
   userId: string;

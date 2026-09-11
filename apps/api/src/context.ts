@@ -22,7 +22,7 @@ import { OperatorHub } from './modules/operator/hub.js';
 import { LocalEmbedder, NullEmbedder, RagService } from './modules/rag/index.js';
 import type { FastifyInstance } from 'fastify';
 
-/** AI: Composition root: every dependency is built once here and injected explicitly. */
+/** AI: Корень композиции: каждая зависимость создаётся здесь один раз и передаётся явно. */
 export interface AppContext {
   config: AppConfig;
   dbHandle: DbHandle;
@@ -41,7 +41,7 @@ export interface AppContext {
     ldap: LdapProvider | null;
     email: EmailCodeProvider | null;
   };
-  /** AI: Set by buildApp - needed to sign tokens from route modules. */
+  /** AI: Устанавливается в buildApp - нужно, чтобы подписывать токены из модулей маршрутов. */
   app: FastifyInstance;
   close(): Promise<void>;
 }
@@ -73,8 +73,8 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   );
   const knowledge = new KnowledgeService(catalogs);
 
-  // AI: RAG corpus: crawled documentation, chunked + embedded locally. Ingest runs in the background
-  // so the API answers from the catalog immediately; RAG joins as soon as the index is ready.
+  // AI: Корпус RAG: скачанная документация, нарезанная и векторизованная локально. Индексация идёт
+  // в фоне, чтобы API сразу отвечал по каталогу; RAG подключается, как только индекс готов.
   const embedder =
     config.RAG_ENABLED && config.RAG_EMBEDDINGS === 'local'
       ? new LocalEmbedder({
@@ -88,8 +88,8 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     warn: (m) => log.warn(m),
   });
   if (config.RAG_ENABLED) {
-    // AI: In the background: the API answers /health at once; ingest (when enabled) and then the
-    // warm-up (model load + index build) happen before the first user asks anything.
+    // AI: В фоне: API сразу отвечает на /health; индексация (если включена) и затем прогрев
+    // (загрузка модели + построение индекса) успевают до первого вопроса пользователя.
     void (async () => {
       await rag.prepareStorage();
       if (config.RAG_INGEST_ON_BOOT) {
@@ -134,7 +134,8 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
 
   const tickets = new TicketRepository(dbHandle.db);
 
-  // AI: Live channel for operator consoles, fed by the event bus (works across API replicas on Kafka).
+  // AI: Живой канал для консолей операторов, питается от шины событий (работает и между репликами
+  // API через Kafka).
   const operatorHub = new OperatorHub();
   await operatorHub.attach(
     events,

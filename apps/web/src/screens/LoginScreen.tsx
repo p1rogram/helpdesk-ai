@@ -7,13 +7,13 @@ type Mode = 'menu' | 'ldap' | 'email' | 'guest' | 'student';
 const MODES = ['sso', 'ldap', 'email', 'guest', 'demo'] as const;
 
 /**
- * AI: Browser login. Inside a messenger the login is silent; here the user picks what the
- * organisation enabled: SSO (redirect), domain login/password (LDAP), e-mail code, or guest demo.
+ * AI: Вход в браузере. Внутри мессенджера вход тихий; здесь пользователь выбирает то, что включила
+ * организация: SSO (редирект), доменный логин/пароль (LDAP), код на почту или гостевое демо.
  */
 export function LoginScreen(props: {
   api: ApiClient;
   platform: PlatformAdapter;
-  /** AI: Sphere override from the URL (?tenant=...); default sphere otherwise. */
+  /** AI: Переопределение сферы из URL (?tenant=...); иначе сфера по умолчанию. */
   tenant?: string;
   error: string | null;
   onLoggedIn: () => void;
@@ -39,7 +39,7 @@ export function LoginScreen(props: {
         setProviders(p.providers);
         setSsoLabel(p.ssoLabel);
         setDomains(p.emailDomains);
-        // AI: A single non-SSO provider opens directly.
+        // AI: Единственный не-SSO провайдер открывается сразу.
         const enabled = MODES.filter((k) => p.providers[k]);
         const only =
           enabled.length === 1 && enabled[0] !== 'guest' && enabled[0] !== 'demo'

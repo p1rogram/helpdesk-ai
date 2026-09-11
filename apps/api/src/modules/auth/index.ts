@@ -9,7 +9,7 @@ export { AuthError } from './telegram.js';
 export interface VerifiedIdentity {
   platform: Platform;
   platformUserId: string;
-  /** AI: Always a pseudonym - see `pseudonym()`. */
+  /** AI: Всегда псевдоним - см. `pseudonym()`. */
   displayName: string;
 }
 
@@ -27,7 +27,10 @@ export function pseudonym(platform: string, platformUserId: string): string {
   return `Пользователь ${tag}`;
 }
 
-/** AI: One verifier per messenger. Adding VK / MAX = adding one file that implements this. */
+/**
+ * AI: Один верификатор на мессенджер. Добавить VK / MAX = добавить один файл, реализующий этот
+ * интерфейс.
+ */
 export interface PlatformVerifier {
   platform: Platform;
   verify(payload: string): Promise<VerifiedIdentity> | VerifiedIdentity;
@@ -47,19 +50,19 @@ export function telegramVerifier(botToken: string): PlatformVerifier {
   };
 }
 
-/** AI: VK Mini Apps: the client posts window.location.search (vk_* params + sign). */
+/** AI: VK Mini Apps: клиент присылает window.location.search (параметры vk_* + sign). */
 export function vkVerifier(appSecret: string, appId?: string): PlatformVerifier {
   return {
     platform: 'vk',
     verify(launchParams) {
       const v = verifyVkLaunchParams(launchParams, appSecret, { expectedAppId: appId });
-      // AI: VK does not include the name in launch params; the client may pass it separately later.
+      // AI: VK не передаёт имя в параметрах запуска; клиент может передать его отдельно позже.
       return { platform: 'vk', platformUserId: v.userId, displayName: pseudonym('vk', v.userId) };
     },
   };
 }
 
-/** AI: MAX Mini Apps: same init-data model as Telegram. */
+/** AI: MAX Mini Apps: та же модель init data, что у Telegram. */
 export function maxVerifier(botToken: string, secretLabel?: string): PlatformVerifier {
   return {
     platform: 'max',
@@ -74,29 +77,36 @@ export function maxVerifier(botToken: string, secretLabel?: string): PlatformVer
   };
 }
 
-/** AI: Website identity without a provider: guest (WEB_GUEST_LOGIN) or demo student (WEB_DEMO_LOGIN). */
+/**
+ * AI: Идентичность на сайте без провайдера: гость (WEB_GUEST_LOGIN) или демо-студент
+ * (WEB_DEMO_LOGIN).
+ */
 export function devVerifier(): PlatformVerifier {
   return {
     platform: 'web',
     verify(name) {
       const clean = name.trim().slice(0, 64);
       if (!clean) throw new AuthError('name required');
-      // AI: The typed name is only a key to find the same demo account again - it is hashed, not stored.
+      // AI: Введённое имя - только ключ, чтобы снова найти тот же демо-аккаунт; оно хэшируется, а
+      // не хранится.
       const id = createHash('sha256').update(clean.toLowerCase()).digest('hex').slice(0, 16);
       return { platform: 'web', platformUserId: id, displayName: pseudonym('web', id) };
     },
   };
 }
 
-/** AI: JWT claims we issue. Short-lived; the client re-authenticates with fresh initData. */
+/** AI: Claims выдаваемого JWT. Короткоживущий; клиент заново проходит вход со свежими initData. */
 export interface SessionClaims {
   sub: string; // users.id
   platform: Platform;
   puid: string; // platform user id
   name: string;
   tenant: string;
-  /** AI: 'guest' sees only the public part of the knowledge base. */
+  /** AI: 'guest' видит только публичную часть базы знаний. */
   scope?: Scope;
-  /** AI: App roles derived from organisation groups (corporate login) - e.g. 'operator'. */
+  /**
+   * AI: Роли приложения, выведенные из групп организации (корпоративный вход) - например
+   * 'operator'.
+   */
   roles?: string[];
 }

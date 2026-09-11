@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
-/** AI: Repo root (works from src/ via tsx and from dist/ after build). */
+/** AI: Корень репозитория (работает и из src/ через tsx, и из dist/ после сборки). */
 export const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -11,8 +11,8 @@ export const REPO_ROOT = path.resolve(
 );
 
 /**
- * AI: All runtime configuration is validated once at boot. A typo in .env fails fast
- * with a readable message instead of a 500 at 3 a.m. during the demo.
+ * AI: Вся конфигурация проверяется один раз при старте. Опечатка в .env валит процесс сразу с
+ * понятным сообщением, а не даёт 500 в три часа ночи на демо.
  */
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -21,31 +21,37 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   ANTHROPIC_API_KEY: z.string().optional(),
-  /** AI: Direct Anthropic API by default; set to an aggregator/proxy origin (Anthropic Messages format) if needed. */
+  /**
+   * AI: По умолчанию прямой Anthropic API; при необходимости укажите адрес агрегатора/прокси
+   * (формат Anthropic Messages).
+   */
   LLM_BASE_URL: z.string().url().default('https://api.anthropic.com'),
   LLM_MODEL: z.string().default('claude-opus-5'),
   LLM_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
-  /** AI: Per-request timeout; one retry. Worst case before the deterministic fallback = 2x this value. */
+  /**
+   * AI: Таймаут одного запроса; одна повторная попытка. Худший случай до детерминированного
+   * запасного режима = 2x этого значения.
+   */
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(25_000),
 
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   /**
-   * AI: Alternative Bot API origin. Hosting in Russia cannot reach api.telegram.org directly;
-   * a tiny Cloudflare Worker (deploy/telegram-proxy.worker.js) forwards requests. Same idea as
-   * LLM_BASE_URL for the model.
+   * AI: Альтернативный адрес Bot API. Хостинг в России не достаёт до api.telegram.org напрямую;
+   * крошечный Cloudflare Worker (deploy/telegram-proxy.worker.js) пробрасывает запросы. Та же идея,
+   * что LLM_BASE_URL для модели.
    */
   TELEGRAM_API_ROOT: z.string().url().optional(),
-  /** AI: Public bot username (without @) - used for the "Open in Telegram" link on the website. */
+  /** AI: Публичный username бота (без @) - для ссылки «Открыть в Telegram» на сайте. */
   TELEGRAM_BOT_USERNAME: z.string().optional(),
-  /** AI: VK Mini Apps: secret key + app id from dev.vk.com (enables /api/auth/vk). */
+  /** AI: VK Mini Apps: секретный ключ и id приложения с dev.vk.com (включает /api/auth/vk). */
   VK_APP_SECRET: z.string().optional(),
   VK_APP_ID: z.string().optional(),
-  /** AI: MAX Mini Apps: bot token from the MAX developer console (enables /api/auth/max). */
+  /** AI: MAX Mini Apps: токен бота из консоли разработчика MAX (включает /api/auth/max). */
   MAX_BOT_TOKEN: z.string().optional(),
   MAX_SECRET_LABEL: z.string().default('WebAppData'),
 
-  // ----- Corporate identity (any subset; each enables its own routes) -----
-  /** AI: OpenID Connect SSO: issuer URL (Keycloak realm / ADFS / etc.). */
+  // ----- Корпоративная идентификация (любое подмножество; каждый провайдер включает свои маршруты) -----
+  /** AI: SSO по OpenID Connect: URL issuer (realm Keycloak / ADFS / и т. п.). */
   OIDC_ISSUER: z.string().url().optional(),
   OIDC_CLIENT_ID: z.string().optional(),
   OIDC_CLIENT_SECRET: z.string().optional(),
@@ -56,7 +62,7 @@ const EnvSchema = z.object({
   OIDC_CLAIM_EMAIL: z.string().default('email'),
   OIDC_CLAIM_GROUPS: z.string().default('groups'),
   SSO_LABEL: z.string().default('Войти через учётную запись ТПУ'),
-  /** AI: LDAP / Active Directory bind. */
+  /** AI: Bind к LDAP / Active Directory. */
   LDAP_URL: z.string().optional(),
   LDAP_BIND_TEMPLATE: z.string().default('{login}@tpu.ru'),
   LDAP_BASE_DN: z.string().optional(),
@@ -68,7 +74,7 @@ const EnvSchema = z.object({
     .string()
     .default('true')
     .transform((v) => v !== 'false' && v !== '0'),
-  /** AI: One-time code to a corporate mailbox. */
+  /** AI: Одноразовый код на корпоративную почту. */
   EMAIL_AUTH_DOMAINS: z.string().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().default(587),
@@ -79,16 +85,16 @@ const EnvSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('helpdesk-bot@tpu.ru'),
-  /** AI: Organisation groups (DN or CN) whose members get the operator console. */
+  /** AI: Группы организации (DN или CN), участники которых получают консоль оператора. */
   OPERATOR_GROUPS: z.string().default(''),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 chars'),
   JWT_TTL: z.string().default('12h'),
   WEB_APP_URL: z.string().url().optional(),
   /**
-   * AI: Website entrances. Guest login is anonymous (public topics only, no requests, no operator)
-   * and safe anywhere. Demo login lets anyone enter as "student" by typing a name - for demos and
-   * team testing only; in production it is allowed but loudly warned about, the real entrance
-   * for organisation users is SSO / LDAP / e-mail code.
+   * AI: Входы на сайте. Гостевой вход анонимный (только публичные темы, без заявок и оператора) и
+   * безопасен везде. Демо-вход пускает любого «студентом» по введённому имени - только для демо и
+   * тестов команды; в production разрешён, но с громким предупреждением в логе; настоящий вход для
+   * сотрудников организации - SSO / LDAP / код на почту.
    */
   WEB_GUEST_LOGIN: z
     .string()
@@ -110,42 +116,50 @@ const EnvSchema = z.object({
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(90),
   BODY_LIMIT_BYTES: z.coerce.number().int().positive().default(16_384),
 
-  /** AI: Directory with *.json seeds; each file is imported as a tenant if not present in DB. */
+  /** AI: Каталог с *.json-сидами; каждый файл импортируется как тенант, если его ещё нет в БД. */
   CATALOG_SEED_DIR: z.string().default('./data/catalog'),
   DEFAULT_TENANT: z.string().default('tpu'),
-  /** AI: Re-import seed files on every boot (dev: edit JSON, restart). In prod use the admin API. */
+  /**
+   * AI: Переимпортировать сиды при каждом старте (dev: правишь JSON, перезапускаешь). В проде -
+   * через admin API.
+   */
   CATALOG_SEED_FORCE: z
     .string()
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
-  /** AI: External helpdesk: none (dev) | naumen (help.tpu.ru). */
+  /** AI: Внешний helpdesk: none (dev) | naumen (help.tpu.ru). */
   HELPDESK_KIND: z.enum(['none', 'naumen']).default('none'),
   NAUMEN_URL: z.string().url().optional(),
   NAUMEN_ACCESS_KEY: z.string().optional(),
   NAUMEN_DEFAULT_SERVICE: z.string().optional(),
-  /** AI: JSON object: { "network": "slmService$4550406", ... } */
+  /** AI: JSON-объект: { "network": "slmService$4550406", ... } */
   NAUMEN_SERVICE_BY_CATEGORY: z.string().optional(),
   /**
-   * AI: Demo mode: every authenticated user gets the operator console. For the hackathon demo and
-   * team testing only - refused when NODE_ENV=production.
+   * AI: Демо-режим: консоль оператора получает каждый вошедший пользователь. Только для демо
+   * хакатона и тестов команды - в NODE_ENV=production запрещён.
    */
   OPERATOR_OPEN_ACCESS: z
     .string()
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
-  /** AI: Comma-separated admin user ids (platform:platformUserId) allowed to call /api/admin/*. */
+  /**
+   * AI: Id администраторов через запятую (platform:platformUserId), которым доступен /api/admin/*.
+   */
   ADMIN_USERS: z.string().default(''),
-  /** AI: RAG over crawled documentation (data/raw). Off = curated catalog only. */
+  /** AI: RAG по скачанной документации (data/raw). Off = только проверенный каталог. */
   RAG_ENABLED: z
     .string()
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
-  /** AI: local = ONNX model inside the API process (no external calls); off = BM25 only. */
+  /** AI: local = ONNX-модель внутри процесса API (без внешних вызовов); off = только BM25. */
   RAG_EMBEDDINGS: z.enum(['local', 'off']).default('local'),
   RAG_EMBEDDING_MODEL: z.string().default('Xenova/multilingual-e5-small'),
   RAG_RAW_DIR: z.string().default('./data/raw'),
   RAG_MODEL_DIR: z.string().default('./data/models'),
-  /** AI: Re-read data/raw on boot (dev). In prod ingest via POST /api/admin/rag/ingest. */
+  /**
+   * AI: Перечитывать data/raw при старте (dev). В проде индексировать через POST
+   * /api/admin/rag/ingest.
+   */
   RAG_INGEST_ON_BOOT: z
     .string()
     .default('true')
@@ -163,8 +177,9 @@ export type AppConfig = z.infer<typeof EnvSchema> & {
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  // AI: A blank value in .env (`OIDC_ISSUER=` or `OIDC_ISSUER=    # comment`) means "not set",
-  // not an empty URL. docker compose keeps the whitespace before an inline comment, Node does not.
+  // AI: Пустое значение в .env (`OIDC_ISSUER=` или `OIDC_ISSUER=    # комментарий`) означает «не
+  // задано», а не пустой URL. docker compose оставляет пробелы перед строчным комментарием, Node -
+  // нет.
   const defined = Object.fromEntries(
     Object.entries(env)
       .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v] as const)

@@ -7,8 +7,8 @@ DOMAIN="${1:?usage: server-setup.sh <domain>}"
 APP_DIR=/opt/helpdesk-ai
 REPO=https://github.com/p1rogram/helpdesk-ai.git
 
-# AI: Needs root (apt, /opt, ufw). When run via `sudo`, the invoking user gets docker access:
-# the CI/CD pipeline logs in as that user and runs docker compose.
+# AI: Нужен root (apt, /opt, ufw). При запуске через `sudo` вызвавший пользователь получает доступ к
+# docker: пайплайн CI/CD заходит под этим пользователем и запускает docker compose.
 if [ "$(id -u)" -ne 0 ]; then
   echo "run with sudo:  curl -fsSL <url> | sudo bash -s -- <domain>" >&2
   exit 1

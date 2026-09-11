@@ -40,7 +40,8 @@ export async function kbRoutes(app: FastifyInstance, ctx: AppContext): Promise<v
       steps: h.article.steps,
       score: Math.round(h.score * 100) / 100,
     }));
-    // AI: Documentation fragments (RAG) complement the curated articles; guests see public pages only.
+    // AI: Фрагменты документации (RAG) дополняют проверенные статьи; гости видят только публичные
+    // страницы.
     const passages = ctx.config.RAG_ENABLED
       ? await ctx.rag.search(req.user.tenant, q.data.q, {
           scope: req.user.scope ?? 'full',

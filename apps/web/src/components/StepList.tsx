@@ -1,4 +1,4 @@
-/** AI: Numbered instructions from the knowledge base, shown as a plain ordered list. */
+/** AI: Нумерованная инструкция из базы знаний, показанная простым упорядоченным списком. */
 export function StepList({ steps }: { steps: string[] }) {
   return (
     <ol className="steplist">
@@ -13,8 +13,8 @@ export function StepList({ steps }: { steps: string[] }) {
 }
 
 /**
- * AI: Splits an assistant message into (lead text, numbered steps, tail text). Returns `null` when the
- * message is not a step-by-step instruction, so it can be rendered as ordinary markdown instead.
+ * AI: Делит сообщение помощника на (вступление, нумерованные шаги, хвост). Возвращает `null`, если
+ * сообщение не является пошаговой инструкцией, - тогда оно рендерится как обычный markdown.
  */
 export function parseSteps(text: string): { lead: string; steps: string[]; tail: string } | null {
   const lines = text.split('\n');
@@ -27,7 +27,7 @@ export function parseSteps(text: string): { lead: string; steps: string[]; tail:
     const line = raw.trim();
     const m = /^(\d{1,2})[.)]\s+(.*)$/.exec(line);
     if (m && phase !== 'tail') {
-      // AI: A numbered line continues the list only if it follows the expected order.
+      // AI: Нумерованная строка продолжает список, только если идёт в ожидаемом порядке.
       if (Number(m[1]) === steps.length + 1) {
         steps.push(stripMd(m[2] ?? ''));
         phase = 'steps';
@@ -47,7 +47,7 @@ export function parseSteps(text: string): { lead: string; steps: string[]; tail:
   return { lead: lead.join('\n').trim(), steps, tail: tail.join('\n').trim() };
 }
 
-/** AI: Removes the light markdown the model uses inside a step (bold / inline code). */
+/** AI: Убирает лёгкий markdown, которым модель пользуется внутри шага (жирный / inline-код). */
 function stripMd(s: string): string {
   return s
     .replace(/\*\*(.+?)\*\*/g, '$1')

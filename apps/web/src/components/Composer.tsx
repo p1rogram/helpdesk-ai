@@ -4,9 +4,9 @@ import { Icon } from './Icon';
 const MAX_HEIGHT = 132;
 
 /**
- * AI: Message box that grows with the text up to a limit and then scrolls inside itself
- * (the usual messenger behaviour). When the ticket is closed the field is a single
- * non-scrolling line - a disabled multi-line box with a scrollbar looks broken.
+ * AI: Поле сообщения растёт вместе с текстом до предела, затем прокручивается внутри себя (обычное
+ * поведение мессенджера). Когда тикет закрыт, поле - одна строка без прокрутки: отключённое
+ * многострочное поле с полосой прокрутки выглядит сломанным.
  */
 export function Composer(props: {
   disabled: boolean;

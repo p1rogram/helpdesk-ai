@@ -1,6 +1,7 @@
 /* ============================================================================
-   Design tokens. Light is the default; dark is a deep navy set. Both are declared
-   explicitly (never only inside a media query) so the in-app switch works both ways.
+   Токены дизайна. Светлая тема по умолчанию; тёмная - глубокий тёмно-синий набор. Обе
+   объявлены явно (никогда только внутри media query), чтобы переключатель в приложении
+   работал в обе стороны.
    ========================================================================== */
 :root {
   color-scheme: light;
@@ -85,8 +86,8 @@ a {
   color: var(--accent);
 }
 
-/* AI: Scrollbars follow the theme: a thin rounded thumb in the border colour, no track, no arrows
-   (the OS default grey bar with arrows stood out on the dark theme in the browser version). */
+/* AI: Полосы прокрутки следуют теме: тонкий скруглённый ползунок цвета границы, без дорожки и
+   стрелок (серая системная полоса со стрелками выбивалась на тёмной теме в браузерной версии). */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -122,7 +123,7 @@ select {
   color: inherit;
 }
 
-/* ---------------------------------------------------------------- shell --- */
+/* ---------------------------------------------------------------- каркас --- */
 .app {
   display: flex;
   flex-direction: column;
@@ -149,7 +150,7 @@ select {
   overflow: hidden;
 }
 
-/* --------------------------------------------------------------- topbar --- */
+/* --------------------------------------------------------------- шапка ---- */
 .topbar {
   display: flex;
   align-items: center;
@@ -220,7 +221,7 @@ select {
   border-color: var(--border-strong);
 }
 
-/* ----------------------------------------------------------- bottom nav --- */
+/* ----------------------------------------------------------- нижняя навигация */
 .bottomnav {
   display: flex;
   background: var(--surface);
@@ -245,7 +246,7 @@ select {
   color: var(--accent);
 }
 
-/* -------------------------------------------------------------- chat ------ */
+/* -------------------------------------------------------------- чат ------- */
 .chat {
   flex: 1;
   overflow-y: auto;
@@ -391,7 +392,7 @@ select {
   }
 }
 
-/* ------------------------------------------------------- category badge --- */
+/* ------------------------------------------------------- бейдж категории -- */
 .cat-badge {
   display: inline-flex;
   align-items: center;
@@ -419,7 +420,7 @@ select {
   vertical-align: 1px;
 }
 
-/* ------------------------------------------------------------ steplist ---- */
+/* ------------------------------------------------------------ список шагов */
 .steplist {
   margin: 8px 0 0;
   padding: 0;
@@ -453,7 +454,7 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
-/* --------------------------------------------------------- quick replies -- */
+/* --------------------------------------------------------- быстрые ответы */
 .quick {
   display: flex;
   flex-wrap: wrap;
@@ -498,7 +499,7 @@ select {
   width: 100%;
 }
 
-/* ------------------------------------------------------------- composer --- */
+/* ------------------------------------------------------------- ввод ------- */
 .composer {
   display: flex;
   gap: 8px;
@@ -520,7 +521,7 @@ select {
   overflow-y: auto;
   line-height: 1.35;
 }
-/* AI: Closed ticket - one line, no scrollbar, long hint trimmed with an ellipsis. */
+/* AI: Закрытый тикет - одна строка, без прокрутки, длинная подсказка обрезается многоточием. */
 .composer.locked textarea {
   height: 42px;
   min-height: 42px;
@@ -547,7 +548,7 @@ select {
   cursor: default;
 }
 
-/* ----------------------------------------------------------- ticket card -- */
+/* ----------------------------------------------------------- карточка обращения */
 .card {
   margin: 10px 14px 0;
   padding: 12px 14px;
@@ -614,7 +615,7 @@ select {
   background: var(--ok);
 }
 
-/* ---------------------------------------------------------------- lists --- */
+/* ---------------------------------------------------------------- списки -- */
 .list {
   padding: 12px 14px;
   display: flex;
@@ -756,7 +757,7 @@ select {
   font-size: 16px;
 }
 
-/* A generic scroll area for screens that stack several blocks (KB tiles + results). */
+/* Общая область прокрутки для экранов из нескольких блоков (плитки базы знаний + результаты). */
 .scroll {
   flex: 1;
   min-height: 0;
@@ -768,7 +769,7 @@ select {
   flex: none;
 }
 
-/* ------------------------------------------------------------ kb screen --- */
+/* ------------------------------------------------------------ база знаний */
 .search {
   padding: 12px 14px 8px;
   position: relative;
@@ -844,7 +845,7 @@ select {
   flex: 0 0 auto;
 }
 
-/* --------------------------------------------------------- skeletons ------ */
+/* --------------------------------------------------------- скелетоны ----- */
 .skeleton {
   background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 37%, var(--surface) 63%);
   background-size: 400% 100%;
@@ -860,7 +861,7 @@ select {
   }
 }
 
-/* -------------------------------------------------------------- misc ----- */
+/* -------------------------------------------------------------- разное --- */
 .error {
   margin: 8px 14px;
   padding: 9px 12px;
@@ -903,7 +904,7 @@ select {
   color: var(--muted);
 }
 
-/* AI: Under the chat while a specialist owns the ticket: status + a way out for the user. */
+/* AI: Под чатом, пока тикет у специалиста: статус + выход для пользователя. */
 .escalated-bar {
   display: flex;
   align-items: center;
@@ -994,7 +995,7 @@ select {
   opacity: 0.5;
 }
 
-/* ------------------------------------------------------------ profile ----- */
+/* ------------------------------------------------------------ профиль ---- */
 .profile {
   padding: 14px;
   display: flex;
@@ -1055,7 +1056,7 @@ select {
   box-shadow: var(--shadow);
 }
 
-/* AI: Profile switches (sound): native checkbox drives an accessible custom toggle. */
+/* AI: Переключатели в профиле (звук): нативный checkbox управляет доступным кастомным тумблером. */
 .switch-row {
   display: flex;
   align-items: center;
@@ -1118,7 +1119,7 @@ select {
   outline-offset: 2px;
 }
 
-/* ------------------------------------------------------------- login ------ */
+/* ------------------------------------------------------------- вход ------ */
 .login {
   display: flex;
   flex-direction: column;
@@ -1164,7 +1165,7 @@ select {
   border: 1px solid var(--border);
 }
 
-/* ----------------------------------------------------------- landing ------ */
+/* ----------------------------------------------------------- лендинг ----- */
 .landing {
   max-width: 980px;
   margin: 0 auto;
@@ -1234,8 +1235,8 @@ select {
   font-size: 13px;
 }
 
-/* AI: Tab panes stay mounted; only the active one is laid out. The visible one slides in from
-   the side the switch came from, so a swipe reads as movement rather than an instant swap. */
+/* AI: Панели вкладок остаются смонтированными; раскладывается только активная. Видимая въезжает
+   с той стороны, откуда пришло переключение, чтобы свайп читался как движение, а не мгновенная замена. */
 .pane {
   display: flex;
   flex-direction: column;
@@ -1288,7 +1289,7 @@ select {
   display: none !important;
 }
 
-/* AI: Chat toolbar in three zones: action left, state centred, action right. */
+/* AI: Панель инструментов чата в три зоны: действие слева, состояние по центру, действие справа. */
 .toolbar.three {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -1323,7 +1324,7 @@ select {
   color: rgba(127, 127, 127, 0.35);
 }
 
-/* AI: Documentation hits in knowledge-base search (RAG). */
+/* AI: Находки в документации при поиске по базе знаний (RAG). */
 .section-label {
   margin: 14px 4px 6px;
   font-size: 12px;

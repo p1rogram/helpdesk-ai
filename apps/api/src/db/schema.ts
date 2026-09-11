@@ -14,23 +14,28 @@ import {
 import type { ClarifyingField } from '@helpdesk/shared';
 
 /**
- * AI: Drizzle schema. Every query goes through the query builder -> parameterised SQL,
- * so SQL injection is impossible by construction (no string concatenation anywhere).
+ * AI: Схема Drizzle. Каждый запрос идёт через query builder -> параметризованный SQL, так что
+ * SQL-инъекция невозможна по построению (нигде нет склейки строк).
  *
- * Multi-tenancy: a tenant is a "sphere" (TPU, corporate IT, ISP...). Catalog rows and
- * tickets carry tenant_id, so one installation serves many spheres side by side.
+ * Мультитенантность: тенант - это «сфера» (ТПУ, корпоративное IT, провайдер...). Строки каталога и
+ * тикеты несут tenant_id, поэтому одна установка обслуживает несколько сфер бок о бок.
  */
 
-// ---------- Catalog (editable at runtime via admin API, seeded from data/catalog/*.json) ----------
+// ---------- Каталог (редактируется в рантайме через admin API, сидится из data/catalog/*.json) ----------
 
 export const tenants = pgTable('tenants', {
   id: text('id').primaryKey(), // "tpu", "it-support"
   sphere: text('sphere').notNull(),
   organisation: text('organisation').notNull(),
   language: text('language').notNull().default('ru'),
-  /** AI: Bumped on every catalog change - used for cache invalidation and prompt-cache keys. */
+  /**
+   * AI: Увеличивается при каждом изменении каталога - для инвалидации кэша и ключей prompt cache.
+   */
   version: integer('version').notNull().default(1),
-  /** AI: sha1 of the seed file this tenant was last imported from; a changed file is re-imported. */
+  /**
+   * AI: sha1 сид-файла, из которого тенант импортирован в последний раз; изменённый файл
+   * импортируется заново.
+   */
   seedHash: text('seed_hash'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -74,7 +79,7 @@ export const kbArticles = pgTable(
   ],
 );
 
-// ---------- RAG corpus (crawled documentation, chunked and embedded) ----------
+// ---------- Корпус RAG (скачанная документация, нарезанная и векторизованная) ----------
 
 export const ragChunks = pgTable(
   'rag_chunks',
@@ -88,7 +93,9 @@ export const ragChunks = pgTable(
     section: text('section').notNull().default(''),
     content: text('content').notNull(),
     audience: text('audience').notNull().default('internal'),
-    /** AI: sha1 of the content - unchanged chunks are not re-embedded on re-ingest. */
+    /**
+     * AI: sha1 содержимого - неизменённые фрагменты не пересчитываются при повторной индексации.
+     */
     contentHash: text('content_hash').notNull(),
     embedding: jsonb('embedding').$type<number[]>(),
     embeddingModel: text('embedding_model'),
@@ -97,7 +104,7 @@ export const ragChunks = pgTable(
   (t) => [index('rag_chunks_tenant').on(t.tenantId)],
 );
 
-// ---------- Users / tickets / messages ----------
+// ---------- Пользователи / тикеты / сообщения ----------
 
 export const users = pgTable(
   'users',
@@ -129,31 +136,31 @@ export const tickets = pgTable(
     fields: jsonb('fields').$type<Record<string, string>>().notNull().default({}),
     tone: text('tone').notNull().default('neutral'),
     clarificationsAsked: integer('clarifications_asked').notNull().default(0),
-    /** AI: Clarifying field the last question was about (answer maps to this key). */
+    /** AI: Поле уточнения, о котором был последний вопрос (ответ ложится в этот ключ). */
     pendingField: text('pending_field'),
-    /** AI: Current article shown to the user. */
+    /** AI: Текущая статья, показанная пользователю. */
     articleId: text('article_id'),
-    /** AI: Articles already tried and rejected ("not helped"). */
+    /** AI: Статьи, которые уже пробовали и отвергли («не помогло»). */
     triedArticles: jsonb('tried_articles').$type<string[]>().notNull().default([]),
     resolved: boolean('resolved').notNull().default(false),
     escalated: boolean('escalated').notNull().default(false),
     escalationReason: text('escalation_reason'),
-    /** AI: 'ai' | 'operator' - while 'operator' the assistant does not answer in this ticket. */
+    /** AI: 'ai' | 'operator' - пока 'operator', помощник в этом тикете не отвечает. */
     handledBy: text('handled_by').notNull().default('ai'),
-    /** AI: Operator returned the ticket to the assistant and forbade escalating it again. */
+    /** AI: Оператор вернул тикет помощнику и запретил повторную передачу. */
     escalationBlocked: boolean('escalation_blocked').notNull().default(false),
-    /** AI: Request number / link in the external helpdesk after escalation. */
+    /** AI: Номер / ссылка заявки во внешнем helpdesk после передачи. */
     externalId: text('external_id'),
     externalUrl: text('external_url'),
-    /** AI: Why the assistant offered escalation (kept while the user decides). */
+    /** AI: Почему помощник предложил передачу (хранится, пока пользователь решает). */
     pendingEscalation: text('pending_escalation'),
     rating: integer('rating'),
     ratingComment: text('rating_comment'),
-    /** AI: 'assistant' | 'operator' | 'user' - set together with closed_at. */
+    /** AI: 'assistant' | 'operator' | 'user' - ставится вместе с closed_at. */
     closedBy: text('closed_by'),
     /**
-     * AI: Per-ticket processing lease: one engine pass at a time, across API replicas. A crash
-     * never leaves the ticket stuck - the lease expires on its own.
+     * AI: Аренда обработки тикета: один проход движка за раз, в том числе между репликами API.
+     * Упавший процесс не блокирует тикет - аренда истекает сама.
      */
     busyUntil: timestamp('busy_until', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -178,7 +185,7 @@ export const messages = pgTable(
   (t) => [index('messages_ticket_created').on(t.ticketId, t.createdAt)],
 );
 
-/** AI: Aggregates maintained by the analytics worker (Kafka consumer). */
+/** AI: Агрегаты, которые ведёт worker аналитики (consumer Kafka). */
 export const dailyStats = pgTable(
   'daily_stats',
   {

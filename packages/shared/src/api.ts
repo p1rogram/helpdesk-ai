@@ -3,7 +3,7 @@ import { QuickReplySchema, TicketCardSchema } from './dialog.js';
 
 export const PlatformSchema = z.enum(['telegram', 'vk', 'max', 'web', 'corp']);
 
-/** AI: How much of the knowledge base the session may see. */
+/** AI: Какую часть базы знаний может видеть сессия. */
 export const ScopeSchema = z.enum(['guest', 'full']);
 export type Scope = z.infer<typeof ScopeSchema>;
 export type Platform = z.infer<typeof PlatformSchema>;
@@ -38,18 +38,18 @@ export const ChatMessageSchema = z.object({
   content: z.string(),
   createdAt: z.string(),
   quickReplies: z.array(QuickReplySchema).optional(),
-  /** AI: Set when a human operator wrote the message (name shown in the chat). */
+  /** AI: Ставится, когда сообщение написал живой оператор (имя показывается в чате). */
   author: z.string().optional(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
-/** AI: Server-sent events emitted while answering one user message. */
+/** AI: События Server-Sent Events, выдаваемые при ответе на одно сообщение пользователя. */
 export const ChatStreamEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('meta'), ticket: TicketCardSchema }),
   /** AI: Progress hint shown while the model works ("Определяю категорию…"). */
   z.object({ type: z.literal('status'), text: z.string() }),
   z.object({ type: z.literal('delta'), text: z.string() }),
-  /** AI: Message accepted, but the assistant deliberately says nothing (an operator owns the chat). */
+  /** AI: Сообщение принято, но помощник намеренно молчит (чатом владеет оператор). */
   z.object({ type: z.literal('ack'), ticket: TicketCardSchema }),
   z.object({
     type: z.literal('done'),
@@ -69,7 +69,7 @@ export const KbSearchResultSchema = z.object({
 });
 export type KbSearchResult = z.infer<typeof KbSearchResultSchema>;
 
-/** AI: A documentation fragment found by the RAG index (crawled help.tpu.ru / tpu.ru). */
+/** AI: Фрагмент документации, найденный индексом RAG (скачанные help.tpu.ru / tpu.ru). */
 export const DocPassageSchema = z.object({
   id: z.string(),
   url: z.string(),

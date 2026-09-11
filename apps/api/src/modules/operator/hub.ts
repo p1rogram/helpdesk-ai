@@ -2,12 +2,12 @@ import { TOPICS, type TicketEvent } from '@helpdesk/shared';
 import type { EventBus } from '../events/index.js';
 
 /**
- * AI: Live channel for operator consoles. Every open console holds one SSE connection; whenever a
- * ticket of its tenant changes (new escalation, user message, operator reply, close, hand-back)
- * the hub tells it to refresh.
+ * AI: Живой канал для консолей операторов. Каждая открытая консоль держит одно SSE-соединение; при
+ * любом изменении тикета её тенанта (новая передача, сообщение пользователя, ответ оператора,
+ * закрытие, возврат) хаб просит её обновиться.
  *
- * The trigger comes from the event bus, so with Kafka every API replica notifies the operators
- * connected to it - no sticky sessions needed.
+ * Триггер приходит из шины событий, поэтому с Kafka каждая реплика API оповещает подключённых к ней
+ * операторов - sticky-сессии не нужны.
  */
 export interface OperatorClient {
   tenantId: string;
@@ -26,7 +26,10 @@ export class OperatorHub {
     return this.clients.size;
   }
 
-  /** AI: Ask every console of this tenant to reload the queue (and the open ticket, if it matches). */
+  /**
+   * AI: Попросить все консоли этого тенанта перезагрузить очередь (и открытый тикет, если он
+   * совпадает).
+   */
   notify(tenantId: string, ticketId?: string): void {
     const payload = JSON.stringify({
       type: 'queue',
@@ -43,7 +46,7 @@ export class OperatorHub {
     }
   }
 
-  /** AI: Subscribe to the ticket topic once at boot. */
+  /** AI: Подписаться на топик тикетов один раз при старте. */
   async attach(
     bus: EventBus,
     resolveTenant: (ticketId: string) => Promise<string | null>,

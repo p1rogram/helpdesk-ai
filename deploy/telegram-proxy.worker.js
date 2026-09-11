@@ -1,7 +1,7 @@
-// AI: Cloudflare Worker that forwards Telegram Bot API calls. Needed when the server cannot reach
-// api.telegram.org directly (hosting in Russia). Deploy: dash.cloudflare.com -> Workers -> Create ->
-// paste this file -> Deploy; put the worker URL into TELEGRAM_API_ROOT on the server.
-// Only /bot<token>/<method> paths are forwarded, nothing is logged or stored.
+// AI: Cloudflare Worker, пробрасывающий вызовы Telegram Bot API. Нужен, когда сервер не достаёт до
+// api.telegram.org напрямую (хостинг в России). Развернуть: dash.cloudflare.com -> Workers ->
+// Create -> вставить этот файл -> Deploy; URL worker-а записать в TELEGRAM_API_ROOT на сервере.
+// Пробрасываются только пути /bot<token>/<method>, ничего не логируется и не хранится.
 export default {
   async fetch(request) {
     const url = new URL(request.url);

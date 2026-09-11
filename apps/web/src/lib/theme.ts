@@ -3,8 +3,8 @@ export type ThemeMode = 'auto' | 'light' | 'dark';
 const KEY = 'helpdesk.theme';
 
 /**
- * AI: Theme control. `auto` follows the host (Telegram colour scheme in a Mini App, the OS setting in a
- * browser); `light` / `dark` are explicit user choices and survive reloads.
+ * AI: Управление темой. `auto` следует за хостом (цветовая схема Telegram в Mini App, системная
+ * настройка в браузере); `light` / `dark` - явный выбор пользователя, переживает перезагрузку.
  */
 export function getThemeMode(): ThemeMode {
   try {
@@ -20,20 +20,20 @@ export function setThemeMode(mode: ThemeMode): void {
     if (mode === 'auto') localStorage.removeItem(KEY);
     else localStorage.setItem(KEY, mode);
   } catch {
-    /* storage unavailable */
+    /* хранилище недоступно */
   }
 }
 
-/** AI: Resolves `auto` against the host and writes the result to <html data-theme>. */
+/** AI: Разрешает `auto` относительно хоста и записывает результат в <html data-theme>. */
 export function applyTheme(mode: ThemeMode, hostPrefersDark: boolean): 'light' | 'dark' {
   const resolved = mode === 'auto' ? (hostPrefersDark ? 'dark' : 'light') : mode;
-  // AI: colour-scheme is declared in CSS for this attribute, so browser chrome (scrollbars, form
-  // controls) repaints in the same frame as the tokens instead of a beat later.
+  // AI: color-scheme объявлен в CSS для этого атрибута, поэтому элементы браузера (полосы
+  // прокрутки, элементы форм) перекрашиваются в том же кадре, что и токены, а не на такт позже.
   document.documentElement.dataset.theme = resolved;
   return resolved;
 }
 
-/** AI: Calls back when the OS colour scheme changes (only relevant while the mode is `auto`). */
+/** AI: Вызывает колбэк при смене системной цветовой схемы (важно только в режиме `auto`). */
 export function watchSystemTheme(onChange: (dark: boolean) => void): () => void {
   const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
   if (!mq) return () => {};

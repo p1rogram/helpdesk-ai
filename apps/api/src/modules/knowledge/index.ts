@@ -5,7 +5,7 @@ import { KnowledgeIndex, type ScoredArticle } from './search.js';
 export { CatalogRepository, type LoadedCatalog } from './repository.js';
 export { KnowledgeIndex, tokenize, type ScoredArticle } from './search.js';
 
-/** AI: Facade used by the dialog engine: catalog + search index, cached per tenant version. */
+/** AI: Фасад для диалогового движка: каталог + поисковый индекс, кэшируются по версии тенанта. */
 export class KnowledgeService {
   private readonly indexes = new Map<string, { version: number; index: KnowledgeIndex }>();
   private readonly guestCatalogs = new Map<string, LoadedCatalog>();
@@ -13,8 +13,9 @@ export class KnowledgeService {
   constructor(private readonly repo: CatalogRepository) {}
 
   /**
-   * AI: Catalog as this session may see it. A guest (no organisation login) gets only the public
-   * part - admission, contacts, addresses - so the assistant never offers internal procedures.
+   * AI: Каталог в том виде, в каком его видит эта сессия. Гость (без входа организации) получает
+   * только публичную часть - поступление, контакты, адреса, - чтобы помощник никогда не предлагал
+   * внутренние процедуры.
    */
   async catalog(tenantId: string, scope: Scope = 'full'): Promise<LoadedCatalog> {
     const full = await this.repo.get(tenantId);

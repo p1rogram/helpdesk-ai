@@ -7,12 +7,15 @@ export async function healthRoutes(app: FastifyInstance, ctx: AppContext): Promi
     db: ctx.dbHandle.kind,
     events: ctx.config.EVENT_BUS,
     llm: ctx.llm.enabled,
-    /** AI: off | memory | pgvector - where the dense half of retrieval runs. */
+    /** AI: off | memory | pgvector - где выполняется векторная половина поиска. */
     rag: ctx.config.RAG_ENABLED ? ctx.rag.denseBackend : 'disabled',
     uptime: Math.round(process.uptime()),
   }));
 
-  /** AI: Public tenant info for the client bootstrap (no auth: only non-sensitive data). */
+  /**
+   * AI: Публичная информация о тенанте для загрузки клиента (без авторизации: только
+   * нечувствительные данные).
+   */
   app.get('/api/tenants', async () => ({
     tenants: await ctx.catalogs.listTenants(),
     default: ctx.config.DEFAULT_TENANT,

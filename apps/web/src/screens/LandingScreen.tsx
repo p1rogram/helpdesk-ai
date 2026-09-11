@@ -2,8 +2,8 @@ import { Icon } from '../components/Icon';
 import type { ThemeMode } from '../lib/theme';
 
 /**
- * AI: Public landing for the website. Shown in a plain browser before login; inside a messenger
- * the app goes straight to the chat.
+ * AI: Публичный лендинг сайта. Показывается в обычном браузере до входа; внутри мессенджера
+ * приложение сразу открывает чат.
  */
 export function LandingScreen(props: {
   sphere: string;

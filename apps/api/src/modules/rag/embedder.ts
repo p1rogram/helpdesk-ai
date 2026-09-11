@@ -1,13 +1,13 @@
 /**
- * AI: Dense embeddings behind a tiny interface. The default is a local ONNX model
- * (multilingual-e5-small, 384 dims) running inside the API process via transformers.js: no
- * external service, no key to leak, ~30 ms per batch on CPU. Swap the class to use pgvector +
- * a hosted embedding API without touching the retrieval code.
+ * AI: Плотные эмбеддинги за крошечным интерфейсом. По умолчанию - локальная ONNX-модель
+ * (multilingual-e5-small, 384 измерения) внутри процесса API через transformers.js: без внешнего
+ * сервиса, без ключа, который можно утечь, ~30 мс на батч на CPU. Замените класс, чтобы
+ * использовать pgvector + внешний API эмбеддингов, не трогая код поиска.
  */
 export interface Embedder {
   readonly model: string;
   readonly dims: number;
-  /** AI: e5 models want a role prefix - queries and passages are embedded differently. */
+  /** AI: Моделям e5 нужен префикс роли - запросы и пассажи векторизуются по-разному. */
   embed(texts: string[], kind: 'query' | 'passage'): Promise<number[][]>;
 }
 
@@ -35,7 +35,7 @@ export class LocalEmbedder implements Embedder {
     this.model = opts.model ?? 'Xenova/multilingual-e5-small';
   }
 
-  /** AI: Lazy: the model (~30 MB, quantised) is downloaded once and cached on disk. */
+  /** AI: Лениво: модель (~30 МБ, квантованная) скачивается один раз и кэшируется на диске. */
   private load(): Promise<Pipeline> {
     if (!this.pipe) {
       this.pipe = (async () => {
@@ -59,7 +59,7 @@ export class LocalEmbedder implements Embedder {
     if (!texts.length) return [];
     const pipe = await this.load();
     const out: number[][] = [];
-    // AI: Batches keep memory flat when ingesting thousands of chunks.
+    // AI: Батчи держат память ровной при индексации тысяч фрагментов.
     for (let i = 0; i < texts.length; i += 16) {
       const batch = texts.slice(i, i + 16).map((t) => `${kind}: ${t}`);
       const res = await pipe(batch, { pooling: 'mean', normalize: true });

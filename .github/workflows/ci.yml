@@ -20,7 +20,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
-      # AI: worker imports the built API (dist), so both must exist before typecheck.
+      # AI: worker импортирует собранный API (dist), поэтому оба должны существовать до typecheck.
       - run: npm run build -w @helpdesk/shared && npm run build -w @helpdesk/api
       - run: npx prettier --check "apps/*/src/**/*.{ts,tsx,css}" "packages/*/src/**/*.ts"
       - run: npm run lint

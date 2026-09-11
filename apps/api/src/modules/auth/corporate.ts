@@ -4,23 +4,26 @@ import nodemailer, { type Transporter } from 'nodemailer';
 import { AuthError } from './telegram.js';
 
 /**
- * AI: Corporate identity socket. The assistant needs to know WHO the user is in the organisation
- * (student / staff, groups for the operator role). Three providers cover what an IT department
- * can realistically hand over; all of them yield the same CorporateIdentity and the same JWT.
+ * AI: Розетка корпоративной идентификации. Помощнику нужно знать, КТО пользователь в организации
+ * (студент / сотрудник, группы для роли оператора). Три провайдера покрывают то, что реально может
+ * выдать IT-служба; все дают одинаковый CorporateIdentity и одинаковый JWT.
  *
- *   oidc   - SSO via OpenID Connect / OAuth2 (Keycloak, ADFS, any standards-compliant IdP)
- *   ldap   - login + password checked by an LDAP/Active Directory bind (the tpu.ru domain)
- *   email  - one-time code sent to the corporate mailbox (login@tpu.ru), when no domain access
+ *   oidc   - SSO через OpenID Connect / OAuth2 (Keycloak, ADFS, любой стандартный IdP)
+ *   ldap   - логин + пароль проверяются bind-ом к LDAP/Active Directory (домен tpu.ru)
+ *   email  - одноразовый код на корпоративную почту (login@tpu.ru), когда доступа к домену нет
  *
- * Nothing here stores passwords: LDAP binds with the user's credentials and forgets them;
- * OIDC never sees them; email codes are hashed and expire.
+ * Пароли здесь не хранятся: LDAP делает bind учётными данными пользователя и забывает их; OIDC их
+ * не видит; коды на почту хэшируются и истекают.
  */
 export interface CorporateIdentity {
-  /** AI: Stable id inside the organisation (login / sub / e-mail local part). */
+  /** AI: Стабильный id внутри организации (логин / sub / локальная часть e-mail). */
   id: string;
   displayName: string;
   email?: string;
-  /** AI: Group memberships (LDAP memberOf / OIDC groups claim) - mapped to roles by the app. */
+  /**
+   * AI: Членство в группах (LDAP memberOf / claim groups в OIDC) - приложение сопоставляет их с
+   * ролями.
+   */
   groups: string[];
 }
 
@@ -29,13 +32,16 @@ export interface CorporateIdentity {
 // ---------------------------------------------------------------------------
 
 export interface OidcOptions {
-  /** AI: Issuer URL; `/.well-known/openid-configuration` is fetched from it. */
+  /** AI: URL issuer; с него читается `/.well-known/openid-configuration`. */
   issuer: string;
   clientId: string;
   clientSecret?: string;
   redirectUri: string;
   scopes?: string;
-  /** AI: Claim names - differ between IdPs (Keycloak: preferred_username / groups; ADFS: upn / role). */
+  /**
+   * AI: Имена claim - у разных IdP разные (Keycloak: preferred_username / groups; ADFS: upn /
+   * role).
+   */
   claims?: { id?: string; name?: string; email?: string; groups?: string };
   fetchImpl?: typeof fetch;
 }
@@ -75,7 +81,7 @@ export class OidcProvider {
     return this.discovery;
   }
 
-  /** AI: Step 1: build the redirect URL. `state` binds the callback to this login attempt. */
+  /** AI: Шаг 1: собрать URL редиректа. `state` привязывает callback к этой попытке входа. */
   async startLogin(returnTo: string): Promise<string> {
     const d = await this.config();
     const state = randomBytes(24).toString('base64url');
@@ -95,7 +101,7 @@ export class OidcProvider {
     return `${d.authorization_endpoint}?${q.toString()}`;
   }
 
-  /** AI: Step 2: exchange the code, read the identity. */
+  /** AI: Шаг 2: обменять код на токен, прочитать идентичность. */
   async finishLogin(
     code: string,
     state: string,
@@ -122,7 +128,8 @@ export class OidcProvider {
     if (!tok.ok) throw new AuthError(`oidc: token exchange failed (${tok.status})`);
     const tokens = (await tok.json()) as { access_token?: string; id_token?: string };
 
-    // AI: Prefer userinfo (fresh, includes groups on most IdPs); fall back to id_token claims.
+    // AI: Предпочитаем userinfo (свежие данные, у большинства IdP там есть группы); запасной
+    // вариант - claims из id_token.
     let claims: Record<string, unknown> = {};
     if (d.userinfo_endpoint && tokens.access_token) {
       const ui = await this.fetchImpl(d.userinfo_endpoint, {
@@ -158,7 +165,10 @@ export class OidcProvider {
   }
 }
 
-/** AI: id_token payload without signature verification - acceptable only because it came straight from the token endpoint over TLS. */
+/**
+ * AI: Payload id_token без проверки подписи - допустимо только потому, что он пришёл напрямую с
+ * token endpoint по TLS.
+ */
 function decodeJwtPayload(jwt: string): Record<string, unknown> {
   const part = jwt.split('.')[1];
   if (!part) return {};
@@ -174,17 +184,23 @@ function str(v: unknown): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// LDAP / Active Directory bind
+// Bind к LDAP / Active Directory
 // ---------------------------------------------------------------------------
 
 export interface LdapOptions {
-  /** AI: ldaps://dc.tpu.ru:636 (LDAPS strongly preferred; plain ldap:// only inside a trusted network). */
+  /**
+   * AI: ldaps://dc.tpu.ru:636 (LDAPS настоятельно рекомендуется; обычный ldap:// - только внутри
+   * доверенной сети).
+   */
   url: string;
-  /** AI: How the login becomes a bind DN / UPN. `{login}` is replaced. AD: `{login}@tpu.ru` or `TPU\\{login}`. */
+  /**
+   * AI: Как логин превращается в bind DN / UPN. `{login}` подставляется. AD: `{login}@tpu.ru` или
+   * `TPU\\{login}`.
+   */
   bindTemplate: string;
-  /** AI: Where to search the user entry after a successful bind (for name / mail / groups). */
+  /** AI: Где искать запись пользователя после успешного bind (имя / почта / группы). */
   baseDn: string;
-  /** AI: Filter with `{login}`; AD: `(sAMAccountName={login})`, OpenLDAP: `(uid={login})`. */
+  /** AI: Фильтр с `{login}`; AD: `(sAMAccountName={login})`, OpenLDAP: `(uid={login})`. */
   searchFilter?: string;
   attributes?: { name?: string; email?: string; groups?: string };
   tlsRejectUnauthorized?: boolean;
@@ -206,7 +222,8 @@ export class LdapProvider {
       tlsOptions: { rejectUnauthorized: this.o.tlsRejectUnauthorized ?? true },
     });
     try {
-      // AI: The bind IS the password check. Credentials are used once and never persisted.
+      // AI: Bind И ЕСТЬ проверка пароля. Учётные данные используются один раз и нигде не
+      // сохраняются.
       await client.bind(this.o.bindTemplate.replace('{login}', clean), password);
       const a = this.o.attributes ?? {};
       const nameAttr = a.name ?? 'displayName';
@@ -232,7 +249,8 @@ export class LdapProvider {
       };
     } catch (err) {
       if (err instanceof AuthError) throw err;
-      // AI: Invalid credentials and connection problems both end here; do not leak which.
+      // AI: Неверные учётные данные и проблемы соединения заканчиваются здесь одинаково; не
+      // раскрываем, что именно.
       throw new AuthError('ldap: authentication failed');
     } finally {
       await client.unbind().catch(() => {});
@@ -241,11 +259,11 @@ export class LdapProvider {
 }
 
 // ---------------------------------------------------------------------------
-// One-time code to the corporate mailbox
+// Одноразовый код на корпоративную почту
 // ---------------------------------------------------------------------------
 
 export interface EmailCodeOptions {
-  /** AI: Allowed mail domains, e.g. ["tpu.ru"]. */
+  /** AI: Разрешённые почтовые домены, например ["tpu.ru"]. */
   domains: string[];
   smtp: { host: string; port: number; secure: boolean; user?: string; pass?: string; from: string };
   ttlSeconds?: number;
@@ -307,7 +325,10 @@ export class EmailCodeProvider {
   }
 }
 
-/** AI: Map organisation groups to app roles. `operatorGroups` = DNs / names that grant the operator console. */
+/**
+ * AI: Сопоставление групп организации с ролями приложения. `operatorGroups` = DN / имена групп,
+ * дающие консоль оператора.
+ */
 export function rolesFor(identity: CorporateIdentity, operatorGroups: Set<string>): string[] {
   const roles: string[] = [];
   const hit = identity.groups.some(

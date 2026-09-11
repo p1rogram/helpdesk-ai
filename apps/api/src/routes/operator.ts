@@ -11,16 +11,17 @@ const IdParam = z.object({ id: z.string().uuid() });
 const ReplySchema = z.object({ text: z.string().trim().min(1).max(4000) });
 
 /**
- * AI: Operator console: the built-in "specialist side". Escalated tickets land here; an operator
- * answers into the user's chat (push via the notification topic) and closes the ticket.
- * Restricted to operators (ADMIN_USERS or an operator group). An external helpdesk (Naumen) can replace or complement this.
+ * AI: Консоль оператора: встроенная «сторона специалиста». Переданные тикеты попадают сюда;
+ * оператор отвечает в чат пользователя (push через топик уведомлений) и закрывает тикет. Только для
+ * операторов (ADMIN_USERS или группа операторов). Внешний helpdesk (Naumen) может заменить или
+ * дополнить её.
  */
 export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.addHook('preHandler', app.requireOperator);
 
   /**
-   * AI: Work list, already grouped: 0 - the operator's own conversations, 1 - waiting for a first
-   * reply (longest wait first), 2 - closed.
+   * AI: Рабочий список, уже сгруппированный: 0 - диалоги самого оператора, 1 - ждут первого ответа
+   * (самое долгое ожидание первым), 2 - закрытые.
    */
   app.get('/api/operator/tickets', async (req) => {
     const rows = await ctx.tickets.listForOperator(req.user.tenant, 100);
@@ -37,8 +38,9 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   /**
-   * AI: Live queue updates (SSE): a new escalation or a user message appears without reloading.
-   * POST is the primary method (CDN tunnels buffer GET bodies); GET stays for EventSource / curl.
+   * AI: Живые обновления очереди (SSE): новая передача или сообщение пользователя появляются без
+   * перезагрузки. POST - основной способ (CDN-туннели буферизуют тела GET); GET остаётся для
+   * EventSource / curl.
    */
   app.route({
     method: ['GET', 'POST'],
@@ -52,8 +54,9 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
         'X-Accel-Buffering': 'no',
         ...sseCors(req.headers.origin, ctx.config.corsOrigins),
       });
-      // AI: 2 KB of comment padding: some proxies (Cloudflare quick tunnels among them) hold the
-      // first bytes of a chunked response until a buffer fills; SSE clients ignore comment lines.
+      // AI: 2 КБ комментария-подушки: некоторые прокси (в том числе quick-туннели Cloudflare)
+      // держат первые байты chunked-ответа, пока не наполнится буфер; SSE-клиенты игнорируют строки
+      // комментариев.
       reply.raw.write(`: ${' '.repeat(2048)}\n\n`);
       reply.raw.write(`data: ${JSON.stringify({ type: 'ready' })}\n\n`);
       const detach = ctx.operatorHub.add({
@@ -70,8 +73,8 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   /**
-   * AI: Hand the ticket back to the assistant: the operator decided it does not need a specialist.
-   * The assistant resumes and is not allowed to escalate this ticket again.
+   * AI: Вернуть тикет помощнику: оператор решил, что специалист не нужен. Помощник продолжает и
+   * больше не имеет права передавать этот тикет.
    */
   app.post('/api/operator/tickets/:id/handback', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
@@ -120,7 +123,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     };
   });
 
-  /** AI: Operator reply -> stored in the chat, pushed to the messenger. */
+  /** AI: Ответ оператора -> сохраняется в чат, отправляется в мессенджер. */
   app.post('/api/operator/tickets/:id/reply', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = ReplySchema.safeParse(req.body);
@@ -148,7 +151,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     return { message: toChatMessage(saved) };
   });
 
-  /** AI: Close as resolved by the operator. */
+  /** AI: Закрыть как решённый оператором. */
   app.post('/api/operator/tickets/:id/close', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const ticket = await ctx.tickets.getAny(id);

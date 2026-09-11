@@ -1,11 +1,14 @@
 import { useEffect, type RefObject } from 'react';
 
-/** AI: Elements that scroll sideways themselves - a swipe started there must not change the tab. */
+/**
+ * AI: Элементы, которые сами прокручиваются вбок - свайп, начатый в них, не должен менять вкладку.
+ */
 const HORIZONTAL = '.toolbar, .filters, .quick, textarea, input, .steplist';
 
 /**
- * AI: Horizontal swipe between tabs. A gesture counts only when it is clearly sideways
- * (twice as much X as Y, past a threshold), so vertical scrolling inside a screen is untouched.
+ * AI: Горизонтальный свайп между вкладками. Жест засчитывается, только если он явно боковой (по X
+ * вдвое больше, чем по Y, и больше порога), поэтому вертикальная прокрутка внутри экрана не
+ * затрагивается.
  */
 export function useSwipeNavigation(
   ref: RefObject<HTMLElement | null>,

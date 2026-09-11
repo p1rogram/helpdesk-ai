@@ -14,7 +14,7 @@ import type { LoadedCatalog } from '../knowledge/index.js';
 export class TicketRepository {
   constructor(private readonly db: Db) {}
 
-  // ---------- users ----------
+  // ---------- пользователи ----------
 
   async upsertUser(
     platform: string,
@@ -34,7 +34,7 @@ export class TicketRepository {
     return row;
   }
 
-  // ---------- tickets ----------
+  // ---------- тикеты ----------
 
   async create(tenantId: string, userId: string): Promise<TicketRow> {
     const [row] = await this.db.insert(tickets).values({ tenantId, userId }).returning();
@@ -50,7 +50,7 @@ export class TicketRepository {
     return row;
   }
 
-  /** AI: Latest ticket that is still open (not closed / escalated), if any. */
+  /** AI: Последний ещё открытый тикет (не закрыт / не передан), если есть. */
   async latestOpen(userId: string): Promise<TicketRow | undefined> {
     const [row] = await this.db
       .select()
@@ -72,7 +72,10 @@ export class TicketRepository {
     return row;
   }
 
-  /** AI: Delete tickets that never received a user message (abandoned greetings). */
+  /**
+   * AI: Удалить тикеты, в которых так и не появилось сообщения пользователя (брошенные
+   * приветствия).
+   */
   async pruneEmpty(userId: string, keepId?: string): Promise<void> {
     const rows = await this.db
       .select({ id: tickets.id })
@@ -91,17 +94,17 @@ export class TicketRepository {
     }
   }
 
-  /** AI: Any ticket by id (operator access - not scoped to the requesting user). */
+  /** AI: Любой тикет по id (доступ оператора - без привязки к запрашивающему пользователю). */
   async getAny(id: string): Promise<TicketRow | undefined> {
     const [row] = await this.db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
     return row;
   }
 
   /**
-   * AI: Operator work list: everything that reached a specialist. Grouped for the console:
-   *   0 - in progress: the operator already replied (their conversations come first)
-   *   1 - waiting: escalated but no operator reply yet (oldest waiting first - SLA order)
-   *   2 - closed: finished, newest first
+   * AI: Рабочий список оператора: всё, что дошло до специалиста. Сгруппировано для консоли:
+   *   0 - в работе: оператор уже ответил (его диалоги идут первыми)
+   *   1 - ждут: передано, но ответа оператора ещё нет (самые давние первыми - порядок SLA)
+   *   2 - закрыто: завершённые, новые первыми
    */
   async listForOperator(
     tenantId: string,
@@ -161,7 +164,7 @@ export class TicketRepository {
     const time = (d: Date | null | undefined) => (d ? d.getTime() : 0);
     return out.sort((a, b) => {
       if (a.group !== b.group) return a.group - b.group;
-      // AI: In progress and closed: latest activity first. Waiting: longest wait first.
+      // AI: В работе и закрытые: свежая активность первой. Ждущие: самое долгое ожидание первым.
       if (a.group === 1) return time(a.ticket.updatedAt) - time(b.ticket.updatedAt);
       return (
         time(b.lastMessageAt ?? b.ticket.updatedAt) - time(a.lastMessageAt ?? a.ticket.updatedAt)
@@ -179,8 +182,8 @@ export class TicketRepository {
   }
 
   /**
-   * AI: Take the processing lease for one engine pass. Atomic in the database, so two replicas (or
-   * a double-tap) cannot both run over the same ticket; an expired lease is taken over.
+   * AI: Взять аренду обработки на один проход движка. Атомарно в базе, поэтому две реплики (или
+   * двойной тап) не смогут одновременно обработать один тикет; истёкшая аренда перехватывается.
    */
   async tryLock(id: string, ttlMs: number): Promise<boolean> {
     const now = new Date();
@@ -205,7 +208,7 @@ export class TicketRepository {
     return row!;
   }
 
-  // ---------- messages ----------
+  // ---------- сообщения ----------
 
   async addMessage(
     ticketId: string,
@@ -230,7 +233,7 @@ export class TicketRepository {
   }
 }
 
-// ---------- mappers ----------
+// ---------- преобразователи ----------
 
 export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
   const cat = t.categoryId ? catalog.categoryById.get(t.categoryId) : undefined;

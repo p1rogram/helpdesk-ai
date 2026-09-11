@@ -39,7 +39,9 @@ export interface EngineConfig {
 
 export interface EngineDeps {
   knowledge: KnowledgeService;
-  /** AI: Documentation retrieval for questions the curated catalog does not cover; null = off. */
+  /**
+   * AI: Поиск по документации для вопросов, которых нет в проверенном каталоге; null = выключен.
+   */
   rag: RagService | null;
   llm: LlmService;
   tickets: TicketRepository;
@@ -50,12 +52,13 @@ export interface EngineDeps {
 }
 
 /**
- * AI: The dialog engine is a deterministic state machine. The LLM is consulted for exactly two
- * things - understanding the message (structured) and phrasing a grounded solution - and
- * every decision (ask / solve / escalate / close) is made here, in code. That makes the
- * behaviour testable, cheap and impossible to talk out of its role.
+ * AI: Диалоговый движок - детерминированный конечный автомат. Модель вызывается ровно для двух
+ * вещей - понять сообщение (структурированно) и сформулировать решение по найденной статье, - а
+ * каждое решение (спросить / решить / передать / закрыть) принимается здесь, в коде. Поэтому
+ * поведение тестируемо, дёшево и его нельзя «уговорить» выйти из роли.
  *
- * States: intake -> clarifying* -> solving -> closed | escalated  (choosing_category on low confidence)
+ * Состояния: intake -> clarifying* -> solving -> closed | escalated  (choosing_category при низкой
+ * уверенности)
  */
 export class DialogEngine {
   constructor(private readonly d: EngineDeps) {}
@@ -77,7 +80,8 @@ export class DialogEngine {
       isCmd ? { command: text } : {},
     );
 
-    // AI: The user can withdraw the request from any state - including while a specialist has it.
+    // AI: Пользователь может отозвать обращение из любого состояния - в том числе пока оно у
+    // специалиста.
     if (text === CMD.close) {
       if (ticket.state === 'closed') {
         yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
@@ -91,8 +95,8 @@ export class DialogEngine {
       return;
     }
 
-    // AI: A specialist owns this dialogue: the assistant must not speak over them. The message is
-    // stored and pushed to the operator console; the client gets a silent acknowledgement.
+    // AI: Диалогом владеет специалист: помощник не должен говорить поверх него. Сообщение
+    // сохраняется и уходит в консоль оператора; клиент получает тихое подтверждение.
     if (ticket.state === 'escalated') {
       if (isCmd) {
         yield* this.reply(ticket, catalog, T.withOperator(), QR_ESCALATED);
@@ -113,7 +117,7 @@ export class DialogEngine {
       yield { type: 'ack', ticket: toCard(touched, catalog) };
       return;
     }
-    // AI: Closed tickets do not continue - the client offers "new ticket".
+    // AI: Закрытые тикеты не продолжаются - клиент предлагает «новый чат».
     if (ticket.state === 'closed') {
       yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
       return;
@@ -121,7 +125,7 @@ export class DialogEngine {
 
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
 
-    // ---------- engine commands (buttons) ----------
+    // ---------- команды движка (кнопки) ----------
     if (text.startsWith(CMD.category)) {
       const categoryId = text.slice(CMD.category.length);
       if (!catalog.categoryById.has(categoryId)) {
@@ -156,7 +160,7 @@ export class DialogEngine {
         return;
       }
       if (ticket.escalationBlocked) {
-        // AI: The operator already reviewed this ticket and sent it back - do not re-queue it.
+        // AI: Оператор уже смотрел этот тикет и вернул его - не ставим в очередь снова.
         yield* this.reply(
           ticket,
           catalog,
@@ -185,7 +189,7 @@ export class DialogEngine {
       return;
     }
     if (isCmd) {
-      // AI: Unknown / stale command - ignore politely.
+      // AI: Неизвестная / устаревшая команда - вежливо игнорируем.
       yield* this.reply(
         ticket,
         catalog,
@@ -195,7 +199,7 @@ export class DialogEngine {
       return;
     }
 
-    // ---------- quick-reply answer to a clarifying question: no LLM needed ----------
+    // ---------- ответ кнопкой на уточняющий вопрос: модель не нужна ----------
     if (ticket.state === 'clarifying' && ticket.pendingField && ticket.categoryId) {
       const field = catalog.categoryById
         .get(ticket.categoryId)
@@ -212,15 +216,15 @@ export class DialogEngine {
     }
 
     if (ticket.state === 'offer_escalation' && !isCmd) {
-      // AI: The user kept typing instead of choosing: treat it as new information about the problem.
+      // AI: Пользователь продолжил писать вместо выбора: считаем это новой информацией о проблеме.
       ticket = await this.d.tickets.update(ticket.id, {
         state: ticket.articleId ? 'solving' : 'intake',
         pendingEscalation: null,
       });
     }
 
-    // ---------- free text ----------
-    // AI: Greetings / "are you there?" / thanks never need the model - answer instantly and warmly.
+    // ---------- свободный текст ----------
+    // AI: Приветствия / «ты тут?» / спасибо не требуют модели - отвечаем мгновенно и тепло.
     if (isSmalltalk(text)) {
       const solving = ticket.state === 'solving';
       yield* this.reply(
@@ -256,18 +260,19 @@ export class DialogEngine {
     }
 
     const tone = strongerTone(safety.toneHint, analysis.tone);
-    // AI: Model-extracted values go through the catalog whitelists (a dorm or building that does
-    // not exist is dropped here; the user is told about it in advance()).
+    // AI: Значения, извлечённые моделью, проходят белые списки каталога (несуществующее общежитие
+    // или корпус отбрасывается здесь; пользователю об этом скажет advance()).
     const knownCategory = catalog.categoryById.get(ticket.categoryId ?? analysis.categoryId);
     const fields = {
       ...ticket.fields,
       ...validateFields(knownCategory?.clarify ?? [], cleanFields(analysis.fields)).fields,
     };
     if (ticket.state === 'clarifying' && ticket.pendingField && !fields[ticket.pendingField]) {
-      // AI: The user answered our question in free form - keep the raw answer.
+      // AI: Пользователь ответил на наш вопрос свободным текстом - сохраняем ответ как есть.
       fields[ticket.pendingField] = text.slice(0, 200);
     }
-    // AI: Summary: never from chit-chat; refine while the problem is still being understood, freeze once solving.
+    // AI: Суть обращения: никогда из болтовни; уточняется, пока проблема ещё понимается, и
+    // замораживается после перехода к решению.
     const keepSummary =
       analysis.offTopic || analysis.asksToClose === true || ticket.state === 'solving';
     const summary = keepSummary
@@ -293,8 +298,8 @@ export class DialogEngine {
       },
       'message analysed',
     );
-    // AI: Card with the fresh summary goes out right away, so the client's history can list the
-    // ticket while the answer is still being written.
+    // AI: Карточка со свежей сутью уходит сразу, чтобы история на клиенте показала тикет, пока
+    // ответ ещё пишется.
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
 
     if (analysis.asksForHuman) {
@@ -335,7 +340,7 @@ export class DialogEngine {
       return;
     }
     if ((analysis.reportsResolved && ticket.state === 'solving') || analysis.asksToClose) {
-      // AI: An explicit "close it" finishes the request even before a solution was shown.
+      // AI: Явное «закрой» завершает обращение даже до показа решения.
       yield* this.resolve(
         ticket,
         user,
@@ -345,10 +350,9 @@ export class DialogEngine {
       return;
     }
     if (analysis.offTopic && ticket.state !== 'solving') {
-      // AI: Greetings were answered before the model was called (isSmalltalk). What reaches this
-      // branch is an off-topic question or request; the model's reply must not contain an answer
-      // to it (a quiz, a poem, trivia) - only the redirect. If it looks like an answer, use the
-      // deterministic template instead.
+      // AI: Приветствия отработаны до вызова модели (isSmalltalk). Сюда попадает вопрос или просьба
+      // не по теме; ответ модели не должен содержать ответа на неё (викторина, стих, факт) - только
+      // возврат к теме. Если похоже на ответ по существу - используем детерминированный шаблон.
       const model = analysis.smalltalkReply?.trim() ?? '';
       const redirectOnly = model.length > 0 && model.length <= 220 && !/[0-9:\n]/.test(model);
       yield* this.reply(ticket, catalog, redirectOnly ? model : T.offTopic());
@@ -366,7 +370,7 @@ export class DialogEngine {
           analysis.confidence,
         );
       } else if (ticket.state === 'choosing_category') {
-        // AI: Second miss in a row: do not loop, offer a hand-over with what we have.
+        // AI: Второй промах подряд: не зацикливаемся, предлагаем передачу с тем, что есть.
         yield* this.offerEscalation(ticket, catalog, 'low_confidence');
         return;
       } else {
@@ -386,8 +390,8 @@ export class DialogEngine {
       }
     }
 
-    // AI: In "solving" state: a complaint means the steps did not help; a question is answered on the
-    // spot (another article or the documentation); anything else is a detail we note.
+    // AI: В состоянии «решение»: жалоба означает, что шаги не помогли; вопрос отвечается на месте
+    // (другая статья или документация); всё остальное - деталь, которую отмечаем.
     if (ticket.state === 'solving') {
       if (NEGATIVE.test(text.toLowerCase())) {
         yield* this.nextSolution(ticket, user, catalog, text);
@@ -402,9 +406,9 @@ export class DialogEngine {
     yield* this.advance(ticket, user, catalog, text, llmDown);
   }
 
-  // ---------- transitions ----------
+  // ---------- переходы ----------
 
-  /** AI: Ask the next required clarification or search for a solution. */
+  /** AI: Задать следующее обязательное уточнение или искать решение. */
   private async *advance(
     ticket: TicketRow,
     user: UserRow,
@@ -414,8 +418,9 @@ export class DialogEngine {
   ): AsyncGenerator<ChatStreamEvent> {
     const category = catalog.categoryById.get(ticket.categoryId!)!;
 
-    // AI: Pull identifiers the user already named (dorm number, room) out of the message before
-    // deciding what to ask - and stop early if the value cannot exist (e.g. a dorm that was never built).
+    // AI: Вытащить идентификаторы, которые пользователь уже назвал (номер общежития, комната), из
+    // сообщения до того, как решать, что спрашивать, - и остановиться сразу, если значения не может
+    // существовать (например, общежитие, которого никогда не было).
     const found = extractFields(category.clarify, lastText);
     if (Object.keys(found.fields).length) {
       ticket = await this.d.tickets.update(ticket.id, {
@@ -432,7 +437,8 @@ export class DialogEngine {
       return;
     }
 
-    // AI: The hand-over was paused for one question (see escalate()); the answer is in - continue it.
+    // AI: Передача была приостановлена ради одного вопроса (см. escalate()); ответ получен -
+    // продолжаем её.
     if (ticket.pendingEscalation && ticket.state === 'clarifying') {
       yield* this.escalate(ticket, user, catalog, ticket.pendingEscalation as EscalationReason);
       return;
@@ -477,7 +483,7 @@ export class DialogEngine {
       exclude: new Set(ticket.triedArticles),
     });
     if (!best || best.score < MIN_SOLUTION_SCORE) {
-      // AI: No vetted article - try the documentation corpus before giving up.
+      // AI: Проверенной статьи нет - пробуем корпус документации, прежде чем сдаться.
       if (
         !llmDown &&
         !ticket.triedArticles.length &&
@@ -492,7 +498,7 @@ export class DialogEngine {
       return;
     }
     const article = best.article;
-    // AI: Documentation fragments enrich the article with facts (addresses, phones, deadlines).
+    // AI: Фрагменты документации обогащают статью фактами (адреса, телефоны, сроки).
     const passages = await this.retrieve(ticket, catalog, query, 3);
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'solving',
@@ -546,8 +552,8 @@ export class DialogEngine {
         { ticketId: ticket.id, articleId: article.id },
         'solution: article rejected by model',
       );
-      // AI: The model judged the best article irrelevant: do not show it, do not retrieve it again.
-      // Try the documentation corpus, then offer a hand-over honestly.
+      // AI: Модель сочла лучшую статью нерелевантной: не показываем и больше не достаём. Пробуем
+      // документацию, затем честно предлагаем передачу.
       const firstTry = !ticket.triedArticles.length;
       ticket = await this.d.tickets.update(ticket.id, {
         articleId: null,
@@ -559,7 +565,8 @@ export class DialogEngine {
       return;
     }
     if (failed || !streamed.trim()) {
-      // AI: Deterministic fallback: article steps verbatim. The chat never dies with the LLM.
+      // AI: Детерминированный запасной вариант: шаги статьи дословно. Чат не умирает вместе с
+      // моделью.
       const fb = (streamed.trim() ? '\n\n' : '') + T.solutionFallback(article);
       streamed += fb;
       yield { type: 'delta', text: fb };
@@ -567,8 +574,8 @@ export class DialogEngine {
     text += streamed.trim();
 
     if (article.escalateAfter) {
-      // AI: The article itself says a specialist finishes the job: deliver the steps, then ask
-      // whether to create the request (two `done` events; the client appends both).
+      // AI: Статья сама говорит, что дальше работает специалист: отдаём шаги, затем спрашиваем,
+      // создавать ли заявку (два события `done`; клиент добавляет оба).
       yield* this.finish(ticket, catalog, text, undefined, { articleId: article.id });
       yield* this.offerEscalation(ticket, catalog, 'article_requires_specialist');
       return;
@@ -578,7 +585,7 @@ export class DialogEngine {
     yield* this.finish(ticket, catalog, text + tail, QR_AFTER_SOLUTION, { articleId: article.id });
   }
 
-  /** AI: Hybrid retrieval over the crawled documentation, scoped to what this session may see. */
+  /** AI: Гибридный поиск по скачанной документации в пределах того, что видна этой сессии. */
   private async retrieve(
     ticket: TicketRow,
     catalog: LoadedCatalog,
@@ -595,9 +602,10 @@ export class DialogEngine {
   }
 
   /**
-   * AI: RAG path: answer from documentation fragments when no catalog article fits. Returns true
-   * when an answer was delivered; false (nothing relevant / model said [NO_SOLUTION] / LLM down)
-   * lets the caller fall through to the hand-over offer. Nothing is shown unless it is grounded.
+   * AI: Путь RAG: ответ по фрагментам документации, когда статья каталога не подошла. Возвращает
+   * true, если ответ выдан; false (ничего релевантного / модель сказала [NO_SOLUTION] / модель
+   * недоступна) даёт вызывающему коду перейти к предложению передачи. Ничего не показывается, если
+   * не подтверждено источником.
    */
   private async *ragAnswer(
     ticket: TicketRow,
@@ -650,9 +658,9 @@ export class DialogEngine {
   }
 
   /**
-   * AI: Streams model output to the client, holding back the first characters until it is clear
-   * the answer does not start with [NO_SOLUTION]. Returns what was shown; `failed` means the model
-   * went away mid-way (the caller decides how to fall back).
+   * AI: Стримит вывод модели клиенту, придерживая первые символы, пока не станет ясно, что ответ не
+   * начинается с [NO_SOLUTION]. Возвращает показанное; `failed` означает, что модель отвалилась
+   * посередине (как откатываться, решает вызывающий код).
    */
   private async *streamGrounded(
     gen: AsyncGenerator<string, void, void>,
@@ -771,7 +779,7 @@ export class DialogEngine {
     });
     const top = ranked[0]?.score ?? 0;
     const next = ranked.find((r) => !tried.includes(r.article.id));
-    // AI: Only offer a second article when it is a comparable match to the best one; otherwise stop guessing.
+    // AI: Вторую статью предлагаем только если она сопоставима с лучшей; иначе перестаём гадать.
     if (!next || next.score < 0.6 * top || tried.length >= 2) {
       yield* this.offerEscalation(ticket, catalog, 'solution_failed');
       return;
@@ -806,8 +814,8 @@ export class DialogEngine {
   }
 
   /**
-   * AI: The assistant never creates a request on its own: it explains why it cannot go further and
-   * asks. Only an explicit "yes" (or the user asking for a human) creates the external request.
+   * AI: Помощник никогда не создаёт заявку сам: объясняет, почему не может продолжить, и
+   * спрашивает. Только явное «да» (или просьба позвать человека) создаёт внешнюю заявку.
    */
   private async *offerEscalation(
     ticket: TicketRow,
@@ -815,7 +823,8 @@ export class DialogEngine {
     reason: EscalationReason,
   ): AsyncGenerator<ChatStreamEvent> {
     if (catalog.scope === 'guest') {
-      // AI: No request and no operator for guests - explain how to get one, keep the dialogue open.
+      // AI: Гостям ни заявки, ни оператора - объясняем, как их получить, и оставляем диалог
+      // открытым.
       yield* this.reply(
         ticket,
         catalog,
@@ -825,7 +834,7 @@ export class DialogEngine {
       return;
     }
     if (ticket.escalationBlocked) {
-      // AI: A specialist decided this ticket stays with the assistant; never offer to escalate again.
+      // AI: Специалист решил, что этот тикет остаётся у помощника; больше не предлагаем передачу.
       yield* this.reply(
         ticket,
         catalog,
@@ -854,9 +863,9 @@ export class DialogEngine {
       yield* this.reply(ticket, catalog, T.guestNoEscalation(reason));
       return;
     }
-    // AI: A specialist must not start by asking what the assistant could have asked: the required
-    // fields of the category are collected first (one question at a time, within the usual limit).
-    // The user is never trapped - after the limit the request goes through as it is.
+    // AI: Специалист не должен начинать с вопросов, которые мог задать помощник: сначала собираем
+    // обязательные поля категории (по одному вопросу, в пределах обычного лимита). Пользователь не
+    // застревает - после лимита заявка уходит как есть.
     const category = ticket.categoryId ? catalog.categoryById.get(ticket.categoryId) : undefined;
     const found = category ? extractFields(category.clarify, lastText) : { fields: {} };
     if (Object.keys(found.fields).length)
@@ -899,7 +908,7 @@ export class DialogEngine {
       return;
     }
     yield { type: 'status', text: 'Создаю заявку…' };
-    // AI: Create the request in the external helpdesk first, so the card shows the real number.
+    // AI: Сначала создаём заявку во внешнем helpdesk, чтобы на карточке был настоящий номер.
     let external: { externalId: string; url?: string } | null = null;
     try {
       const transcript = (await this.d.tickets.listMessages(ticket.id, 60))
@@ -910,7 +919,8 @@ export class DialogEngine {
         transcript,
       });
     } catch (err) {
-      // AI: The chat must not fail because the helpdesk is down: keep the internal id, retry later via events.
+      // AI: Чат не должен падать из-за недоступного helpdesk: оставляем внутренний id, повтор позже
+      // через события.
       this.d.log.warn(
         { ticketId: ticket.id, err: (err as Error).message },
         'helpdesk request creation failed',
@@ -1045,9 +1055,9 @@ export class DialogEngine {
     return updated;
   }
 
-  // ---------- helpers ----------
+  // ---------- вспомогательные ----------
 
-  /** AI: Save an assistant message and emit `done`. */
+  /** AI: Сохранить сообщение помощника и выдать `done`. */
   private async *reply(
     ticket: TicketRow,
     catalog: LoadedCatalog,
@@ -1065,7 +1075,7 @@ export class DialogEngine {
     quickReplies?: QuickReply[],
     meta: Record<string, unknown> = {},
   ): AsyncGenerator<ChatStreamEvent> {
-    // AI: Single choke point: a guest never sees a button that leads to a specialist.
+    // AI: Единственная точка контроля: гость никогда не увидит кнопку, ведущую к специалисту.
     const visible =
       catalog.scope === 'guest'
         ? (quickReplies ?? []).filter((q) => q.value !== CMD.human && q.value !== CMD.escalate)
@@ -1098,7 +1108,10 @@ export class DialogEngine {
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
   }
 
-  /** AI: LLM-less understanding: lexical match against the KB decides category and confidence. */
+  /**
+   * AI: Понимание без модели: лексическое совпадение с базой знаний определяет категорию и
+   * уверенность.
+   */
   private async fallbackAnalyze(
     catalog: LoadedCatalog,
     ticket: TicketRow,
@@ -1137,8 +1150,8 @@ const SMALLTALK =
   /^(?:(?:привет|приветствую|здравствуй(?:те)?|добрый (?:день|вечер|утро)|доброе утро|хай|hi|hello|hey|ты тут|ты здесь|есть кто|ау|эй|как дела|кто ты|ты кто|что ты умеешь|спасибо|спс|благодарю|ок|окей|ok|понял|пон|ясно|хорошо|ладно|пока|до свидания|тест|test|проверка)[\s!?.,)]*){1,3}$/i;
 
 /**
- * AI: A short message to the specialist that reads as "drop it": the assistant then asks whether
- * to close. Long messages are left alone - they may merely mention closing something else.
+ * AI: Короткое сообщение специалисту, которое читается как «уже не нужно»: помощник спрашивает,
+ * закрыть ли. Длинные сообщения не трогаем - там могут лишь упоминать закрытие чего-то другого.
  */
 function looksLikeWithdrawal(text: string): boolean {
   const t = text.trim().toLowerCase();
@@ -1175,9 +1188,9 @@ function isSmalltalk(text: string): boolean {
   return text.trim().length <= 40 && SMALLTALK.test(text.trim());
 }
 
-/** AI: Marker the model emits when the retrieved article does not fit the problem. */
+/** AI: Маркер, который выдаёт модель, когда найденная статья не подходит к проблеме. */
 const NO_SOLUTION = '[NO_SOLUTION]';
-/** AI: Below this BM25 score the best article is noise, not a match. */
+/** AI: Ниже этого балла BM25 лучшая статья - шум, а не совпадение. */
 const MIN_SOLUTION_SCORE = 1.5;
 
 const NEGATIVE =

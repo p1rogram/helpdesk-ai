@@ -24,7 +24,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
-      # AI: worker imports the built API (dist), so both must exist before typecheck.
+      # AI: worker импортирует собранный API (dist), поэтому оба должны существовать до typecheck.
       - run: npm run build -w @helpdesk/shared && npm run build -w @helpdesk/api
       - run: npm run lint
       - run: npm run typecheck
@@ -67,7 +67,7 @@ jobs:
     needs: build
     environment: production
     steps:
-      # AI: Either SSH_KEY (private key) or SSH_PASSWORD works; set the one you have.
+      # AI: Подходит либо SSH_KEY (приватный ключ), либо SSH_PASSWORD; задайте то, что есть.
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -85,15 +85,16 @@ jobs:
             git fetch --all --prune
             git reset --hard origin/master
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            # AI: Pin the deployed tag in .env too, so a manual `docker compose up -d` on the server
-            # keeps using the same images as the last deploy instead of a stale :latest.
+            # AI: Записываем развёрнутый тег и в .env, чтобы ручной `docker compose up -d` на
+            # сервере использовал те же образы, что и последний деплой, а не устаревший :latest.
             sed -i '/^IMAGE_PREFIX=/d;/^IMAGE_TAG=/d' .env
             echo 'IMAGE_PREFIX=${{ env.IMAGE_PREFIX }}' >> .env
             echo 'IMAGE_TAG=${{ github.sha }}' >> .env
             export IMAGE_PREFIX=${{ env.IMAGE_PREFIX }} IMAGE_TAG=${{ github.sha }}
             docker compose pull api worker web
             docker compose up -d --remove-orphans
-            # AI: Drop every image no container uses - each deploy brings ~1.5 GB of new layers.
+            # AI: Удаляем все образы, которые не использует ни один контейнер - каждый деплой
+            # приносит ~1,5 ГБ новых слоёв.
             docker image prune -af
             for i in $(seq 1 30); do
               curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0 || sleep 2

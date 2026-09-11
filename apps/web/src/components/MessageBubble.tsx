@@ -4,7 +4,9 @@ import { renderMarkdown } from '../lib/markdown';
 import { Icon } from './Icon';
 import { StepList, parseSteps } from './StepList';
 
-/** AI: Who is looking at the chat: the end user (assistant on the left) or an operator (user on the left). */
+/**
+ * AI: Кто смотрит на чат: конечный пользователь (помощник слева) или оператор (пользователь слева).
+ */
 export type Perspective = 'user' | 'operator';
 
 type Props = { perspective?: Perspective } & (
@@ -18,7 +20,8 @@ export function MessageBubble(props: Props) {
   const author = props.streaming ? undefined : props.message.author;
   const perspective = props.perspective ?? 'user';
 
-  // AI: Layout side: "mine" goes right. For the operator, everything sent to the user is "mine".
+  // AI: Сторона раскладки: «моё» идёт вправо. Для оператора всё, что отправлено пользователю, -
+  // «моё».
   const side = perspective === 'operator' ? (role === 'user' ? 'assistant' : 'user') : role;
   const label =
     perspective === 'operator'
@@ -31,7 +34,7 @@ export function MessageBubble(props: Props) {
         ? `Специалист · ${author}`
         : undefined;
 
-  // AI: Step-by-step answers become an interactive checklist; everything else is markdown.
+  // AI: Пошаговые ответы становятся интерактивным чек-листом; всё остальное - markdown.
   const parsed = useMemo(
     () => (role === 'assistant' && content ? parseSteps(content) : null),
     [role, content],
@@ -67,7 +70,7 @@ export function MessageBubble(props: Props) {
             content ? (
               parsed ? (
                 <>
-                  {/* Sanitised by DOMPurify in renderMarkdown - model output is never trusted raw. */}
+                  {/* Очищено DOMPurify в renderMarkdown - выводу модели никогда не доверяем в сыром виде. */}
                   {leadHtml && <div dangerouslySetInnerHTML={{ __html: leadHtml }} />}
                   <StepList steps={parsed.steps} />
                   {tailHtml && (

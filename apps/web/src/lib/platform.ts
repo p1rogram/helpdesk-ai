@@ -1,20 +1,21 @@
 /**
- * AI: Platform adapter. One interface, one implementation per messenger. The rest of the app
- * never touches window.Telegram / vkBridge / MAX directly. Adding VK or MAX = one more file.
+ * AI: Адаптер платформы. Один интерфейс, одна реализация на мессенджер. Остальное приложение
+ * никогда не трогает window.Telegram / vkBridge / MAX напрямую. Добавить VK или MAX = ещё один
+ * файл.
  */
 export type PlatformKind = 'telegram' | 'vk' | 'max' | 'web';
 
 export interface PlatformAdapter {
   kind: PlatformKind;
-  /** AI: Opaque auth payload verified by the server (Telegram: initData). */
+  /** AI: Непрозрачный payload для входа, который проверяет сервер (Telegram: initData). */
   authPayload(): string | null;
-  /** AI: Theme colours from the host app, as CSS variables. */
+  /** AI: Цвета темы хост-приложения в виде CSS-переменных. */
   themeVars(): Record<string, string>;
   isDark(): boolean;
   ready(): void;
   haptic(kind: 'light' | 'success' | 'error'): void;
   expand(): void;
-  /** AI: Native yes/no dialog of the host (Telegram popup, browser confirm). */
+  /** AI: Нативный диалог да/нет хоста (попап Telegram, confirm браузера). */
   confirm(message: string): Promise<boolean>;
 }
 
@@ -74,8 +75,9 @@ interface VkBridgeLike {
 }
 
 /**
- * AI: VK Mini Apps: launch params arrive in the URL and are verified server-side; UI hooks go through
- * vk-bridge (loaded by the host). Only the pieces used by this app are wired; the rest is no-op.
+ * AI: VK Mini Apps: параметры запуска приходят в URL и проверяются на сервере; UI-хуки идут через
+ * vk-bridge (загружает хост). Подключены только части, которые использует приложение; остальное -
+ * no-op.
  */
 function vkAdapter(bridge: VkBridgeLike | undefined): PlatformAdapter {
   return {
@@ -100,7 +102,10 @@ interface MaxWebApp {
   expand?(): void;
 }
 
-/** AI: MAX Mini Apps expose a Telegram-like `WebApp` object; the adapter mirrors the Telegram one. */
+/**
+ * AI: MAX Mini Apps предоставляют объект `WebApp` в духе Telegram; адаптер повторяет
+ * телеграмовский.
+ */
 function maxAdapter(m: MaxWebApp): PlatformAdapter {
   return {
     kind: 'max',
@@ -129,7 +134,7 @@ function webAdapter(): PlatformAdapter {
 
 export function detectPlatform(): PlatformAdapter {
   const tg = window.Telegram?.WebApp;
-  // AI: initData is empty when the page is opened outside Telegram even though the SDK loaded.
+  // AI: initData пуст, когда страница открыта вне Telegram, даже если SDK загрузился.
   if (tg && tg.initData) return telegramAdapter(tg);
   const mx = window.Max?.WebApp;
   if (mx && mx.initData) return maxAdapter(mx);

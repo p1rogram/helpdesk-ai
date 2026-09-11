@@ -4,8 +4,8 @@ import { marked } from 'marked';
 marked.setOptions({ breaks: true, gfm: true });
 
 /**
- * AI: Assistant text is model output -> treated as untrusted. Rendered markdown is sanitised
- * (no scripts, no event handlers, links forced to a safe allow-list of protocols).
+ * AI: Текст помощника - вывод модели -> считается недоверенным. Отрендеренный markdown очищается
+ * (без скриптов, без обработчиков событий, ссылки только с безопасными протоколами).
  */
 export function renderMarkdown(md: string): string {
   const html = marked.parse(md, { async: false }) as string;

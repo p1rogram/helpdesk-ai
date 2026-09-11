@@ -50,12 +50,12 @@ export class LlmUnavailableError extends Error {
 }
 
 /**
- * AI: Thin service over the Anthropic SDK. Two operations only:
- *  - analyze(): structured output (category, confidence, fields, tone...) - never streamed
- *  - solve():   streamed markdown grounded in ONE knowledge-base article
- *  - answer():  streamed markdown grounded in retrieved documentation fragments (RAG)
- * The API key lives only here, server-side. Errors are mapped to LlmUnavailableError so the
- * engine can fall back to deterministic behaviour (KB steps verbatim) and never crash the chat.
+ * AI: Тонкий сервис над Anthropic SDK. Только три операции:
+ *  - analyze(): структурированный вывод (категория, уверенность, поля, тон...) - без стрима
+ *  - solve():   стрим markdown строго по ОДНОЙ статье базы знаний
+ *  - answer():  стрим markdown по найденным фрагментам документации (RAG)
+ * Ключ API живёт только здесь, на сервере. Ошибки превращаются в LlmUnavailableError, чтобы движок
+ * мог откатиться к детерминированному поведению (шаги статьи дословно) и никогда не ронял чат.
  */
 export class LlmService {
   private readonly client: Anthropic | null;
@@ -85,13 +85,15 @@ export class LlmService {
     if (!this.client) throw new LlmUnavailableError('LLM disabled (no API key)');
     const started = Date.now();
     try {
-      // AI: Structured output is requested via output_config (enforced by the Anthropic API) AND the
-      // prompt asks for bare JSON; the result is parsed tolerantly so gateways/proxies that ignore
-      // json_schema still yield a valid object (code fences or prose around the JSON are stripped).
+      // AI: Структурированный вывод запрашивается через output_config (его обеспечивает Anthropic
+      // API) И промпт просит голый JSON; результат разбирается терпимо, чтобы шлюзы/прокси,
+      // игнорирующие json_schema, всё равно давали валидный объект (ограждения кода и текст вокруг
+      // JSON отбрасываются).
       const res = await this.client.messages.create({
         model: this.opts.model,
         max_tokens: 1024,
-        // AI: Stable prefix -> prompt cache hit for every request of this tenant/catalog version.
+        // AI: Стабильный префикс -> попадание в prompt cache на каждом запросе этого тенанта /
+        // версии каталога.
         system: [
           {
             type: 'text',
@@ -124,8 +126,8 @@ export class LlmService {
   }
 
   /**
-   * AI: Streams markdown text chunks. Throws LlmUnavailableError (possibly mid-stream) - the
-   * caller decides whether to fall back to the article steps verbatim.
+   * AI: Стримит куски markdown-текста. Бросает LlmUnavailableError (возможно, посреди стрима) -
+   * вызывающий код решает, откатываться ли к шагам статьи дословно.
    */
   async *solve(
     catalog: LoadedCatalog,
@@ -142,7 +144,9 @@ export class LlmService {
     yield* this.streamMarkdown('solve', solveSystemPrompt(catalog), solveUserPrompt(input));
   }
 
-  /** AI: RAG: answer from retrieved fragments only. Same streaming/fallback contract as solve(). */
+  /**
+   * AI: RAG: ответ только по найденным фрагментам. Тот же контракт стрима/отката, что у solve().
+   */
   async *answer(
     catalog: LoadedCatalog,
     input: {

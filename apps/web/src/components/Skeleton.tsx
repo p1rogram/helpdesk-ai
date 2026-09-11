@@ -1,4 +1,4 @@
-/** AI: Placeholder rows while a list loads - keeps the layout from jumping. */
+/** AI: Строки-заглушки, пока грузится список - раскладка не прыгает. */
 export function SkeletonList({ rows = 4 }: { rows?: number }) {
   return (
     <div className="list" aria-hidden="true">

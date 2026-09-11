@@ -1,10 +1,10 @@
-# AI: SITE_ADDRESS is either the domain (Caddy gets a Let's Encrypt certificate itself) or ":80"
-# when an external nginx terminates TLS and proxies to this container. Mini Apps require HTTPS
-# on the outside either way.
+# AI: SITE_ADDRESS - либо домен (Caddy сам получает сертификат Let's Encrypt), либо ":80", когда
+# внешний nginx терминирует TLS и проксирует в этот контейнер. Mini Apps в любом случае требуют
+# HTTPS снаружи.
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
-	# AI: Security headers for the SPA. frame-ancestors lets Telegram embed the Mini App.
+	# AI: Заголовки безопасности для SPA. frame-ancestors позволяет Telegram встраивать Mini App.
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
@@ -13,7 +13,7 @@
 		-Server
 	}
 
-	# AI: API is same-origin -> no CORS at all in production. SSE needs flush_interval -1.
+	# AI: API на том же origin -> в production никакого CORS. Для SSE нужен flush_interval -1.
 	handle /api/* {
 		reverse_proxy api:8080 {
 			flush_interval -1

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
 /**
- * AI: Five stars under a closed ticket. Once rated the stars stay on screen, filled, so the result
- * of the click is visible (the "thank you" line itself arrives as a chat message).
+ * AI: Пять звёзд под закрытым тикетом. После оценки звёзды остаются на экране заполненными, чтобы
+ * результат нажатия был виден (сама строка «спасибо» приходит сообщением в чат).
  */
 export function RatingStars(props: {
   value: number | null;

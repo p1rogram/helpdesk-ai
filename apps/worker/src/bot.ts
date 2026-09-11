@@ -2,13 +2,13 @@ import { Bot, InlineKeyboard } from 'grammy';
 import type { Logger } from 'pino';
 
 /**
- * AI: The Telegram bot is deliberately thin: it opens the Mini App and delivers notifications.
- * All dialogue happens inside the Mini App (rich UI, streaming, buttons) - the bot API is
- * only the transport for push messages.
+ * AI: Telegram-бот намеренно тонкий: открывает Mini App и доставляет уведомления. Весь диалог
+ * происходит внутри Mini App (богатый UI, стрим, кнопки) - Bot API лишь транспорт для
+ * push-сообщений.
  *
- * Networking: uses Node's global fetch. If api.telegram.org is reachable only through a proxy,
- * either set TELEGRAM_API_ROOT to a forwarding worker (deploy/telegram-proxy.worker.js) or run
- * with NODE_USE_ENV_PROXY=1 and HTTPS_PROXY=... (Node >= 24).
+ * Сеть: используется глобальный fetch Node. Если api.telegram.org доступен только через прокси,
+ * либо задайте TELEGRAM_API_ROOT на пробрасывающий worker (deploy/telegram-proxy.worker.js), либо
+ * запускайте с NODE_USE_ENV_PROXY=1 и HTTPS_PROXY=... (Node >= 24).
  */
 export async function startBot(
   token: string,
@@ -16,8 +16,9 @@ export async function startBot(
   log: Logger,
   apiRoot?: string,
 ): Promise<Bot> {
-  // AI: grammY defaults to its own node-fetch shim (polyfilled AbortSignal, `compress` option) which the
-  // native fetch rejects. Use the global fetch - it honours NODE_USE_ENV_PROXY - with a native timeout.
+  // AI: grammY по умолчанию использует свой шим node-fetch (полифилл AbortSignal, опция
+  // `compress`), который нативный fetch отвергает. Используем глобальный fetch - он уважает
+  // NODE_USE_ENV_PROXY - с нативным таймаутом.
   const nativeFetch: typeof fetch = (url, init) => {
     const {
       signal: _polyfilled,
@@ -52,12 +53,13 @@ export async function startBot(
 
   bot.catch((err) => log.error({ err: err.error }, 'telegram bot error'));
 
-  // AI: Verify the token up front so a misconfiguration is visible at startup, not on first message.
+  // AI: Проверяем токен заранее, чтобы ошибка конфигурации была видна при старте, а не на первом
+  // сообщении.
   try {
     const me = await bot.api.getMe();
     log.info(`telegram bot: @${me.username} connected`);
   } catch (err) {
-    // AI: Never log the raw error: grammY embeds the bot token in request URLs.
+    // AI: Сырую ошибку не логируем никогда: grammY вставляет токен бота в URL запросов.
     const reason =
       err instanceof Error ? err.message.replace(/bot\d+:[\w-]+/g, 'bot***') : String(err);
     log.error(
@@ -67,7 +69,7 @@ export async function startBot(
     return bot;
   }
 
-  // AI: Long polling is fine for a single worker replica; switch to webhooks behind Caddy for many.
+  // AI: Long polling подходит для одной реплики worker; для нескольких - вебхуки за Caddy.
   void bot.start({ onStart: (me) => log.info(`telegram bot: @${me.username} polling`) });
   return bot;
 }

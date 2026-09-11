@@ -12,7 +12,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   corp: 'Учётная запись организации',
 };
 
-/** AI: Profile tab: who you are, appearance (light / dark / auto) and what the assistant can do. */
+/** AI: Вкладка профиля: кто вы, оформление (светлое / тёмное / авто) и что умеет помощник. */
 export function ProfileScreen(props: {
   platform: PlatformAdapter;
   displayName: string;

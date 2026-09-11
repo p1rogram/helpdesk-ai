@@ -64,7 +64,7 @@ describe('deterministic field extraction', () => {
     const r = validateFields(clarify, { building: 'корпус 40', room: '12' });
     expect(r.fields).toEqual({ room: '12' });
     expect(r.reject?.fieldId).toBe('building');
-    // a recognised value is normalised, an unknown-looking one is kept as is
+    // распознанное значение нормализуется, незнакомое остаётся как есть
     expect(validateFields(clarify, { building: 'общ. 12' }).fields.building).toBe('общежитие №12');
     expect(validateFields(clarify, { building: 'ул. Вершинина, 37' }).fields.building).toBe(
       'ул. Вершинина, 37',
@@ -97,7 +97,7 @@ describe('deterministic field extraction', () => {
     expect(extractFields(fields, 'не работает VPN из дома').fields).toEqual({
       location: 'Из дома / удалённо',
     });
-    // two options mentioned - ambiguous, ask
+    // упомянуты два варианта - неоднозначно, спрашиваем
     expect(extractFields(fields, 'в общежитии работает, из дома нет').fields).toEqual({});
   });
 

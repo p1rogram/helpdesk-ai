@@ -1,5 +1,5 @@
-// AI: Downloads the embedding model into RAG_MODEL_DIR at image build time, so a fresh container
-// answers from the first second and never needs outbound internet for retrieval.
+// AI: Скачивает модель эмбеддингов в RAG_MODEL_DIR при сборке образа, чтобы свежий контейнер
+// отвечал с первой секунды и никогда не нуждался в выходе в интернет ради поиска.
 import { env, pipeline } from '@huggingface/transformers';
 
 const model = process.env.RAG_EMBEDDING_MODEL ?? 'Xenova/multilingual-e5-small';

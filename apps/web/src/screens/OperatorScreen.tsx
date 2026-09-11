@@ -20,8 +20,9 @@ const GROUP_TITLE: Record<0 | 1 | 2, string> = {
 };
 
 /**
- * AI: Built-in specialist console: live queue of escalated tickets (grouped), full transcript + card,
- * reply into the user's chat, hand back to the assistant, close as resolved. ADMIN_USERS only.
+ * AI: Встроенная консоль специалиста: живая очередь переданных тикетов (с группами), полная
+ * переписка + карточка, ответ в чат пользователя, возврат помощнику, закрытие как решённого. Только
+ * ADMIN_USERS.
  */
 export function OperatorScreen(props: { api: ApiClient }) {
   const { api } = props;
@@ -63,7 +64,8 @@ export function OperatorScreen(props: { api: ApiClient }) {
       void loadQueue();
       if (ticketId && ticketId === openIdRef.current) void loadTicket(ticketId);
     }, ac.signal);
-    // AI: Safety net for proxies that block streams entirely: a slow poll while the tab is visible.
+    // AI: Страховка для прокси, которые полностью блокируют стримы: медленный опрос, пока вкладка
+    // видима.
     const poll = setInterval(() => {
       if (document.visibilityState === 'visible') void loadQueue();
     }, 30_000);

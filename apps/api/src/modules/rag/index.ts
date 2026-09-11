@@ -35,7 +35,9 @@ export interface Passage {
   title: string;
   section: string;
   content: string;
-  /** AI: Fused score in (0, ~0.07]; used only for ordering and a relevance floor. */
+  /**
+   * AI: Слитый балл в (0, ~0.07]; используется только для упорядочивания и порога релевантности.
+   */
   score: number;
   lexical: number;
   dense: number;
@@ -54,10 +56,10 @@ interface IndexedChunk {
 }
 
 /**
- * AI: In-memory index of one tenant. `postings` is the inverted index (term -> chunks that contain
- * it), so a query touches only the chunks sharing a term with it, not the whole corpus; `terms`
- * is sorted for prefix expansion by binary search. `stamp` is the database fingerprint the index
- * was built from - see index().
+ * AI: Индекс одного тенанта в памяти. `postings` - инвертированный индекс (терм -> фрагменты, где
+ * он есть), поэтому запрос трогает только фрагменты с общим термом, а не весь корпус; `terms`
+ * отсортирован для расширения префиксов бинарным поиском. `stamp` - отпечаток базы, по которому
+ * индекс построен, см. index().
  */
 interface TenantIndex {
   chunks: IndexedChunk[];
@@ -70,17 +72,22 @@ interface TenantIndex {
   checkedAt: number;
 }
 
-/** AI: How long a replica trusts its copy before asking the database whether the corpus changed. */
+/**
+ * AI: Как долго реплика доверяет своей копии, прежде чем спросить базу, не изменился ли корпус.
+ */
 const STAMP_TTL_MS = 5_000;
 
 const RRF_K = 60;
-/** AI: A chunk found only by the dense ranker must be a close paraphrase to count. */
+/**
+ * AI: Фрагмент, найденный только векторным ранжировщиком, должен быть близким парафразом, чтобы
+ * считаться.
+ */
 const DENSE_FLOOR = 0.8;
 
 export class RagService {
   private readonly indexes = new Map<string, TenantIndex>();
   private readonly stampTtlMs: number;
-  /** AI: pgvector column + HNSW index are in place; dense search runs in the database. */
+  /** AI: Колонка pgvector + HNSW-индекс на месте; векторный поиск выполняется в базе. */
   private vectorReady = false;
 
   constructor(
@@ -102,10 +109,10 @@ export class RagService {
   }
 
   /**
-   * AI: Nearest-neighbour search belongs in the database, not in a loop over every row: with
-   * pgvector the dense half of retrieval is an HNSW index lookup, O(log n) instead of O(n), and
-   * the index is shared by every API replica. The JSONB copy of the vector stays as the portable
-   * fallback: on a Postgres without the extension the service keeps working from memory.
+   * AI: Поиск ближайших соседей должен жить в базе, а не в цикле по всем строкам: с pgvector
+   * векторная половина поиска - это обращение к HNSW-индексу, O(log n) вместо O(n), и индекс общий
+   * для всех реплик API. JSONB-копия вектора остаётся переносимым запасным вариантом: на Postgres
+   * без расширения сервис продолжает работать из памяти.
    */
   async prepareStorage(): Promise<void> {
     if (this.embedder.dims === 0) return;
@@ -129,10 +136,10 @@ export class RagService {
         ),
       );
     } catch (err) {
-      // AI: Older pgvector without HNSW: the query still works, as a sequential scan.
+      // AI: Старый pgvector без HNSW: запрос всё равно работает, последовательным сканированием.
       this.log.warn(`hnsw index not created: ${(err as Error).message}`);
     }
-    // AI: Databases embedded before this column existed: copy the JSONB vectors over once.
+    // AI: Базы, заполненные до появления этой колонки: один раз переносим JSONB-векторы.
     await this.db.execute(
       sql.raw(
         'UPDATE rag_chunks SET embedding_vec = embedding::text::vector WHERE embedding IS NOT NULL AND embedding_vec IS NULL',
@@ -142,12 +149,12 @@ export class RagService {
     this.log.info('rag: dense search via pgvector (hnsw)');
   }
 
-  // ---------- ingest ----------
+  // ---------- индексация ----------
 
   /**
-   * AI: Reads the corpus from a directory. Three sources: help-tpu.json (portal articles, internal),
-   * *.jsonl (one public web page per line - crawler output) and docs/*.md - hand-prepared documents
-   * (regulations, orders) with a front-matter block: title, source, audience.
+   * AI: Читает корпус из каталога. Три источника: help-tpu.json (статьи портала, internal), *.jsonl
+   * (одна публичная веб-страница на строку - вывод краулера) и docs/*.md - подготовленные вручную
+   * документы (регламенты, приказы) с блоком front-matter: title, source, audience.
    */
   async loadRawDir(dir: string): Promise<SourceDoc[]> {
     const docs: SourceDoc[] = [];
@@ -201,7 +208,7 @@ export class RagService {
     try {
       mdFiles = (await readdir(path.join(dir, 'docs'))).filter((f) => f.endsWith('.md'));
     } catch {
-      /* no docs/ directory */
+      /* каталога docs/ нет */
     }
     for (const f of mdFiles.sort()) {
       const doc = parseMarkdownDoc(await readFile(path.join(dir, 'docs', f), 'utf8'), f);
@@ -210,7 +217,10 @@ export class RagService {
     return docs;
   }
 
-  /** AI: Idempotent: unchanged chunks keep their vector, removed pages disappear, new text is embedded. */
+  /**
+   * AI: Идемпотентно: неизменённые фрагменты сохраняют вектор, удалённые страницы исчезают, новый
+   * текст векторизуется.
+   */
   async ingest(tenantId: string, docs: SourceDoc[]): Promise<{ chunks: number; embedded: number }> {
     const existing = await this.db.select().from(ragChunks).where(eq(ragChunks.tenantId, tenantId));
     const byId = new Map(existing.map((r) => [r.id, r]));
@@ -221,7 +231,7 @@ export class RagService {
     type Row = typeof ragChunks.$inferInsert;
     const rows: Row[] = [];
     for (const doc of docs) {
-      // AI: Personal names never reach the index - see redact.ts.
+      // AI: Персональные имена никогда не попадают в индекс - см. redact.ts.
       const parts = chunkText(redactNames(doc.text));
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i]!;
@@ -252,7 +262,7 @@ export class RagService {
           });
       }
     }
-    // AI: Batched upserts - one round-trip per 50 chunks instead of one per chunk.
+    // AI: Батчевые upsert - один раунд-трип на 50 фрагментов вместо одного на фрагмент.
     for (let i = 0; i < rows.length; i += 50) {
       await this.db
         .insert(ragChunks)
@@ -311,12 +321,13 @@ export class RagService {
     return { chunks: total, embedded };
   }
 
-  // ---------- retrieval ----------
+  // ---------- поиск ----------
 
   /**
-   * AI: The corpus fingerprint (row count + latest change) is one indexed query. Every replica
-   * compares it with the fingerprint of its in-memory index, so an ingest on any replica - or from
-   * the admin API - is picked up everywhere within STAMP_TTL_MS, with no shared cache to invalidate.
+   * AI: Отпечаток корпуса (число строк + последнее изменение) - один индексированный запрос. Каждая
+   * реплика сравнивает его с отпечатком своего индекса в памяти, поэтому индексация на любой
+   * реплике - или через admin API - подхватывается везде в пределах STAMP_TTL_MS, без общего кэша,
+   * который нужно инвалидировать.
    */
   private async stamp(tenantId: string): Promise<string> {
     const [row] = await this.db
@@ -387,8 +398,8 @@ export class RagService {
   }
 
   /**
-   * AI: Loads the embedding model and builds the index ahead of the first user, so the first
-   * question is not the one that pays for the cold start.
+   * AI: Загружает модель эмбеддингов и строит индекс до первого пользователя, чтобы за холодный
+   * старт не платил первый вопрос.
    */
   async warmup(tenantId: string): Promise<void> {
     try {
@@ -434,8 +445,9 @@ export class RagService {
       }
     }
 
-    // AI: Reciprocal-rank fusion: a chunk in the top of both lists wins; a chunk found by only one
-    // ranker still surfaces. Rank-based, so BM25 and cosine scales never need calibrating.
+    // AI: Слияние взаимных рангов (RRF): фрагмент в топе обоих списков побеждает; фрагмент,
+    // найденный только одним ранжировщиком, всё равно всплывает. По рангам, поэтому шкалы BM25 и
+    // косинуса не нужно калибровать.
     const fused = new Map<string, Passage>();
     const push = (chunk: IndexedChunk, rank: number, kind: 'lexical' | 'dense', raw: number) => {
       const p = fused.get(chunk.id) ?? {
@@ -461,7 +473,9 @@ export class RagService {
       .slice(0, limit);
   }
 
-  /** AI: Top-30 by cosine similarity through the HNSW index; `<=>` is cosine distance in pgvector. */
+  /**
+   * AI: Топ-30 по косинусной близости через HNSW-индекс; `<=>` в pgvector - косинусное расстояние.
+   */
   private async denseInDb(
     idx: TenantIndex,
     tenantId: string,
@@ -487,9 +501,10 @@ export class RagService {
   }
 
   /**
-   * AI: BM25 over the inverted index: for every query term (and up to 20 of its prefix expansions,
-   * found by binary search in the sorted term list) only the posting list is walked. Cost grows
-   * with the number of chunks that share a term with the query, not with the corpus size.
+   * AI: BM25 по инвертированному индексу: для каждого терма запроса (и до 20 его префиксных
+   * расширений, найденных бинарным поиском в отсортированном списке термов) обходится только список
+   * вхождений. Стоимость растёт с числом фрагментов, имеющих общий терм с запросом, а не с размером
+   * корпуса.
    */
   private bm25(
     idx: TenantIndex,
@@ -507,7 +522,8 @@ export class RagService {
       if (idx.df.has(term)) candidates.push([term, 1]);
       if (term.length >= 3)
         for (const p of prefixMatches(idx.terms, term, 20)) candidates.push([p, 0.6]);
-      // AI: A chunk gets the best of "exact term" and "prefix variant" for this query term, once.
+      // AI: Фрагмент получает лучшее из «точный терм» и «префиксный вариант» для этого терма
+      // запроса, один раз.
       const best = new Map<number, number>();
       for (const [t, w] of candidates) {
         const df = idx.df.get(t) ?? 0;
@@ -529,7 +545,10 @@ export class RagService {
   }
 }
 
-/** AI: Terms starting with `prefix` (excluding the prefix itself) from a sorted list, at most `limit`. */
+/**
+ * AI: Термы, начинающиеся с `prefix` (кроме самого префикса), из отсортированного списка, не больше
+ * `limit`.
+ */
 function prefixMatches(sorted: string[], prefix: string, limit: number): string[] {
   let lo = 0;
   let hi = sorted.length;
@@ -547,7 +566,10 @@ function prefixMatches(sorted: string[], prefix: string, limit: number): string[
   return out;
 }
 
-/** AI: pgvector text input: "[0.1,0.2,...]". Six decimals keep the literal short; cosine is unaffected. */
+/**
+ * AI: Текстовый ввод pgvector: "[0.1,0.2,...]". Шесть знаков после запятой делают литерал коротким;
+ * на косинус не влияет.
+ */
 function toVectorLiteral(v: number[]): string {
   return `[${v.map((x) => x.toFixed(6)).join(',')}]`;
 }
@@ -556,7 +578,7 @@ function sha1(s: string): string {
   return createHash('sha1').update(s).digest('hex');
 }
 
-/** AI: A `---` front-matter block (title, source, audience) followed by the markdown body. */
+/** AI: Блок front-matter `---` (title, source, audience), за которым идёт тело markdown. */
 function parseMarkdownDoc(raw: string, fileName: string): SourceDoc | null {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/.exec(raw);
   if (!m) return null;

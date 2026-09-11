@@ -10,9 +10,9 @@ import type {
 const TOKEN_KEY = 'helpdesk.token';
 
 /**
- * AI: Thin typed client. On the website the JWT is kept in localStorage so a page refresh keeps the
- * session (the token itself is short-lived and verified server-side); inside a messenger the
- * platform re-authenticates on every open, so nothing is persisted there.
+ * AI: Тонкий типизированный клиент. На сайте JWT хранится в localStorage, чтобы перезагрузка
+ * страницы сохраняла сессию (сам токен короткоживущий и проверяется сервером); внутри мессенджера
+ * платформа проходит вход заново при каждом открытии, поэтому там ничего не сохраняется.
  */
 export class ApiClient {
   private token: string | null = null;
@@ -36,7 +36,7 @@ export class ApiClient {
       if (this.token) localStorage.setItem(TOKEN_KEY, this.token);
       else localStorage.removeItem(TOKEN_KEY);
     } catch {
-      /* storage unavailable */
+      /* хранилище недоступно */
     }
   }
 
@@ -49,7 +49,7 @@ export class ApiClient {
     return this.token !== null;
   }
 
-  /** AI: Adopt a token issued out-of-band (SSO callback puts it in the URL fragment). */
+  /** AI: Принять токен, выданный вне обычного потока (SSO-callback кладёт его во фрагмент URL). */
   setToken(token: string) {
     this.token = token;
     this.remember();
@@ -98,7 +98,7 @@ export class ApiClient {
     return r;
   }
 
-  /** AI: VK / MAX: opaque signed payload from the host app. */
+  /** AI: VK / MAX: непрозрачный подписанный payload от хост-приложения. */
   async loginPlatform(
     platform: 'vk' | 'max',
     payload: string,
@@ -145,25 +145,27 @@ export class ApiClient {
           user: { displayName: string; platform: string };
           lastMessageAt: string | null;
           unanswered: boolean;
-          /** AI: 0 - in progress, 1 - waiting for first reply, 2 - closed. */
+          /** AI: 0 - в работе, 1 - ждёт первого ответа, 2 - закрыто. */
           group: 0 | 1 | 2;
         }
       >;
     }>('/api/operator/tickets');
   }
 
-  /** AI: Hand the ticket back to the assistant (no specialist needed). */
+  /** AI: Вернуть тикет помощнику (специалист не нужен). */
   operatorHandback(id: string) {
     return this.post<{ ticket: TicketCard }>(`/api/operator/tickets/${id}/handback`, {});
   }
 
-  /** AI: Live queue updates. Calls `onChange` whenever anything in this tenant's queue changes. */
+  /**
+   * AI: Живые обновления очереди. Вызывает `onChange` при любом изменении в очереди этого тенанта.
+   */
   operatorStream(onChange: (ticketId: string | null) => void, signal: AbortSignal): void {
     const run = async () => {
       while (!signal.aborted) {
         try {
-          // AI: POST, not GET: CDN tunnels (Cloudflare) buffer GET bodies for cache decisions and
-          // hold SSE frames back; a POST response streams through untouched.
+          // AI: POST, а не GET: CDN-туннели (Cloudflare) буферизуют тела GET ради решений о
+          // кэшировании и придерживают SSE-кадры; ответ на POST стримится без изменений.
           const res = await fetch(`${this.base}/api/operator/stream`, {
             method: 'POST',
             headers: this.headers({ accept: 'text/event-stream' }),
@@ -189,10 +191,11 @@ export class ApiClient {
             }
           }
         } catch {
-          /* connection dropped - retry below */
+          /* соединение оборвалось - повтор ниже */
         }
         if (signal.aborted) return;
-        // AI: Reconnect after a short pause (server restart, proxy timeout, sleeping laptop).
+        // AI: Переподключение после короткой паузы (перезапуск сервера, таймаут прокси, уснувший
+        // ноутбук).
         await new Promise((r) => setTimeout(r, 3000));
       }
     };
@@ -223,7 +226,7 @@ export class ApiClient {
     }>('/api/tenants');
   }
 
-  /** AI: Opens the current ticket (server reuses an open one); `fresh` forces a new ticket. */
+  /** AI: Открывает текущий тикет (сервер переиспользует открытый); `fresh` создаёт новый. */
   openTicket(fresh = false) {
     return this.post<{ ticket: TicketCard; messages: ChatMessage[] }>(
       `/api/tickets${fresh ? '?new=1' : ''}`,
@@ -245,7 +248,7 @@ export class ApiClient {
     });
   }
 
-  /** AI: The user withdraws the request (works while a specialist has it, too). */
+  /** AI: Пользователь отзывает обращение (работает и пока оно у специалиста). */
   closeTicket(id: string) {
     return this.post<{ ticket: TicketCard; message: ChatMessage }>(`/api/tickets/${id}/close`, {});
   }
@@ -263,7 +266,7 @@ export class ApiClient {
     }>('/api/kb/categories');
   }
 
-  /** AI: POST + SSE over fetch (EventSource is GET-only). Yields parsed events. */
+  /** AI: POST + SSE через fetch (EventSource умеет только GET). Выдаёт разобранные события. */
   async *sendMessage(
     ticketId: string,
     text: string,

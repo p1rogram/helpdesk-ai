@@ -15,11 +15,11 @@ export interface VerifiedInitData {
 }
 
 /**
- * AI: Validates Telegram Mini App `initData` exactly as documented:
+ * AI: Проверяет `initData` Telegram Mini App ровно по документации:
  * secret = HMAC_SHA256(key="WebAppData", msg=bot_token)
  * hash   = HMAC_SHA256(key=secret, msg=data_check_string)
- * data_check_string = sorted "key=value" pairs (except hash) joined by "\n".
- * Constant-time comparison; rejects stale payloads (replay protection).
+ * data_check_string = отсортированные пары "key=value" (кроме hash), соединённые "\n".
+ * Сравнение за постоянное время; устаревшие payload отклоняются (защита от replay).
  */
 export function verifyTelegramInitData(
   initData: string,

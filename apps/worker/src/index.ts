@@ -8,12 +8,12 @@ import { AnalyticsConsumer } from './consumers/analytics.js';
 import { NotifierConsumer } from './consumers/notifier.js';
 
 /**
- * AI: Worker process = Kafka consumers + Telegram bot. Scales independently of the API:
- * run N replicas, Kafka consumer groups spread partitions across them.
+ * AI: Процесс worker = потребители Kafka + Telegram-бот. Масштабируется независимо от API:
+ * запускайте N реплик, consumer groups Kafka распределят партиции между ними.
  *
- *  support.notification.v1 -> notifier  (sends Telegram messages: "ticket handed to a specialist")
- *  support.ticket.v1       -> analytics (daily_stats per tenant/category)
- *  support.llm-usage.v1    -> analytics (token spend)
+ *  support.notification.v1 -> notifier  (шлёт сообщения в Telegram: «обращение передано специалисту»)
+ *  support.ticket.v1       -> analytics (daily_stats по тенанту/категории)
+ *  support.llm-usage.v1    -> analytics (расход токенов)
  */
 const config = loadConfig();
 const log = pino({
@@ -47,7 +47,8 @@ const notifier = new NotifierConsumer(bot, log);
 const analytics = new AnalyticsConsumer(dbHandle.db, log);
 
 await events.subscribe(TOPICS.notifications, 'helpdesk-notifier', (e) => notifier.handle(e));
-// AI: One consumer group per topic - sharing a group id across topics makes Kafka rebalance in a loop.
+// AI: По одной consumer group на топик - общий group id для нескольких топиков заставляет Kafka
+// перебалансироваться по кругу.
 await events.subscribe(TOPICS.ticketEvents, 'helpdesk-analytics-tickets', (e) =>
   analytics.onTicketEvent(e),
 );

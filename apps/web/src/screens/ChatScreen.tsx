@@ -16,7 +16,10 @@ export function ChatScreen(props: {
   platform: PlatformAdapter;
   ticketId?: string;
   onTicketChange?: (id: string) => void;
-  /** AI: Fired whenever the ticket card changes (state, summary) - lets the sidebar refresh. */
+  /**
+   * AI: Срабатывает при любом изменении карточки тикета (состояние, суть) - даёт боковой панели
+   * обновиться.
+   */
   onTicketUpdate?: () => void;
 }) {
   const { api, platform } = props;
@@ -28,8 +31,8 @@ export function ChatScreen(props: {
   const [error, setError] = useState<string | null>(null);
   const [showCard, setShowCard] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  // AI: Id of the ticket actually on screen. The prop can lag one render behind when a new chat
-  // is created here, and without this guard the effect below would reload the previous ticket.
+  // AI: Id тикета, который реально на экране. Проп может отставать на один рендер, когда новый чат
+  // создаётся здесь, и без этой защиты эффект ниже перезагрузил бы предыдущий тикет.
   const loadedRef = useRef<string | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -41,8 +44,8 @@ export function ChatScreen(props: {
         try {
           r = id ? await api.getTicket(id) : await api.openTicket(fresh);
         } catch (err) {
-          // AI: The remembered ticket is gone (wiped database, another account) - open the
-          // current one instead of showing an error for a stale id.
+          // AI: Запомненный тикет пропал (очищенная база, другой аккаунт) - открываем текущий
+          // вместо ошибки на устаревший id.
           if (!(id && err instanceof ApiError && err.status === 404)) throw err;
           r = await api.openTicket(false);
         }
@@ -67,7 +70,7 @@ export function ChatScreen(props: {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, streaming]);
 
-  // AI: While a specialist owns the ticket, poll for their replies (a push arrives in Telegram too).
+  // AI: Пока тикет у специалиста, опрашиваем его ответы (push приходит и в Telegram).
   useEffect(() => {
     if (!ticket || ticket.state !== 'escalated') return;
     const id = ticket.id;
@@ -77,7 +80,7 @@ export function ChatScreen(props: {
         setMessages((m) => (r.messages.length !== m.length ? r.messages : m));
         setTicket(r.ticket);
       } catch {
-        /* transient */
+        /* временная ошибка */
       }
     }, 5000);
     return () => clearInterval(timer);
@@ -85,7 +88,7 @@ export function ChatScreen(props: {
 
   const send = async (text: string, label?: string) => {
     if (busy) return;
-    // AI: A new chat can always be started, even before the first ticket has loaded.
+    // AI: Новый чат можно начать всегда, даже до загрузки первого тикета.
     if (!ticket && text !== NEW_TICKET) return;
     if (text === NEW_TICKET) {
       setBusy(true);
@@ -101,7 +104,7 @@ export function ChatScreen(props: {
     setBusy(true);
     setError(null);
     platform.haptic('light');
-    // AI: Optimistic user bubble (commands show their label).
+    // AI: Оптимистичный пузырь пользователя (команды показывают свою подпись).
     setMessages((m) => [
       ...m,
       {
@@ -117,12 +120,12 @@ export function ChatScreen(props: {
     try {
       for await (const ev of api.sendMessage(ticketId, text, ac.signal)) {
         if (ev.type === 'meta') {
-          // AI: The card changed mid-answer (category, summary): the history list can already show
-          // the ticket instead of waiting for the full answer.
+          // AI: Карточка изменилась посреди ответа (категория, суть): список истории уже может
+          // показать тикет, не дожидаясь полного ответа.
           setTicket(ev.ticket);
           props.onTicketUpdate?.();
         } else if (ev.type === 'ack') {
-          // AI: A specialist owns the chat: the message was delivered, the assistant stays silent.
+          // AI: Чатом владеет специалист: сообщение доставлено, помощник молчит.
           setStreaming(null);
           setStatus(null);
           setTicket(ev.ticket);

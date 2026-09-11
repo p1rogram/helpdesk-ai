@@ -11,7 +11,10 @@ import { eventBase } from '../modules/events/index.js';
 import { toCard, toChatMessage } from '../modules/tickets/repository.js';
 import { QR_CLOSED, T } from '../modules/dialog/templates.js';
 
-/** AI: Longest engine pass we tolerate before another request may take the ticket over. */
+/**
+ * AI: Самый долгий проход движка, который мы терпим, прежде чем другой запрос сможет перехватить
+ * тикет.
+ */
 const LEASE_MS = 90_000;
 
 const IdParam = z.object({ id: z.string().uuid() });
@@ -20,8 +23,9 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
   app.addHook('preHandler', app.authenticate);
 
   /**
-   * AI: Open the current ticket: reuse the latest open one (so re-opening the app or switching tabs
-   * never spawns empty tickets); `?new=1` forces a fresh one. Abandoned empty tickets are pruned.
+   * AI: Открыть текущий тикет: переиспользуем последний открытый (чтобы повторное открытие
+   * приложения или переключение вкладок не плодило пустые тикеты); `?new=1` создаёт новый.
+   * Брошенные пустые тикеты удаляются.
    */
   app.post('/api/tickets', async (req) => {
     const catalog = await ctx.knowledge.catalog(req.user.tenant, req.user.scope ?? 'full');
@@ -51,7 +55,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
   app.get('/api/tickets', async (req) => {
     const catalog = await ctx.knowledge.catalog(req.user.tenant, req.user.scope ?? 'full');
     const rows = await ctx.tickets.listForUser(req.user.sub, 30);
-    // AI: Hide tickets that never got a problem statement (greeting only).
+    // AI: Скрываем тикеты, в которых так и не появилось описания проблемы (только приветствие).
     return {
       tickets: rows.filter((t) => t.summary || t.state !== 'intake').map((t) => toCard(t, catalog)),
     };
@@ -67,9 +71,9 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   /**
-   * AI: Send a message; the answer streams back as Server-Sent Events. One message per ticket at a
-   * time: a double-tap on "send" must not run two engine passes over the same state. The lease
-   * lives in the database, so it holds across API replicas and expires if a process dies.
+   * AI: Отправить сообщение; ответ стримится как Server-Sent Events. Одно сообщение на тикет за
+   * раз: двойной тап по «отправить» не должен запускать два прохода движка по одному состоянию.
+   * Аренда живёт в базе, поэтому действует между репликами API и истекает, если процесс умер.
    */
   app.post('/api/tickets/:id/messages', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
@@ -151,8 +155,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       rating: body.data.rating,
       ...(body.data.comment ? { comment: body.data.comment } : {}),
     });
-    // AI: The acknowledgement is a real chat message, so the result of rating is visible - now and
-    // when the ticket is reopened from the history.
+    // AI: Подтверждение - настоящее сообщение в чате, чтобы результат оценки был виден - и сейчас,
+    // и при открытии тикета из истории.
     const thanks = await ctx.tickets.addMessage(ticket.id, 'assistant', T.rated(body.data.rating), {
       rating: body.data.rating,
       quickReplies: QR_CLOSED,
@@ -163,8 +167,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
 }
 
 /**
- * AI: SSE bypasses the CORS plugin (raw response), so the allow-list is applied here by hand.
- * Same-origin requests carry no Origin header and need nothing.
+ * AI: SSE обходит CORS-плагин (сырой ответ), поэтому белый список применяется здесь вручную.
+ * Same-origin запросы без заголовка Origin ничего не требуют.
  */
 export function sseCors(origin: string | undefined, allowed: string[]): Record<string, string> {
   return origin && allowed.includes(origin)

@@ -2,8 +2,9 @@ import { TOPICS } from '@helpdesk/shared';
 import type { EventBus } from './bus.js';
 
 /**
- * AI: Dev-only: with EVENT_BUS=memory there is no worker process listening, so the API delivers
- * Telegram notifications itself. In production Kafka + the worker do this (see apps/worker).
+ * AI: Только для dev: при EVENT_BUS=memory нет процесса worker, который слушает события, поэтому
+ * уведомления в Telegram доставляет сам API. В production это делают Kafka + worker (см.
+ * apps/worker).
  */
 export async function attachDevTelegramNotifier(
   bus: EventBus,

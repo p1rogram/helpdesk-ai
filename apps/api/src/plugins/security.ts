@@ -16,19 +16,22 @@ declare module '@fastify/jwt' {
 declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    /** AI: Operator console: ADMIN_USERS, operator groups, or everyone in demo mode. */
+    /** AI: Консоль оператора: ADMIN_USERS, группы операторов или все в демо-режиме. */
     requireOperator: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    /** AI: Administration (catalog, RAG): ADMIN_USERS only - demo mode never opens this. */
+    /**
+     * AI: Администрирование (каталог, RAG): только ADMIN_USERS - демо-режим этого никогда не
+     * открывает.
+     */
     requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
 /**
- * AI: Edge protections in one place:
- *  - helmet: security headers (CSP is set by the web app's own server; API returns JSON only)
- *  - cors: allow-list of origins (Mini App origin + local dev)
- *  - rate-limit: per authenticated user, falling back to IP - protects the LLM budget
- *  - jwt: short-lived session tokens issued after messenger signature verification
+ * AI: Защита периметра в одном месте:
+ *  - helmet: заголовки безопасности (CSP задаёт собственный сервер веб-приложения; API отдаёт только JSON)
+ *  - cors: белый список origin (origin Mini App + локальная разработка)
+ *  - rate-limit: на аутентифицированного пользователя, иначе по IP - защищает бюджет модели
+ *  - jwt: короткоживущие токены сессии после проверки подписи мессенджера
  */
 export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Promise<void> {
   await app.register(helmet, {
@@ -38,9 +41,9 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
 
   await app.register(cors, {
     origin: (origin, cb) => {
-      // AI: Same-origin / server-to-server requests have no Origin header.
+      // AI: У same-origin и серверных запросов нет заголовка Origin.
       if (!origin || cfg.corsOrigins.includes(origin)) return cb(null, true);
-      // AI: Unknown origin: answer without CORS headers (browser blocks it) instead of a 500.
+      // AI: Неизвестный origin: отвечаем без CORS-заголовков (браузер заблокирует сам), а не 500.
       cb(null, false);
     },
     credentials: false,
@@ -53,12 +56,13 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
     max: cfg.RATE_LIMIT_PER_MINUTE,
     timeWindow: '1 minute',
     keyGenerator: (req) => {
-      // AI: Prefer the user id from a valid token; anonymous traffic is limited per IP.
+      // AI: Предпочитаем id пользователя из валидного токена; анонимный трафик ограничивается по
+      // IP.
       try {
         const claims = app.jwt.decode<SessionClaims>(bearer(req) ?? '');
         if (claims?.sub) return `u:${claims.sub}`;
       } catch {
-        /* fallthrough */
+        /* проваливаемся дальше */
       }
       return `ip:${req.ip}`;
     },

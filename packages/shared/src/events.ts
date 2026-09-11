@@ -3,8 +3,8 @@ import { TicketCardSchema, ToneSchema } from './dialog.js';
 import { PlatformSchema } from './api.js';
 
 /**
- * AI: Domain events. Published by the API, consumed by workers via Kafka.
- * Topic naming: <domain>.<entity>.<version>. Partition key: ticketId (ordering per ticket).
+ * AI: Доменные события. Публикует API, потребляют worker-ы через Kafka.
+ * Именование топиков: <домен>.<сущность>.<версия>. Ключ партиции: ticketId (порядок внутри тикета).
  */
 export const TOPICS = {
   ticketEvents: 'support.ticket.v1',
@@ -21,7 +21,10 @@ const base = {
 
 export const TicketEventSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('ticket.created'), ticket: TicketCardSchema }),
-  /** AI: Anything that changes what an operator should see (new user message, hand-back, reply). */
+  /**
+   * AI: Всё, что меняет то, что должен видеть оператор (новое сообщение пользователя, возврат,
+   * ответ).
+   */
   z.object({ ...base, type: z.literal('ticket.updated'), tenantId: z.string() }),
   z.object({
     ...base,
@@ -32,7 +35,7 @@ export const TicketEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ ...base, type: z.literal('ticket.solution_shown'), articleId: z.string() }),
   z.object({ ...base, type: z.literal('ticket.resolved'), ticket: TicketCardSchema }),
-  /** AI: Finished without a solution: the user withdrew the request (not counted as resolved). */
+  /** AI: Завершено без решения: пользователь отозвал обращение (не считается решённым). */
   z.object({
     ...base,
     type: z.literal('ticket.closed'),

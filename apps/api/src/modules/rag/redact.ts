@@ -13,7 +13,7 @@ const PATRONYMIC = '(?:ович|евич|ьич|ич|овна|евна|ична|
 const WORD = '[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?';
 const END = '(?![а-яё])';
 
-// AI: The 200 most common Russian first names (nominative + common oblique forms via stems).
+// AI: 200 самых частых русских имён (именительный падеж + частые косвенные формы через основы).
 const FIRST_NAMES = `
 Александр Алексей Анатолий Андрей Антон Аркадий Арсений Артём Артем Артур Борис Вадим Валентин Валерий
 Василий Виктор Виталий Владимир Владислав Вячеслав Геннадий Георгий Герман Глеб Григорий Даниил Данил
@@ -72,7 +72,7 @@ export function redactNames(text: string): string {
       .replace(INITIALS, '')
       .replace(NAME_SURNAME, '')
       .replace(MOBILE, '')
-      // AI: tidy what the name used to hold together
+      // AI: прибираем то, что имя раньше связывало
       .replace(/\s*\(\s*\)/g, '')
       .replace(/\(\s*,\s*/g, '(')
       .replace(/[—–-]\s*,\s*/g, '— ')
@@ -84,7 +84,7 @@ export function redactNames(text: string): string {
   );
 }
 
-/** AI: What the CI gate and the tests look for; returns the offending fragments. */
+/** AI: То, что ищут гейт в CI и тесты; возвращает найденные фрагменты. */
 export function findPersonalData(text: string): string[] {
   return [FULL_NAME, FULL_NAME_INVERTED, INITIALS, NAME_SURNAME, MOBILE].flatMap((re) =>
     [...text.matchAll(re)].map((m) => m[0]),

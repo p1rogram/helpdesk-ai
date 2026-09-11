@@ -13,8 +13,8 @@ x-logging: &logging
 services:
   postgres:
     <<: *logging
-    # AI: Official postgres:16 plus the pgvector extension (same major version: the data volume
-    # created by postgres:16 is reused as is).
+    # AI: Официальный postgres:16 плюс расширение pgvector (та же мажорная версия: том данных,
+    # созданный postgres:16, используется как есть).
     image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
@@ -102,8 +102,8 @@ services:
       KAFKA_BROKERS: kafka:9092
       WEB_APP_URL: https://${DOMAIN}
     depends_on:
-      # AI: The API owns the schema; the worker starts once it is healthy, so two processes never
-      # run CREATE TABLE against the same fresh database at the same moment.
+      # AI: Схемой владеет API; worker стартует, когда API здоров, поэтому два процесса никогда не
+      # выполняют CREATE TABLE на одной свежей базе в один момент.
       api: { condition: service_healthy }
       kafka: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 512m } } }
@@ -112,8 +112,9 @@ services:
     <<: *logging
     image: ${IMAGE_PREFIX:-ghcr.io/p1rogram/helpdesk-ai}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    # AI: Standalone: 80/443 on all interfaces, Caddy does HTTPS. Behind an existing nginx: set
-    # WEB_HTTP_BIND=127.0.0.1:8081 (and SITE_ADDRESS=:80) - nginx terminates TLS, see deploy/nginx.conf.
+    # AI: Отдельно: 80/443 на всех интерфейсах, HTTPS делает Caddy. За существующим nginx:
+    # WEB_HTTP_BIND=127.0.0.1:8081 (и SITE_ADDRESS=:80) - TLS терминирует nginx, см.
+    # deploy/nginx.conf.
     ports:
       - '${WEB_HTTP_BIND:-80}:80'
       - '${WEB_HTTPS_BIND:-443}:443'

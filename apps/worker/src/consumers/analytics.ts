@@ -5,8 +5,9 @@ import type { Db } from '@helpdesk/api/dist/db/client.js';
 import { dailyStats } from '@helpdesk/api/dist/db/schema.js';
 
 /**
- * AI: Maintains daily aggregates from the event stream. Idempotency note: counters are
- * incremented per event; for exactly-once semantics store processed eventIds (out of scope here).
+ * AI: Ведёт дневные агрегаты по потоку событий. Про идемпотентность: счётчики увеличиваются на
+ * каждое событие; для семантики exactly-once нужно хранить обработанные eventId (здесь не
+ * делается).
  */
 export class AnalyticsConsumer {
   constructor(

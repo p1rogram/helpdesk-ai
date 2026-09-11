@@ -3,11 +3,9 @@ import type { LoadedCatalog } from '../knowledge/index.js';
 import type { Passage } from '../rag/index.js';
 
 /**
- * AI: Prompt construction. Two rules keep this cheap and safe:
- *  1. The system prompt for a tenant is a pure function of (catalog version) - byte-stable,
- *     so the prompt cache hits on every request until the catalog changes.
- *  2. User text only ever appears inside the `user` turn, wrapped in a data envelope.
- *     Operator instructions live in `system`. Prompt-injection text is data, not commands.
+ * AI: Сборка промптов. Два правила делают её дешёвой и безопасной:
+ *  1. Системный промпт тенанта - чистая функция от (версии каталога), байт в байт стабильна, поэтому prompt cache срабатывает на каждом запросе, пока каталог не изменится.
+ *  2. Текст пользователя появляется только внутри хода `user`, в конверте данных. Инструкции оператора живут в `system`. Текст prompt-injection - это данные, а не команды.
  */
 
 export function analyzeSystemPrompt(catalog: LoadedCatalog): string {
@@ -139,8 +137,8 @@ export function renderPassages(passages: Passage[]): string {
 }
 
 /**
- * AI: RAG answer: no vetted article matched, so the model answers strictly from retrieved
- * documentation fragments and cites them. Same [NO_SOLUTION] contract as solve().
+ * AI: Ответ RAG: проверенной статьи не нашлось, поэтому модель отвечает строго по найденным
+ * фрагментам документации и ссылается на них. Тот же контракт [NO_SOLUTION], что у solve().
  */
 export function answerSystemPrompt(catalog: LoadedCatalog): string {
   return [

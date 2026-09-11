@@ -2,13 +2,13 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AuthError } from './telegram.js';
 
 /**
- * AI: MAX (max.ru) Mini Apps. The platform follows the Telegram WebApp model: the client receives
- * signed init data with `user`, `auth_date` and `hash`; the secret is derived from the bot token.
+ * AI: MAX (max.ru) Mini Apps. Платформа повторяет модель Telegram WebApp: клиент получает
+ * подписанные init data с `user`, `auth_date` и `hash`; секрет выводится из токена бота.
  *
- * The exact derivation string is taken from the MAX developer documentation at integration time
- * (`MAX_SECRET_LABEL`, default "WebAppData" as in Telegram). Everything else - parsing, constant-time
- * comparison, replay window - is shared with the Telegram verifier, so enabling MAX is: bot token
- * from the MAX developer console + this label. No other code changes.
+ * Точная строка вывода секрета берётся из документации разработчика MAX при интеграции
+ * (`MAX_SECRET_LABEL`, по умолчанию "WebAppData", как в Telegram). Всё остальное - разбор,
+ * сравнение за постоянное время, окно replay - общее с верификатором Telegram, так что включить MAX
+ * = токен бота из консоли MAX + эта метка. Других правок кода нет.
  */
 export interface VerifiedMaxInit {
   user: { id: number | string; first_name?: string; last_name?: string; username?: string };

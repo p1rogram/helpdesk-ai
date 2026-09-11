@@ -14,16 +14,16 @@ import { categories, kbArticles, tenants } from '../../db/schema.js';
 
 export interface LoadedCatalog extends Catalog {
   version: number;
-  /** AI: Which audience this view is filtered for (guest = public articles only). */
+  /** AI: Для какой аудитории отфильтровано это представление (guest = только публичные статьи). */
   scope: Scope;
   categoryById: Map<string, Category>;
   articleById: Map<string, KbArticle>;
 }
 
 /**
- * AI: Catalog lives in the database (editable via admin API at runtime); this repository
- * keeps a per-tenant in-memory copy keyed by `tenants.version` so the hot path never
- * touches the DB. A catalog change bumps the version -> cache refreshes on next read.
+ * AI: Каталог живёт в базе (редактируется через admin API в рантайме); этот репозиторий держит
+ * копию в памяти на тенант, привязанную к `tenants.version`, чтобы горячий путь не трогал БД.
+ * Изменение каталога поднимает версию -> кэш обновляется при следующем чтении.
  */
 export class CatalogRepository {
   private readonly cache = new Map<string, LoadedCatalog>();
@@ -85,7 +85,7 @@ export class CatalogRepository {
     return loaded;
   }
 
-  /** AI: Full replace of a tenant catalog (import). Transactional; bumps version. */
+  /** AI: Полная замена каталога тенанта (импорт). Транзакционно; поднимает версию. */
   async upsert(input: unknown): Promise<LoadedCatalog> {
     const catalog = CatalogSchema.parse(input);
     validateCatalog(catalog);
@@ -140,7 +140,7 @@ export class CatalogRepository {
     return (await this.get(catalog.id))!;
   }
 
-  /** AI: Upsert a single article (admin edit) - bumps tenant version. */
+  /** AI: Upsert одной статьи (правка админом) - поднимает версию тенанта. */
   async upsertArticle(tenantId: string, article: KbArticle): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx
@@ -186,12 +186,15 @@ export class CatalogRepository {
     this.cache.delete(tenantId);
   }
 
-  /** AI: Import every data/catalog/*.json that is not yet in the DB. Existing tenants are untouched. */
   /**
-   * AI: Seed files are the source of truth for the catalog: a tenant is imported when it is new
-   * or when its file changed since the last import (hash kept on the tenant row) - so an edited
-   * article in git reaches every deployment on the next start, on every replica, without a
-   * manual re-import. `force` re-imports regardless.
+   * AI: Импортировать каждый data/catalog/*.json, которого ещё нет в БД. Существующие тенанты не
+   * трогаются.
+   */
+  /**
+   * AI: Сид-файлы - источник истины для каталога: тенант импортируется, когда он новый или когда
+   * его файл изменился с последнего импорта (хэш хранится в строке тенанта), - так правка статьи в
+   * git доходит до каждого стенда при следующем старте, на каждой реплике, без ручного переимпорта.
+   * `force` импортирует в любом случае.
    */
   async seedFromDir(dir: string, log: { info(msg: string): void }, force = false): Promise<void> {
     const hashes = new Map(

@@ -38,7 +38,8 @@ export function KbScreen(props: { api: ApiClient }) {
           setResults(
             category && !query ? r.results.filter((x) => x.categoryId === category.id) : r.results,
           );
-          // AI: Documentation fragments (RAG) only for a typed query - a category tile is not a question.
+          // AI: Фрагменты документации (RAG) только для набранного запроса - плитка категории не
+          // вопрос.
           setDocs(query ? dedupeDocs(r.docs ?? []) : []);
         })
         .catch(() => {
@@ -154,7 +155,10 @@ export function KbScreen(props: { api: ApiClient }) {
   );
 }
 
-/** AI: Several chunks of one page often match; show each page once (its best chunk). */
+/**
+ * AI: Часто совпадают несколько фрагментов одной страницы; показываем каждую страницу один раз (её
+ * лучший фрагмент).
+ */
 function dedupeDocs(docs: DocPassage[]): DocPassage[] {
   const seen = new Set<string>();
   return docs.filter((d) => {

@@ -18,35 +18,41 @@ export const PrioritySchema = z.enum(['low', 'normal', 'high']);
 export type Priority = z.infer<typeof PrioritySchema>;
 
 /**
- * AI: Structured output of the "analyze" LLM call. Everything the engine needs to decide
- * the next step. The engine - not the model - owns the control flow.
+ * AI: Структурированный вывод вызова модели «analyze». Всё, что нужно движку, чтобы выбрать
+ * следующий шаг. Потоком управления владеет движок, а не модель.
  */
 export const AnalysisSchema = z.object({
-  /** AI: One of catalog category ids, or "unknown" when nothing fits. */
+  /** AI: Один из id категорий каталога или "unknown", если ничего не подходит. */
   categoryId: z.string(),
-  /** AI: 0..1 - how sure the model is about the category. */
+  /** AI: 0..1 - насколько модель уверена в категории. */
   confidence: z.number().min(0).max(1),
-  /** AI: One-sentence problem statement in the language of the user, for the ticket card. */
+  /** AI: Формулировка проблемы одним предложением на языке пользователя, для карточки тикета. */
   summary: z.string(),
-  /** AI: Extracted values for the clarifying fields of the category (id -> value). */
+  /** AI: Извлечённые значения полей уточнения категории (id -> значение). */
   fields: z.record(z.string(), z.string()),
   tone: ToneSchema,
-  /** AI: The message is not a support request (greeting, chit-chat, thanks, jokes, prompt games). */
+  /**
+   * AI: Сообщение не является обращением в поддержку (приветствие, болтовня, спасибо, шутки, игры с
+   * промптом).
+   */
   offTopic: z.boolean(),
-  /** AI: When offTopic: a short, warm, human reply in the language of the user (1-2 sentences) that gently steers back to the problem. */
+  /**
+   * AI: При offTopic: короткий, тёплый, человеческий ответ на языке пользователя (1-2 предложения),
+   * мягко возвращающий к проблеме.
+   */
   smalltalkReply: z.string().optional(),
-  /** AI: User explicitly says the problem is solved. */
+  /** AI: Пользователь прямо говорит, что проблема решена. */
   reportsResolved: z.boolean(),
   /** AI: User asks to finish / close the request ("закрой заявку", "всё, спасибо, закрывай"). */
   asksToClose: z.boolean().optional(),
-  /** AI: User explicitly asks for a human. */
+  /** AI: Пользователь прямо просит человека. */
   asksForHuman: z.boolean(),
 });
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
 export const QuickReplySchema = z.object({
   label: z.string(),
-  /** AI: Value sent back as the message of the user. */
+  /** AI: Значение, которое отправляется обратно как сообщение пользователя. */
   value: z.string(),
 });
 export type QuickReply = z.infer<typeof QuickReplySchema>;
@@ -61,7 +67,7 @@ export const TicketCardSchema = z.object({
   confidence: z.number().nullable(),
   summary: z.string().nullable(),
   fields: z.record(z.string(), z.string()),
-  /** AI: Field id -> human label from the category (falls back to the id on the client). */
+  /** AI: Id поля -> человеческая подпись из категории (на клиенте при отсутствии - сам id). */
   fieldLabels: z.record(z.string(), z.string()),
   tone: ToneSchema,
   articleId: z.string().nullable(),
@@ -69,13 +75,13 @@ export const TicketCardSchema = z.object({
   resolved: z.boolean(),
   escalated: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
-  /** AI: Who finished the ticket: the assistant (solved), a specialist, or the user (withdrawn). */
+  /** AI: Кто завершил тикет: помощник (решено), специалист или пользователь (отозвано). */
   closedBy: z.enum(['assistant', 'operator', 'user']).nullable(),
-  /** AI: Who owns the dialogue right now. While 'operator', the assistant stays silent. */
+  /** AI: Кто сейчас владеет диалогом. Пока 'operator', помощник молчит. */
   handledBy: z.enum(['ai', 'operator']),
-  /** AI: The operator handed this ticket back to the assistant and declined further escalation. */
+  /** AI: Оператор вернул этот тикет помощнику и запретил дальнейшую передачу. */
   escalationBlocked: z.boolean(),
-  /** AI: Request number in the external helpdesk (help.tpu.ru), once created. */
+  /** AI: Номер заявки во внешнем helpdesk (help.tpu.ru), когда она создана. */
   externalId: z.string().nullable(),
   externalUrl: z.string().nullable(),
   createdAt: z.string(),

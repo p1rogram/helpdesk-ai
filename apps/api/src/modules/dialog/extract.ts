@@ -9,9 +9,12 @@ import type { ClarifyingField, ExtractRule } from '@helpdesk/shared';
  * adds its own patterns without touching this file.
  */
 export type ExtractResult = {
-  /** AI: Values recognised in the message, keyed by clarifying-field id. */
+  /** AI: Значения, распознанные в сообщении, по id поля уточнения. */
   fields: Record<string, string>;
-  /** AI: Set when a value was recognised but does not exist in the organisation (e.g. dorm N4). */
+  /**
+   * AI: Ставится, когда значение распознано, но в организации не существует (например, общежитие
+   * №4).
+   */
   reject?: { fieldId: string; value: string; message: string };
 };
 
@@ -32,7 +35,8 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
     }
     const r = applyRules(rulesOf(field), lower);
     if (r.rejected) {
-      // AI: The first impossible value wins - we tell the user about it instead of searching for a solution.
+      // AI: Первое невозможное значение побеждает - сообщаем о нём пользователю вместо поиска
+      // решения.
       if (!reject) reject = { fieldId: field.id, ...r.rejected };
       continue;
     }
@@ -71,7 +75,7 @@ export function validateFields(
   return { fields: out, reject };
 }
 
-/** AI: Is the field needed right now, given what is already known? */
+/** AI: Нужно ли поле прямо сейчас с учётом того, что уже известно? */
 export function isRequired(field: ClarifyingField, fields: Record<string, string>): boolean {
   if (field.required) return true;
   const cond = field.requiredWhen;
@@ -131,6 +135,7 @@ export function optionMentioned(option: string, lowerText: string): boolean {
     .toLowerCase()
     .split(/[^a-zа-яё0-9]+/)
     .filter((w) => w.length >= 3 && !['или', 'для', 'при', 'нет'].includes(w));
-  // AI: `words` contains letters and digits only (split above), so the stem is regex-safe.
+  // AI: `words` содержит только буквы и цифры (см. split выше), поэтому основа безопасна для
+  // регулярки.
   return words.some((w) => new RegExp(`(^|[^a-zа-яё0-9])${w.slice(0, 5)}`, 'u').test(lowerText));
 }

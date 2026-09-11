@@ -8,9 +8,9 @@ import type { TicketCard } from '@helpdesk/shared';
  * One interface, one implementation per system. Adding Jira / ServiceDesk Plus / 1С = one file.
  */
 export interface ExternalRequest {
-  /** AI: Number the user sees ("102723") - the same as in the helpdesk UI. */
+  /** AI: Номер, который видит пользователь («102723») - тот же, что в интерфейсе helpdesk. */
   externalId: string;
-  /** AI: Deep link to the request in the helpdesk (shown in the card). */
+  /** AI: Прямая ссылка на заявку в helpdesk (показывается в карточке). */
   url?: string;
 }
 
@@ -20,11 +20,13 @@ export interface HelpdeskConnector {
     card: TicketCard,
     context: { userDisplayName: string; transcript: string },
   ): Promise<ExternalRequest>;
-  /** AI: The user withdrew the request; optional - a helpdesk without this keeps it open. */
+  /**
+   * AI: Пользователь отозвал заявку; необязательно - helpdesk без этого метода оставит её открытой.
+   */
   closeRequest?(externalId: string, comment: string): Promise<void>;
 }
 
-/** AI: Dev / demo: no external system - the internal short id is shown instead. */
+/** AI: Dev / демо: внешней системы нет - вместо номера показывается короткий внутренний id. */
 export class NoopHelpdesk implements HelpdeskConnector {
   readonly kind = 'none';
   async createRequest(card: TicketCard): Promise<ExternalRequest> {
@@ -33,22 +35,25 @@ export class NoopHelpdesk implements HelpdeskConnector {
 }
 
 export interface NaumenOptions {
-  /** AI: e.g. https://help.tpu.ru */
+  /** AI: например https://help.tpu.ru */
   baseUrl: string;
-  /** AI: Access key issued by the Naumen SMP administrator (REST API user). */
+  /** AI: Ключ доступа, выданный администратором Naumen SMP (пользователь REST API). */
   accessKey: string;
-  /** AI: Service (slmService$NNN) the request is created in - a mapping per category can be added. */
+  /**
+   * AI: Услуга (slmService$NNN), в которой создаётся заявка - можно добавить сопоставление по
+   * категориям.
+   */
   defaultServiceId: string;
-  /** AI: Optional: category id -> slmService id, so the request lands in the right queue. */
+  /** AI: Необязательно: id категории -> id slmService, чтобы заявка попадала в нужную очередь. */
   serviceByCategory?: Record<string, string>;
   fetchImpl?: typeof fetch;
 }
 
 /**
- * AI: Naumen Service Desk (the platform behind help.tpu.ru). Uses the SMP REST API:
- *   POST {base}/sd/services/rest/create/serviceCall?accessKey=...   body = attributes JSON
- * Attribute names (service, description, priority, client...) depend on the TPU installation's
- * metaclass configuration - confirm them with the Naumen administrator; only the transport is fixed.
+ * AI: Naumen Service Desk (платформа за help.tpu.ru). Использует SMP REST API:
+ *   POST {base}/sd/services/rest/create/serviceCall?accessKey=...   тело = JSON атрибутов
+ * Имена атрибутов (service, description, priority, client...) зависят от настройки метаклассов в
+ * установке ТПУ - сверьте их с администратором Naumen; зафиксирован только транспорт.
  */
 export class NaumenHelpdesk implements HelpdeskConnector {
   readonly kind = 'naumen';
@@ -91,7 +96,7 @@ export class NaumenHelpdesk implements HelpdeskConnector {
         shortDescr: (card.summary ?? 'Обращение из виртуального помощника').slice(0, 200),
         descriptionRTF: description,
         priority: card.priority === 'high' ? 'high' : card.priority === 'low' ? 'low' : 'normal',
-        // AI: Correlation key: lets the helpdesk push status updates back to the right chat.
+        // AI: Ключ корреляции: позволяет helpdesk присылать обновления статуса в нужный чат.
         externalId: card.id,
       }),
       signal: AbortSignal.timeout(15_000),
@@ -109,9 +114,9 @@ export class NaumenHelpdesk implements HelpdeskConnector {
   }
 
   /**
-   * AI: The user withdrew the request from the chat: find the serviceCall by its number and move it
-   * to the closed state with the user's reason as the resolution. Attribute names (state,
-   * resolutionRTF) follow the same caveat as createRequest - confirm with the administrator.
+   * AI: Пользователь отозвал заявку из чата: находим serviceCall по номеру и переводим в закрытое
+   * состояние с причиной пользователя как резолюцией. Имена атрибутов (state, resolutionRTF) - с
+   * той же оговоркой, что у createRequest: сверить с администратором.
    */
   async closeRequest(externalId: string, comment: string): Promise<void> {
     const base = this.o.baseUrl.replace(/\/$/, '');

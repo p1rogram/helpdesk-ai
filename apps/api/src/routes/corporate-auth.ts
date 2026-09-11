@@ -5,10 +5,11 @@ import { AuthError, pseudonym } from '../modules/auth/index.js';
 import { rolesFor, type CorporateIdentity } from '../modules/auth/corporate.js';
 
 /**
- * AI: Corporate login routes. Which ones exist depends on what the organisation provided:
- *   GET  /api/auth/providers            -> what the client should offer
- *   GET  /api/auth/sso/start            -> redirect to the IdP (OIDC)
- *   GET  /api/auth/sso/callback         -> IdP returns here; we redirect to the app with the token
+ * AI: Маршруты корпоративного входа. Какие из них есть, зависит от того, что предоставила
+ * организация:
+ *   GET  /api/auth/providers            -> что клиенту предлагать
+ *   GET  /api/auth/sso/start            -> редирект на IdP (OIDC)
+ *   GET  /api/auth/sso/callback         -> IdP возвращает сюда; редиректим в приложение с токеном
  *   POST /api/auth/ldap {login,password}
  *   POST /api/auth/email/request {email} ; POST /api/auth/email/verify {email, code}
  */
@@ -52,7 +53,8 @@ export async function corporateAuthRoutes(app: FastifyInstance, ctx: AppContext)
       try {
         const { identity, returnTo } = await oidc.finishLogin(q.data.code, q.data.state);
         const token = await issueCorporate(ctx, identity);
-        // AI: Token travels in the URL fragment: never sent to the server again, not logged by proxies.
+        // AI: Токен передаётся во фрагменте URL: на сервер больше не отправляется, прокси его не
+        // логируют.
         return reply.redirect(`${returnTo}#token=${encodeURIComponent(token)}`);
       } catch (err) {
         if (err instanceof AuthError)
@@ -129,10 +131,13 @@ export async function corporateAuthRoutes(app: FastifyInstance, ctx: AppContext)
   }
 }
 
-/** AI: Corporate identities share the `corp` platform; roles come from organisation groups. */
+/**
+ * AI: Корпоративные идентичности используют общую платформу `corp`; роли берутся из групп
+ * организации.
+ */
 async function issueCorporate(ctx: AppContext, identity: CorporateIdentity): Promise<string> {
-  // AI: The directory name is used for the greeting on this page only; the database and the
-  // token carry a pseudonym.
+  // AI: Имя из каталога используется только для приветствия на этой странице; в базе и в токене -
+  // псевдоним.
   const name = pseudonym('corp', identity.id);
   const user = await ctx.tickets.upsertUser('corp', identity.id, name);
   const roles = rolesFor(identity, ctx.config.operatorGroups);
@@ -146,7 +151,7 @@ async function issueCorporate(ctx: AppContext, identity: CorporateIdentity): Pro
   });
 }
 
-/** AI: Only allow returning to our own app origin (open-redirect protection). */
+/** AI: Возвращать разрешаем только на origin нашего приложения (защита от open redirect). */
 function safeReturnTo(candidate: string | undefined, appUrl: string | undefined): string {
   const fallback = appUrl ?? '/';
   if (!candidate) return fallback;

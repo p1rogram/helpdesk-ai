@@ -4,8 +4,8 @@ import { KbArticleSchema } from '@helpdesk/shared';
 import type { AppContext } from '../context.js';
 
 /**
- * AI: Catalog administration. Changing the sphere = importing a catalog JSON here - no deploy,
- * no file edits on the server. Restricted to ADMIN_USERS.
+ * AI: Администрирование каталога. Сменить сферу = импортировать сюда JSON каталога - без деплоя и
+ * правки файлов на сервере. Только для ADMIN_USERS.
  */
 export async function adminRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.addHook('preHandler', app.requireAdmin);
@@ -27,7 +27,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext): Promis
     };
   });
 
-  /** AI: Full import / replace of a tenant catalog (body = catalog JSON). */
+  /** AI: Полный импорт / замена каталога тенанта (тело = JSON каталога). */
   app.post('/api/admin/catalog/import', { bodyLimit: 4 * 1024 * 1024 }, async (req, reply) => {
     try {
       const loaded = await ctx.catalogs.upsert(req.body);
@@ -55,7 +55,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext): Promis
     return { ok: true };
   });
 
-  /** AI: RAG corpus status: how many chunks are indexed and how many carry a vector. */
+  /** AI: Состояние корпуса RAG: сколько фрагментов проиндексировано и у скольких есть вектор. */
   app.get('/api/admin/rag/:id', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
     return {
@@ -67,8 +67,9 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext): Promis
   });
 
   /**
-   * AI: Re-ingest crawled documentation. Body: `{ tenant?, dir? }` - reads the crawler output on the
-   * server (`RAG_RAW_DIR` by default) or pushes documents directly: `{ tenant, docs: [{url,title,text,audience}] }`.
+   * AI: Переиндексировать скачанную документацию. Тело: `{ tenant?, dir? }` - читает вывод краулера
+   * на сервере (по умолчанию `RAG_RAW_DIR`) или принимает документы напрямую: `{ tenant, docs:
+   * [{url,title,text,audience}] }`.
    */
   app.post('/api/admin/rag/ingest', { bodyLimit: 16 * 1024 * 1024 }, async (req, reply) => {
     const body = z

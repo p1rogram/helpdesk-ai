@@ -1,10 +1,12 @@
 import type { Tone } from '@helpdesk/shared';
 
 /**
- * AI: Cheap, deterministic pre-checks that run before any LLM call.
- * - profanity / aggression -> tone hint (the model confirms, engine decides what to do)
- * - prompt-injection markers -> logged metric; the architecture already treats user text as data
- * Nothing here blocks the user: an upset person still gets help, just with a calmer voice.
+ * AI: Дешёвые детерминированные проверки до любого вызова модели.
+ * - мат / агрессия -> подсказка о тоне (модель подтверждает, движок решает, что делать)
+ * - маркеры prompt-injection -> логируемая метрика; архитектура и так считает текст пользователя
+ * данными
+ * Ничего здесь не блокирует пользователя: расстроенному человеку всё равно помогают, просто
+ * спокойнее.
  */
 
 // AI: Stems, normalised (ё->е, latin look-alikes). Intentionally short - false positives cost more than misses.

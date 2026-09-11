@@ -24,7 +24,10 @@ export type IconName =
   | 'library'
   | 'info';
 
-/** AI: Single-path/stroke icon set (currentColor), so icons inherit the surrounding text colour. */
+/**
+ * AI: Набор иконок из одного контура (currentColor), чтобы иконки наследовали цвет окружающего
+ * текста.
+ */
 const PATHS: Record<IconName, ReactNode> = {
   chat: (
     <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.9 8.9 0 0 1-3.9-.9L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4Z" />
@@ -161,7 +164,10 @@ export function Icon({
   );
 }
 
-/** AI: Maps a catalog category id to an icon + accent colour class for tiles and cards. */
+/**
+ * AI: Сопоставляет id категории каталога с иконкой и классом акцентного цвета для плиток и
+ * карточек.
+ */
 export function categoryVisual(categoryId: string | null): { icon: IconName; tone: string } {
   const map: Record<string, { icon: IconName; tone: string }> = {
     account: { icon: 'key', tone: 'violet' },

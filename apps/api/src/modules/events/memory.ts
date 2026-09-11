@@ -2,7 +2,10 @@ import type { EventBus, TopicName, TopicPayloads } from './bus.js';
 
 type Handler = (event: unknown) => Promise<void>;
 
-/** AI: In-process bus. Same semantics as Kafka minus durability - for dev, tests and single-node demos. */
+/**
+ * AI: Шина внутри процесса. Та же семантика, что у Kafka, минус долговечность - для dev, тестов и
+ * демо на одном узле.
+ */
 export class MemoryEventBus implements EventBus {
   private readonly handlers = new Map<string, Handler[]>();
 
@@ -10,7 +13,7 @@ export class MemoryEventBus implements EventBus {
 
   async publish<T extends TopicName>(topic: T, _key: string, event: TopicPayloads[T]) {
     const list = this.handlers.get(topic) ?? [];
-    // AI: Fire-and-forget like a real broker: the publisher never waits for consumers.
+    // AI: Fire-and-forget, как у настоящего брокера: издатель никогда не ждёт потребителей.
     for (const h of list) {
       void h(event).catch(this.onError);
     }
