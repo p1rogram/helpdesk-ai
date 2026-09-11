@@ -280,6 +280,22 @@ describe('DialogEngine', () => {
     expect(r2.ticket.escalated).toBe(false);
   });
 
+  it('never answers an off-topic question, even if the model tried to', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({
+      offTopic: true,
+      categoryId: 'unknown',
+      confidence: 0,
+      summary: '',
+      smalltalkReply:
+        'Две буквы «р». Но давайте вернёмся к делу: если что-то не работает, расскажите.',
+    });
+    const r = await collect(engine.handle(ticket, user, 'А сколько букв р в слове троллейбус'));
+    expect(r.text).not.toMatch(/букв/);
+    expect(r.text).toMatch(/помочь|не работает|разберёмся/);
+    expect(r.ticket.summary).toBeNull();
+  });
+
   it('uses the model-written smalltalk reply for off-topic messages', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push({

@@ -301,7 +301,13 @@ export class DialogEngine {
       return;
     }
     if (analysis.offTopic && ticket.state !== 'solving') {
-      yield* this.reply(ticket, catalog, analysis.smalltalkReply?.trim() || T.offTopic());
+      // AI: Greetings were answered before the model was called (isSmalltalk). What reaches this
+      // branch is an off-topic question or request; the model's reply must not contain an answer
+      // to it (a quiz, a poem, trivia) - only the redirect. If it looks like an answer, use the
+      // deterministic template instead.
+      const model = analysis.smalltalkReply?.trim() ?? '';
+      const redirectOnly = model.length > 0 && model.length <= 220 && !/[0-9:\n]/.test(model);
+      yield* this.reply(ticket, catalog, redirectOnly ? model : T.offTopic());
       return;
     }
 
