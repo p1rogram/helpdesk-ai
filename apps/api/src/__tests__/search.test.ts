@@ -32,7 +32,10 @@ describe('KnowledgeIndex (TPU catalog)', () => {
   });
 
   it('respects category filter and exclusions', () => {
-    const hits = index.search('vpn не подключается', { categoryId: 'network', exclude: new Set(['network-vpn-not-connecting']) });
+    const hits = index.search('vpn не подключается', {
+      categoryId: 'network',
+      exclude: new Set(['network-vpn-not-connecting']),
+    });
     expect(hits.every((h) => h.article.categoryId === 'network')).toBe(true);
     expect(hits.find((h) => h.article.id === 'network-vpn-not-connecting')).toBeUndefined();
   });

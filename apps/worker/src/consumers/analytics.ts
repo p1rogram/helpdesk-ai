@@ -67,7 +67,13 @@ export class AnalyticsConsumer {
     const day = e.occurredAt.slice(0, 10);
     await this.db
       .insert(dailyStats)
-      .values({ day, tenantId: 'all', categoryId: '_llm', inputTokens: e.inputTokens, outputTokens: e.outputTokens })
+      .values({
+        day,
+        tenantId: 'all',
+        categoryId: '_llm',
+        inputTokens: e.inputTokens,
+        outputTokens: e.outputTokens,
+      })
       .onConflictDoUpdate({
         target: [dailyStats.day, dailyStats.tenantId, dailyStats.categoryId],
         set: {
@@ -78,6 +84,9 @@ export class AnalyticsConsumer {
   }
 }
 
-function keyOf(t: { tenantId: string; categoryId: string | null }): { tenantId: string; categoryId: string } {
+function keyOf(t: { tenantId: string; categoryId: string | null }): {
+  tenantId: string;
+  categoryId: string;
+} {
   return { tenantId: t.tenantId, categoryId: t.categoryId ?? 'unknown' };
 }

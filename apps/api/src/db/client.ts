@@ -48,7 +48,11 @@ export async function ensureSchema(db: Db): Promise<void> {
   ]) {
     await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
   }
-  await db.execute(sql.raw("ALTER TABLE kb_articles ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'internal'"));
+  await db.execute(
+    sql.raw(
+      "ALTER TABLE kb_articles ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'internal'",
+    ),
+  );
 }
 
 const DDL: string[] = [
@@ -132,6 +136,23 @@ const DDL: string[] = [
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`,
   `CREATE INDEX IF NOT EXISTS messages_ticket_created ON messages(ticket_id, created_at)`,
+  // AI: RAG corpus. Chunks of crawled documentation with their dense vector; the vector is a JSON
+  // float array so the same schema works in PGlite (dev) and Postgres (prod). Upgrade path for
+  // hundreds of thousands of chunks: pgvector column + HNSW index behind the same RagService API.
+  `CREATE TABLE IF NOT EXISTS rag_chunks (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      source_url TEXT NOT NULL,
+      title TEXT NOT NULL,
+      section TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL,
+      audience TEXT NOT NULL DEFAULT 'internal',
+      content_hash TEXT NOT NULL,
+      embedding JSONB,
+      embedding_model TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`,
+  `CREATE INDEX IF NOT EXISTS rag_chunks_tenant ON rag_chunks(tenant_id)`,
   `CREATE TABLE IF NOT EXISTS daily_stats (
       day TEXT NOT NULL,
       tenant_id TEXT NOT NULL,

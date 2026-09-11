@@ -32,7 +32,10 @@ export function MessageBubble(props: Props) {
         : undefined;
 
   // AI: Step-by-step answers become an interactive checklist; everything else is markdown.
-  const parsed = useMemo(() => (role === 'assistant' && content ? parseSteps(content) : null), [role, content]);
+  const parsed = useMemo(
+    () => (role === 'assistant' && content ? parseSteps(content) : null),
+    [role, content],
+  );
   const html = useMemo(
     () => (role === 'assistant' && content && !parsed ? renderMarkdown(content) : ''),
     [role, content, parsed],
@@ -42,11 +45,16 @@ export function MessageBubble(props: Props) {
 
   const time = props.streaming
     ? ''
-    : new Date(props.message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    : new Date(props.message.createdAt).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
   const showAvatar = side === 'assistant';
 
   return (
-    <div className={`msg ${side}${role === 'assistant' && !author && perspective === 'operator' ? ' ai' : ''}`}>
+    <div
+      className={`msg ${side}${role === 'assistant' && !author && perspective === 'operator' ? ' ai' : ''}`}
+    >
       {label && <div className="author">{label}</div>}
       <div className="msg-row">
         {showAvatar && (
@@ -62,7 +70,9 @@ export function MessageBubble(props: Props) {
                   {/* Sanitised by DOMPurify in renderMarkdown - model output is never trusted raw. */}
                   {leadHtml && <div dangerouslySetInnerHTML={{ __html: leadHtml }} />}
                   <StepList steps={parsed.steps} />
-                  {tailHtml && <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: tailHtml }} />}
+                  {tailHtml && (
+                    <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: tailHtml }} />
+                  )}
                 </>
               ) : (
                 <div dangerouslySetInnerHTML={{ __html: html }} />

@@ -67,7 +67,11 @@ export function HistoryScreen(props: {
   }
 
   const shown = items.filter((t) =>
-    filter === 'all' ? true : filter === 'resolved' ? t.resolved : t.escalated || t.state === 'escalated',
+    filter === 'all'
+      ? true
+      : filter === 'resolved'
+        ? t.resolved
+        : t.escalated || t.state === 'escalated',
   );
 
   return (
@@ -76,10 +80,16 @@ export function HistoryScreen(props: {
         <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
           Все {counts.all}
         </button>
-        <button className={filter === 'resolved' ? 'active' : ''} onClick={() => setFilter('resolved')}>
+        <button
+          className={filter === 'resolved' ? 'active' : ''}
+          onClick={() => setFilter('resolved')}
+        >
           Решённые {counts.resolved}
         </button>
-        <button className={filter === 'escalated' ? 'active' : ''} onClick={() => setFilter('escalated')}>
+        <button
+          className={filter === 'escalated' ? 'active' : ''}
+          onClick={() => setFilter('escalated')}
+        >
           Переданные {counts.escalated}
         </button>
       </div>
@@ -107,12 +117,21 @@ export function HistoryScreen(props: {
                     </span>
                   )}
                 </div>
-                <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 4 }}>{t.summary ?? 'Без описания'}</div>
+                <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 4 }}>
+                  {t.summary ?? 'Без описания'}
+                </div>
                 <div className="m">
                   <span className="id">TPU-{(t.externalId ?? t.id.slice(0, 6)).toUpperCase()}</span>
                   <span>
-                    {new Date(t.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })},{' '}
-                    {new Date(t.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(t.createdAt).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                    ,{' '}
+                    {new Date(t.createdAt).toLocaleTimeString('ru-RU', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
               </div>

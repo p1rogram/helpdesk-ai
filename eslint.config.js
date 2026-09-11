@@ -7,7 +7,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     // Standalone Node/browser-context utility scripts (crawlers) - not part of the app build.
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'deploy/**/*.mjs'],
     languageOptions: {
       globals: {
         process: 'readonly',
@@ -26,7 +26,10 @@ export default tseslint.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' },
+      ],
     },
   },
 );

@@ -29,16 +29,21 @@ export function LandingScreen(props: {
         <div className="eyebrow">{props.sphere || 'Виртуальная поддержка'}</div>
         <h1>Помощник поддержки, который решает, а не переспрашивает</h1>
         <p>
-          Опишите проблему своими словами — помощник определит, к чему она относится, задаст только нужные уточнения и
-          даст пошаговое решение из базы знаний. Если решить самостоятельно нельзя, по вашему согласию создаст заявку
-          специалисту.
+          Опишите проблему своими словами — помощник определит, к чему она относится, задаст только
+          нужные уточнения и даст пошаговое решение из базы знаний. Если решить самостоятельно
+          нельзя, по вашему согласию создаст заявку специалисту.
         </p>
         <div className="cta">
           <button className="btn" onClick={props.onStart}>
             Начать в браузере
           </button>
           {props.botUrl && (
-            <a className="btn secondary" href={props.botUrl} target="_blank" rel="noopener noreferrer">
+            <a
+              className="btn secondary"
+              href={props.botUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Открыть в Telegram
             </a>
           )}
@@ -65,7 +70,8 @@ export function LandingScreen(props: {
       </section>
 
       <footer className="foot">
-        Работает в Telegram, в браузере и готов к подключению VK и MAX. Один каталог знаний — любая сфера.
+        Работает в Telegram, в браузере и готов к подключению VK и MAX. Один каталог знаний — любая
+        сфера.
       </footer>
     </div>
   );

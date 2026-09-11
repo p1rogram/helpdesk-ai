@@ -1,12 +1,20 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { CatalogSchema, type Catalog, type Category, type KbArticle } from '@helpdesk/shared';
+import {
+  CatalogSchema,
+  type Catalog,
+  type Category,
+  type KbArticle,
+  type Scope,
+} from '@helpdesk/shared';
 import type { Db } from '../../db/client.js';
 import { categories, kbArticles, tenants } from '../../db/schema.js';
 
 export interface LoadedCatalog extends Catalog {
   version: number;
+  /** AI: Which audience this view is filtered for (guest = public articles only). */
+  scope: Scope;
   categoryById: Map<string, Category>;
   articleById: Map<string, KbArticle>;
 }
@@ -68,6 +76,7 @@ export class CatalogRepository {
     const loaded: LoadedCatalog = {
       ...catalog,
       version: t.version,
+      scope: 'full',
       categoryById: new Map(catalog.categories.map((c) => [c.id, c])),
       articleById: new Map(catalog.articles.map((a) => [a.id, a])),
     };
@@ -135,7 +144,12 @@ export class CatalogRepository {
     await this.db.transaction(async (tx) => {
       await tx
         .insert(kbArticles)
-        .values({ tenantId, ...article, notApplicableWhen: article.notApplicableWhen ?? null, source: article.source ?? null })
+        .values({
+          tenantId,
+          ...article,
+          notApplicableWhen: article.notApplicableWhen ?? null,
+          source: article.source ?? null,
+        })
         .onConflictDoUpdate({
           target: [kbArticles.tenantId, kbArticles.id],
           set: {
@@ -160,7 +174,9 @@ export class CatalogRepository {
 
   async deleteArticle(tenantId: string, articleId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      await tx.delete(kbArticles).where(and(eq(kbArticles.tenantId, tenantId), eq(kbArticles.id, articleId)));
+      await tx
+        .delete(kbArticles)
+        .where(and(eq(kbArticles.tenantId, tenantId), eq(kbArticles.id, articleId)));
       await tx
         .update(tenants)
         .set({ version: sql`${tenants.version} + 1`, updatedAt: new Date() })
@@ -183,7 +199,9 @@ export class CatalogRepository {
       const raw = JSON.parse(await readFile(path.join(dir, f), 'utf8')) as { id?: string };
       if (!force && raw.id && existing.has(raw.id)) continue;
       const loaded = await this.upsert(raw);
-      log.info(`catalog seeded: ${loaded.id} (${loaded.categories.length} categories, ${loaded.articles.length} articles)`);
+      log.info(
+        `catalog seeded: ${loaded.id} (${loaded.categories.length} categories, ${loaded.articles.length} articles)`,
+      );
     }
   }
 }

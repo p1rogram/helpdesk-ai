@@ -29,6 +29,7 @@ export class KnowledgeService {
     const categories = full.categories.filter((c) => withArticles.has(c.id));
     const guest: LoadedCatalog = {
       ...full,
+      scope: 'guest',
       categories,
       articles,
       categoryById: new Map(categories.map((c) => [c.id, c])),
@@ -38,11 +39,19 @@ export class KnowledgeService {
     return guest;
   }
 
-  async category(tenantId: string, categoryId: string, scope: Scope = 'full'): Promise<Category | undefined> {
+  async category(
+    tenantId: string,
+    categoryId: string,
+    scope: Scope = 'full',
+  ): Promise<Category | undefined> {
     return (await this.catalog(tenantId, scope)).categoryById.get(categoryId);
   }
 
-  async article(tenantId: string, articleId: string, scope: Scope = 'full'): Promise<KbArticle | undefined> {
+  async article(
+    tenantId: string,
+    articleId: string,
+    scope: Scope = 'full',
+  ): Promise<KbArticle | undefined> {
     return (await this.catalog(tenantId, scope)).articleById.get(articleId);
   }
 

@@ -68,3 +68,13 @@ export const KbSearchResultSchema = z.object({
   score: z.number(),
 });
 export type KbSearchResult = z.infer<typeof KbSearchResultSchema>;
+
+/** AI: A documentation fragment found by the RAG index (crawled help.tpu.ru / tpu.ru). */
+export const DocPassageSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  title: z.string(),
+  section: z.string(),
+  snippet: z.string(),
+});
+export type DocPassage = z.infer<typeof DocPassageSchema>;

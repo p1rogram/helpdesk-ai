@@ -19,7 +19,8 @@ export function TicketCardPanel({ ticket }: { ticket: TicketCard }) {
           )
         ) : (
           <>
-            {ticket.id.slice(0, 8).toUpperCase()} <span style={{ color: 'var(--muted)' }}>(внутренний)</span>
+            {ticket.id.slice(0, 8).toUpperCase()}{' '}
+            <span style={{ color: 'var(--muted)' }}>(внутренний)</span>
           </>
         )}
       </span>

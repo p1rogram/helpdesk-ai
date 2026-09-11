@@ -41,7 +41,8 @@ export function verifyTelegramInitData(
 
   const a = Buffer.from(expected, 'hex');
   const b = Buffer.from(hash, 'hex');
-  if (a.length !== b.length || !timingSafeEqual(a, b)) throw new AuthError('initData: bad signature');
+  if (a.length !== b.length || !timingSafeEqual(a, b))
+    throw new AuthError('initData: bad signature');
 
   const authDate = Number(params.get('auth_date'));
   if (!Number.isFinite(authDate)) throw new AuthError('initData: bad auth_date');
@@ -59,7 +60,11 @@ export function verifyTelegramInitData(
   }
   if (typeof user.id !== 'number') throw new AuthError('initData: bad user');
 
-  return { user, authDate: new Date(authDate * 1000), queryId: params.get('query_id') ?? undefined };
+  return {
+    user,
+    authDate: new Date(authDate * 1000),
+    queryId: params.get('query_id') ?? undefined,
+  };
 }
 
 export class AuthError extends Error {

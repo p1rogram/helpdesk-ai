@@ -28,7 +28,9 @@ export function verifyMaxInitData(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${k}=${v}`)
     .join('\n');
-  const secret = createHmac('sha256', opts.secretLabel ?? 'WebAppData').update(botToken).digest();
+  const secret = createHmac('sha256', opts.secretLabel ?? 'WebAppData')
+    .update(botToken)
+    .digest();
   const expected = createHmac('sha256', secret).update(dcs).digest('hex');
   const a = Buffer.from(expected, 'hex');
   const b = Buffer.from(hash, 'hex');
@@ -36,7 +38,8 @@ export function verifyMaxInitData(
 
   const authDate = Number(params.get('auth_date'));
   const now = (opts.now ?? Date.now)() / 1000;
-  if (!Number.isFinite(authDate) || now - authDate > (opts.maxAgeSeconds ?? 24 * 3600)) throw new AuthError('max: expired');
+  if (!Number.isFinite(authDate) || now - authDate > (opts.maxAgeSeconds ?? 24 * 3600))
+    throw new AuthError('max: expired');
 
   const raw = params.get('user');
   if (!raw) throw new AuthError('max: missing user');

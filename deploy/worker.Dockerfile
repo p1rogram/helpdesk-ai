@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
@@ -12,7 +12,7 @@ COPY apps/api apps/api
 COPY apps/worker apps/worker
 RUN npm run build -w @helpdesk/shared && npm run build -w @helpdesk/api && npm run build -w @helpdesk/worker
 
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json ./

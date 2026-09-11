@@ -16,7 +16,9 @@ import { dirname } from 'node:path';
 import { createInterface } from 'node:readline';
 import { chromium } from 'playwright';
 
-const out = process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : 'data/raw/help-tpu.json';
+const out = process.argv.includes('--out')
+  ? process.argv[process.argv.indexOf('--out') + 1]
+  : 'data/raw/help-tpu.json';
 const BASE = 'https://help.tpu.ru/portal/';
 mkdirSync(dirname(out), { recursive: true });
 
@@ -33,7 +35,10 @@ await page.goto(BASE);
 await ask('\nВойдите в help.tpu.ru в открывшемся окне, затем нажмите Enter здесь... ');
 
 // ---------- services catalog ----------
-await page.goto(BASE + 'navigator-services.html?activeTab=2', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto(BASE + 'navigator-services.html?activeTab=2', {
+  waitUntil: 'domcontentloaded',
+  timeout: 60000,
+});
 await page.waitForTimeout(2000);
 for (let i = 0; i < 40; i++) {
   const more = page.getByText('Показать еще', { exact: true }).first();
@@ -44,11 +49,14 @@ for (let i = 0; i < 40; i++) {
 const services = await page.evaluate(() => {
   // Each service card: name element followed by an optional description.
   const items = [];
-  document.querySelectorAll('a[href*="navigator-service-call"], a[href*="navigator-fields"]').forEach((a) => {
-    const name = a.textContent.trim().replace(/\s+/g, ' ');
-    const desc = a.parentElement?.nextElementSibling?.textContent?.trim().replace(/\s+/g, ' ') ?? '';
-    if (name) items.push({ name, description: desc.slice(0, 500), href: a.getAttribute('href') });
-  });
+  document
+    .querySelectorAll('a[href*="navigator-service-call"], a[href*="navigator-fields"]')
+    .forEach((a) => {
+      const name = a.textContent.trim().replace(/\s+/g, ' ');
+      const desc =
+        a.parentElement?.nextElementSibling?.textContent?.trim().replace(/\s+/g, ' ') ?? '';
+      if (name) items.push({ name, description: desc.slice(0, 500), href: a.getAttribute('href') });
+    });
   return items;
 });
 console.log(`services: ${services.length}`);
@@ -83,7 +91,10 @@ for (const [i, id] of ids.entries()) {
   await page.waitForTimeout(2000);
   await page.waitForTimeout(1200);
   const data = await page.evaluate(() => {
-    const lines = document.body.innerText.split('\n').map((s) => s.trim()).filter(Boolean);
+    const lines = document.body.innerText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
     const frame = document.querySelector('iframe');
     let body = '';
     let links = [];
@@ -95,12 +106,22 @@ for (const [i, id] of ids.entries()) {
     } catch {
       /* cross-origin */
     }
-    return { title: lines[2] ?? '', services: lines[3] ?? '', categories: lines[4] ?? '', body: body.trim(), links };
+    return {
+      title: lines[2] ?? '',
+      services: lines[3] ?? '',
+      categories: lines[4] ?? '',
+      body: body.trim(),
+      links,
+    };
   });
   articles.push({ id, url, ...data });
   console.log(`[${i + 1}/${ids.length}] ${data.title} (${data.body.length} chars)`);
 }
 
-writeFileSync(out, JSON.stringify({ collectedAt: new Date().toISOString(), services, articles }, null, 2), 'utf8');
+writeFileSync(
+  out,
+  JSON.stringify({ collectedAt: new Date().toISOString(), services, articles }, null, 2),
+  'utf8',
+);
 console.log(`saved -> ${out}`);
 await browser.close();

@@ -63,7 +63,13 @@ export class KafkaEventBus implements EventBus {
     const producer = await this.getProducer();
     await producer.send({
       topic,
-      messages: [{ key, value: JSON.stringify(event), headers: { type: (event as { type?: string }).type ?? '' } }],
+      messages: [
+        {
+          key,
+          value: JSON.stringify(event),
+          headers: { type: (event as { type?: string }).type ?? '' },
+        },
+      ],
     });
   }
 

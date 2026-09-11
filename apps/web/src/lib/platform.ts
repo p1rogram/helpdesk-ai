@@ -61,7 +61,9 @@ function telegramAdapter(tg: TelegramWebApp): PlatformAdapter {
     isDark: () => tg.colorScheme === 'dark',
     ready: () => tg.ready(),
     haptic: (k) =>
-      k === 'light' ? tg.HapticFeedback?.impactOccurred('light') : tg.HapticFeedback?.notificationOccurred(k),
+      k === 'light'
+        ? tg.HapticFeedback?.impactOccurred('light')
+        : tg.HapticFeedback?.notificationOccurred(k),
     expand: () => tg.expand(),
   };
 }
@@ -82,7 +84,10 @@ function vkAdapter(bridge: VkBridgeLike | undefined): PlatformAdapter {
     themeVars: () => ({}),
     isDark: () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false,
     ready: () => void bridge?.send('VKWebAppInit'),
-    haptic: (k) => void bridge?.send('VKWebAppTapticImpactOccurred', { style: k === 'light' ? 'light' : 'medium' }),
+    haptic: (k) =>
+      void bridge?.send('VKWebAppTapticImpactOccurred', {
+        style: k === 'light' ? 'light' : 'medium',
+      }),
     expand: () => {},
   };
 }
@@ -131,6 +136,7 @@ export function detectPlatform(): PlatformAdapter {
   if (tg && tg.initData) return telegramAdapter(tg);
   const mx = window.Max?.WebApp;
   if (mx && mx.initData) return maxAdapter(mx);
-  if (new URLSearchParams(window.location.search).has('vk_app_id')) return vkAdapter(window.vkBridge);
+  if (new URLSearchParams(window.location.search).has('vk_app_id'))
+    return vkAdapter(window.vkBridge);
   return webAdapter();
 }

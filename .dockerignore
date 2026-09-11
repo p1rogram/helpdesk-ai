@@ -2,5 +2,12 @@ node_modules
 **/node_modules
 **/dist
 data/pglite*
+data/models
 .env
+.env.*
+!.env.example
 *.log
+*.log.*
+.git
+.idea
+docs

@@ -64,7 +64,8 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   app.post('/api/operator/tickets/:id/handback', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const ticket = await ctx.tickets.getAny(id);
-    if (!ticket || ticket.tenantId !== req.user.tenant) return reply.code(404).send({ error: 'not_found' });
+    if (!ticket || ticket.tenantId !== req.user.tenant)
+      return reply.code(404).send({ error: 'not_found' });
     const user = (await ctx.tickets.getUser(ticket.userId))!;
     const text = T.handedBackToAi(req.user.name);
     await ctx.tickets.addMessage(ticket.id, 'assistant', text, {
@@ -94,7 +95,8 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   app.get('/api/operator/tickets/:id', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const ticket = await ctx.tickets.getAny(id);
-    if (!ticket || ticket.tenantId !== req.user.tenant) return reply.code(404).send({ error: 'not_found' });
+    if (!ticket || ticket.tenantId !== req.user.tenant)
+      return reply.code(404).send({ error: 'not_found' });
     const catalog = await ctx.knowledge.catalog(ticket.tenantId);
     const user = await ctx.tickets.getUser(ticket.userId);
     const msgs = await ctx.tickets.listMessages(ticket.id, 300);
@@ -109,9 +111,11 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   app.post('/api/operator/tickets/:id/reply', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = ReplySchema.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
+    if (!body.success)
+      return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
     const ticket = await ctx.tickets.getAny(id);
-    if (!ticket || ticket.tenantId !== req.user.tenant) return reply.code(404).send({ error: 'not_found' });
+    if (!ticket || ticket.tenantId !== req.user.tenant)
+      return reply.code(404).send({ error: 'not_found' });
     const user = (await ctx.tickets.getUser(ticket.userId))!;
     const saved = await ctx.tickets.addMessage(ticket.id, 'assistant', body.data.text, {
       operator: req.user.name,
@@ -134,11 +138,19 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   app.post('/api/operator/tickets/:id/close', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const ticket = await ctx.tickets.getAny(id);
-    if (!ticket || ticket.tenantId !== req.user.tenant) return reply.code(404).send({ error: 'not_found' });
+    if (!ticket || ticket.tenantId !== req.user.tenant)
+      return reply.code(404).send({ error: 'not_found' });
     const user = (await ctx.tickets.getUser(ticket.userId))!;
     const closingText = `Специалист ${req.user.name} закрыл заявку как решённую. Если проблема повторится — создайте новое обращение.`;
-    await ctx.tickets.addMessage(ticket.id, 'assistant', closingText, { operator: req.user.name, quickReplies: QR_CLOSED });
-    const updated = await ctx.tickets.update(ticket.id, { state: 'closed', resolved: true, closedAt: new Date() });
+    await ctx.tickets.addMessage(ticket.id, 'assistant', closingText, {
+      operator: req.user.name,
+      quickReplies: QR_CLOSED,
+    });
+    const updated = await ctx.tickets.update(ticket.id, {
+      state: 'closed',
+      resolved: true,
+      closedAt: new Date(),
+    });
     ctx.operatorHub.notify(ticket.tenantId, ticket.id);
     const catalog = await ctx.knowledge.catalog(ticket.tenantId);
     await ctx.events.publish(TOPICS.ticketEvents, ticket.id, {

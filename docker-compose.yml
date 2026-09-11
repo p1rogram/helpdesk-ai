@@ -1,11 +1,14 @@
-# Production-like stack: Postgres + Kafka (KRaft, no ZooKeeper) + API + worker + Caddy (auto-HTTPS).
-# Scale: `docker compose up -d --scale api=3 --scale worker=2` - Kafka consumer groups rebalance automatically.
+# Боевой стек: Postgres + Kafka (KRaft, без ZooKeeper) + API + worker + Caddy (HTTPS автоматически).
+#   cp .env.example .env && nano .env        # ANTHROPIC_API_KEY, JWT_SECRET, TELEGRAM_BOT_TOKEN, DOMAIN
+#   docker compose up -d --build
+# Масштабирование: docker compose up -d --scale api=3 --scale worker=2 — Kafka перераспределит партиции.
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: helpdesk
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: helpdesk
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
@@ -16,6 +19,7 @@ services:
 
   kafka:
     image: apache/kafka:3.9.0
+    restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -37,6 +41,7 @@ services:
       timeout: 10s
       retries: 20
 
+  # Просмотр топиков: docker compose --profile tools up -d kafka-ui  ->  http://host:8090
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     profiles: [tools]
@@ -48,44 +53,53 @@ services:
 
   api:
     build: { context: ., dockerfile: deploy/api.Dockerfile }
+    restart: unless-stopped
     env_file: .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://helpdesk:${POSTGRES_PASSWORD:-helpdesk}@postgres:5432/helpdesk
+      HOST: 0.0.0.0
+      PORT: 8080
+      DATABASE_URL: postgres://helpdesk:${POSTGRES_PASSWORD}@postgres:5432/helpdesk
       EVENT_BUS: kafka
       KAFKA_BROKERS: kafka:9092
       AUTH_DEV_BYPASS: 'false'
-      HOST: 0.0.0.0
-      PORT: 8080
+      OPERATOR_OPEN_ACCESS: 'false'
+      CORS_ORIGINS: https://${DOMAIN}
+      WEB_APP_URL: https://${DOMAIN}
+      RAG_MODEL_DIR: /app/data/models
     depends_on:
       postgres: { condition: service_healthy }
       kafka: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 512M } } }
+    deploy: { resources: { limits: { memory: 1g } } }
 
   worker:
     build: { context: ., dockerfile: deploy/worker.Dockerfile }
+    restart: unless-stopped
     env_file: .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://helpdesk:${POSTGRES_PASSWORD:-helpdesk}@postgres:5432/helpdesk
+      DATABASE_URL: postgres://helpdesk:${POSTGRES_PASSWORD}@postgres:5432/helpdesk
       EVENT_BUS: kafka
       KAFKA_BROKERS: kafka:9092
+      WEB_APP_URL: https://${DOMAIN}
     depends_on:
       postgres: { condition: service_healthy }
       kafka: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 512m } } }
 
-  caddy:
-    image: caddy:2-alpine
+  web:
+    build: { context: ., dockerfile: deploy/web.Dockerfile }
+    restart: unless-stopped
     ports: ['80:80', '443:443']
     environment:
-      DOMAIN: ${DOMAIN:-localhost}
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./apps/web/dist:/srv/web:ro
       - caddydata:/data
+      - caddyconfig:/config
     depends_on: [api]
 
 volumes:
   pgdata:
   kafkadata:
   caddydata:
+  caddyconfig:

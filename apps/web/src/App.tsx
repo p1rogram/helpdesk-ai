@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from './lib/api';
 import { detectPlatform, type PlatformAdapter } from './lib/platform';
-import { applyTheme, getThemeMode, setThemeMode, watchSystemTheme, type ThemeMode } from './lib/theme';
+import {
+  applyTheme,
+  getThemeMode,
+  setThemeMode,
+  watchSystemTheme,
+  type ThemeMode,
+} from './lib/theme';
 import { useSwipeNavigation } from './lib/swipe';
 import { BottomNav, type NavItem } from './components/BottomNav';
 import { Icon } from './components/Icon';
@@ -18,7 +24,10 @@ type Tab = 'chat' | 'history' | 'kb' | 'operator' | 'profile';
 export function App() {
   const platform = useMemo<PlatformAdapter>(() => detectPlatform(), []);
   const api = useMemo(() => new ApiClient('', platform.kind === 'web'), [platform]);
-  const urlTenant = useMemo(() => new URLSearchParams(window.location.search).get('tenant') ?? undefined, []);
+  const urlTenant = useMemo(
+    () => new URLSearchParams(window.location.search).get('tenant') ?? undefined,
+    [],
+  );
 
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -71,7 +80,8 @@ export function App() {
     setThemeMode(mode);
     setTheme(mode);
   };
-  const cycleTheme = () => changeTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light');
+  const cycleTheme = () =>
+    changeTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light');
 
   // AI: The product keeps its own palette; from the host we take only light/dark (see refreshTheme).
   useEffect(() => {
@@ -110,7 +120,9 @@ export function App() {
     if (!login) return;
     login
       .then(() => setAuthed(true))
-      .catch((e: Error) => setAuthError(`Не удалось подтвердить сессию (${platform.kind}): ${e.message}`));
+      .catch((e: Error) =>
+        setAuthError(`Не удалось подтвердить сессию (${platform.kind}): ${e.message}`),
+      );
   }, [api, platform, urlTenant]);
 
   useEffect(() => {
@@ -143,7 +155,10 @@ export function App() {
   // AI: Swipe left/right moves between the bottom tabs; the hook ignores mostly-vertical
   // gestures and anything started inside a horizontally scrolling strip.
   const tabKeys = useMemo<Tab[]>(
-    () => (isAdmin ? ['chat', 'history', 'kb', 'operator', 'profile'] : ['chat', 'history', 'kb', 'profile']),
+    () =>
+      isAdmin
+        ? ['chat', 'history', 'kb', 'operator', 'profile']
+        : ['chat', 'history', 'kb', 'profile'],
     [isAdmin],
   );
   const goToTab = useCallback(
@@ -176,7 +191,12 @@ export function App() {
     );
   }
 
-  if (!authed && platform.kind === 'web' && showLanding && !window.location.hash.includes('token=')) {
+  if (
+    !authed &&
+    platform.kind === 'web' &&
+    showLanding &&
+    !window.location.hash.includes('token=')
+  ) {
     return (
       <LandingScreen
         sphere={sphere}

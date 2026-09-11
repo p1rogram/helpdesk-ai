@@ -62,9 +62,7 @@ export const CategorySchema = z.object({
 
 export const CatalogSchema = z.object({
   /** AI: Tenant id. One installation serves many tenants (spheres) side by side. */
-  id: z
-    .string()
-    .regex(/^[a-z0-9-]{2,32}$/, 'tenant id: lowercase letters, digits, dashes'),
+  id: z.string().regex(/^[a-z0-9-]{2,32}$/, 'tenant id: lowercase letters, digits, dashes'),
   sphere: z.string().min(1),
   /** AI: Short description of the organisation - goes into the system prompt. */
   organisation: z.string().min(1),

@@ -22,7 +22,11 @@ export function telegramVerifier(botToken: string): PlatformVerifier {
     platform: 'telegram',
     verify(initData) {
       const v = verifyTelegramInitData(initData, botToken);
-      return { platform: 'telegram', platformUserId: String(v.user.id), displayName: displayNameOf(v.user) };
+      return {
+        platform: 'telegram',
+        platformUserId: String(v.user.id),
+        displayName: displayNameOf(v.user),
+      };
     },
   };
 }
@@ -45,7 +49,10 @@ export function maxVerifier(botToken: string, secretLabel?: string): PlatformVer
     platform: 'max',
     verify(initData) {
       const v = verifyMaxInitData(initData, botToken, { secretLabel });
-      const name = [v.user.first_name, v.user.last_name].filter(Boolean).join(' ') || v.user.username || `max:${v.user.id}`;
+      const name =
+        [v.user.first_name, v.user.last_name].filter(Boolean).join(' ') ||
+        v.user.username ||
+        `max:${v.user.id}`;
       return { platform: 'max', platformUserId: String(v.user.id), displayName: name };
     },
   };

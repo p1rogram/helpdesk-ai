@@ -48,7 +48,15 @@ export function LoginScreen(props: {
   }, [api]);
 
   if (props.platform.kind !== 'web') {
-    return <div className="login">{props.error ? <div className="error">{props.error}</div> : <div className="empty">Подключение…</div>}</div>;
+    return (
+      <div className="login">
+        {props.error ? (
+          <div className="error">{props.error}</div>
+        ) : (
+          <div className="empty">Подключение…</div>
+        )}
+      </div>
+    );
   }
   if (!providers) {
     return (
@@ -82,12 +90,19 @@ export function LoginScreen(props: {
             Выберите способ входа.
           </div>
           {providers.sso && (
-            <a className="btn-primary" href={`/api/auth/sso/start?returnTo=${encodeURIComponent(window.location.href)}`}>
+            <a
+              className="btn-primary"
+              href={`/api/auth/sso/start?returnTo=${encodeURIComponent(window.location.href)}`}
+            >
               {ssoLabel}
             </a>
           )}
-          {providers.ldap && <button onClick={() => setMode('ldap')}>Логин и пароль организации</button>}
-          {providers.email && <button onClick={() => setMode('email')}>Код на корпоративную почту</button>}
+          {providers.ldap && (
+            <button onClick={() => setMode('ldap')}>Логин и пароль организации</button>
+          )}
+          {providers.email && (
+            <button onClick={() => setMode('email')}>Код на корпоративную почту</button>
+          )}
           {providers.guest && (
             <>
               <button onClick={() => setMode('student')}>Я студент или сотрудник ТПУ</button>
@@ -96,16 +111,26 @@ export function LoginScreen(props: {
               </button>
             </>
           )}
-          {enabledCount === 0 && <div className="empty">Вход в браузере не настроен. Откройте помощника из Telegram.</div>}
+          {enabledCount === 0 && (
+            <div className="empty">
+              Вход в браузере не настроен. Откройте помощника из Telegram.
+            </div>
+          )}
         </>
       )}
 
       {mode === 'ldap' && (
         <>
           <div className="sub" style={{ color: 'var(--muted)' }}>
-            Те же логин и пароль, что для Wi-Fi, почты и Moodle. Пароль проверяется доменом и нигде не сохраняется.
+            Те же логин и пароль, что для Wi-Fi, почты и Moodle. Пароль проверяется доменом и нигде
+            не сохраняется.
           </div>
-          <input placeholder="Логин (без @tpu.ru)" autoComplete="username" value={login} onChange={(e) => setLogin(e.target.value)} />
+          <input
+            placeholder="Логин (без @tpu.ru)"
+            autoComplete="username"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+          />
           <input
             type="password"
             placeholder="Пароль"
@@ -130,7 +155,8 @@ export function LoginScreen(props: {
       {mode === 'email' && (
         <>
           <div className="sub" style={{ color: 'var(--muted)' }}>
-            Введите корпоративную почту{domains.length ? ` (${domains.map((d) => '@' + d).join(', ')})` : ''} — пришлём код.
+            Введите корпоративную почту
+            {domains.length ? ` (${domains.map((d) => '@' + d).join(', ')})` : ''} — пришлём код.
           </div>
           <input
             type="email"
@@ -154,7 +180,12 @@ export function LoginScreen(props: {
             </button>
           ) : (
             <>
-              <input inputMode="numeric" placeholder="Код из письма" value={code} onChange={(e) => setCode(e.target.value)} />
+              <input
+                inputMode="numeric"
+                placeholder="Код из письма"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
               <button
                 disabled={busy || code.length < 4}
                 onClick={() =>
@@ -183,7 +214,11 @@ export function LoginScreen(props: {
             disabled={busy}
             onClick={() =>
               run(async () => {
-                await api.loginDev(name || (mode === 'guest' ? 'Гость' : 'Студент'), props.tenant, mode === 'guest' ? 'guest' : 'full');
+                await api.loginDev(
+                  name || (mode === 'guest' ? 'Гость' : 'Студент'),
+                  props.tenant,
+                  mode === 'guest' ? 'guest' : 'full',
+                );
                 props.onLoggedIn();
               }, 'Вход отключён на сервере.')
             }

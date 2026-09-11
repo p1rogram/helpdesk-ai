@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { RateRequestSchema, SendMessageRequestSchema, TOPICS, type ChatStreamEvent } from '@helpdesk/shared';
+import {
+  RateRequestSchema,
+  SendMessageRequestSchema,
+  TOPICS,
+  type ChatStreamEvent,
+} from '@helpdesk/shared';
 import type { AppContext } from '../context.js';
 import { eventBase } from '../modules/events/index.js';
 import { toCard, toChatMessage } from '../modules/tickets/repository.js';
@@ -25,7 +30,12 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     }
     await ctx.tickets.pruneEmpty(req.user.sub);
     const ticket = await ctx.tickets.create(req.user.tenant, req.user.sub);
-    const greeting = await ctx.tickets.addMessage(ticket.id, 'assistant', T.greeting(catalog.sphere), { quickReplies: [] });
+    const greeting = await ctx.tickets.addMessage(
+      ticket.id,
+      'assistant',
+      T.greeting(catalog.sphere),
+      { quickReplies: [] },
+    );
     await ctx.events.publish(TOPICS.ticketEvents, ticket.id, {
       ...eventBase(ticket.id, req.user.sub),
       type: 'ticket.created',
@@ -39,7 +49,9 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     const catalog = await ctx.knowledge.catalog(req.user.tenant, req.user.scope ?? 'full');
     const rows = await ctx.tickets.listForUser(req.user.sub, 30);
     // AI: Hide tickets that never got a problem statement (greeting only).
-    return { tickets: rows.filter((t) => t.summary || t.state !== 'intake').map((t) => toCard(t, catalog)) };
+    return {
+      tickets: rows.filter((t) => t.summary || t.state !== 'intake').map((t) => toCard(t, catalog)),
+    };
   });
 
   app.get('/api/tickets/:id', async (req, reply) => {
@@ -55,7 +67,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
   app.post('/api/tickets/:id/messages', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = SendMessageRequestSchema.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
+    if (!body.success)
+      return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
     const ticket = await ctx.tickets.get(id, req.user.sub);
     if (!ticket) return reply.code(404).send({ error: 'not_found' });
     const user = (await ctx.tickets.getUser(req.user.sub))!;
@@ -70,7 +83,13 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     const send = (ev: ChatStreamEvent) => reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
     const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), 15_000);
     try {
-      for await (const ev of ctx.engine.handle(ticket, user, body.data.text, req.user.scope ?? 'full')) send(ev);
+      for await (const ev of ctx.engine.handle(
+        ticket,
+        user,
+        body.data.text,
+        req.user.scope ?? 'full',
+      ))
+        send(ev);
     } catch (err) {
       req.log.error(err, 'dialog engine failed');
       send({ type: 'error', message: 'Не удалось обработать сообщение. Попробуйте ещё раз.' });
@@ -85,7 +104,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
   app.post('/api/tickets/:id/rating', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = RateRequestSchema.safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
+    if (!body.success)
+      return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
     const ticket = await ctx.tickets.get(id, req.user.sub);
     if (!ticket) return reply.code(404).send({ error: 'not_found' });
     const updated = await ctx.tickets.update(ticket.id, {

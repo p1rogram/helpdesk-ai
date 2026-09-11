@@ -29,12 +29,25 @@ const opt = { start: [], allow: [], deny: [], max: 200, delay: 400, out: 'data/r
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   const v = args[i + 1];
-  if (a === '--start') { opt.start.push(v); i++; }
-  else if (a === '--allow') { opt.allow.push(v); i++; }
-  else if (a === '--deny') { opt.deny.push(v); i++; }
-  else if (a === '--max') { opt.max = Number(v); i++; }
-  else if (a === '--delay') { opt.delay = Number(v); i++; }
-  else if (a === '--out') { opt.out = v; i++; }
+  if (a === '--start') {
+    opt.start.push(v);
+    i++;
+  } else if (a === '--allow') {
+    opt.allow.push(v);
+    i++;
+  } else if (a === '--deny') {
+    opt.deny.push(v);
+    i++;
+  } else if (a === '--max') {
+    opt.max = Number(v);
+    i++;
+  } else if (a === '--delay') {
+    opt.delay = Number(v);
+    i++;
+  } else if (a === '--out') {
+    opt.out = v;
+    i++;
+  }
 }
 if (!opt.start.length) {
   console.error('need at least one --start <url>');
@@ -64,7 +77,8 @@ const normalize = (href, base) => {
     if (!/^https?:$/.test(u.protocol)) return null;
     if (SKIP_EXT.test(u.pathname)) return null;
     // drop tracking params
-    for (const k of [...u.searchParams.keys()]) if (/^(utm_|yclid|fbclid|_ga)/.test(k)) u.searchParams.delete(k);
+    for (const k of [...u.searchParams.keys()])
+      if (/^(utm_|yclid|fbclid|_ga)/.test(k)) u.searchParams.delete(k);
     return u.toString();
   } catch {
     return null;
@@ -95,13 +109,15 @@ while (queue.length && done < opt.max) {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
-      },      
+      },
       signal: AbortSignal.timeout(20_000),
       redirect: 'follow',
     });
@@ -116,7 +132,9 @@ while (queue.length && done < opt.max) {
   }
 
   const $ = cheerio.load(html);
-  $('script, style, noscript, iframe, svg, nav, header, footer, form, .cookie, .breadcrumbs, [role=navigation]').remove();
+  $(
+    'script, style, noscript, iframe, svg, nav, header, footer, form, .cookie, .breadcrumbs, [role=navigation]',
+  ).remove();
   const title = $('title').first().text().trim();
   const h1 = $('h1').first().text().trim();
   const root = $('main, article, .content, #content, .page-content').first();
@@ -142,7 +160,15 @@ while (queue.length && done < opt.max) {
 
   appendFileSync(
     opt.out,
-    JSON.stringify({ url, title, h1, text, headings, links: [...new Set(links)].slice(0, 200), fetchedAt: new Date().toISOString() }) + '\n',
+    JSON.stringify({
+      url,
+      title,
+      h1,
+      text,
+      headings,
+      links: [...new Set(links)].slice(0, 200),
+      fetchedAt: new Date().toISOString(),
+    }) + '\n',
   );
   done++;
   console.log(`[${done}/${opt.max}] ${url} (${text.length} chars, queue ${queue.length})`);

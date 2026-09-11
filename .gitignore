@@ -1,9 +1,21 @@
+# dependencies / build
 node_modules/
 dist/
+coverage/
+
+# secrets
 .env
 .env.*
 !.env.example
+
+# local databases, model cache, logs
 data/pglite/
+data/pglite-worker/
+data/models/
 *.log
+*.log.*
+
+# editors / OS
+.idea/
+.vscode/
 .DS_Store
-coverage/

@@ -1,12 +1,26 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { AnalysisSchema, type Analysis, type Category, type KbArticle, type Tone } from '@helpdesk/shared';
+import {
+  AnalysisSchema,
+  type Analysis,
+  type Category,
+  type KbArticle,
+  type Tone,
+} from '@helpdesk/shared';
 import type { LoadedCatalog } from '../knowledge/index.js';
 import { extractJson } from './json.js';
-import { analyzeSystemPrompt, analyzeUserPrompt, solveSystemPrompt, solveUserPrompt } from './prompts.js';
+import {
+  analyzeSystemPrompt,
+  analyzeUserPrompt,
+  answerSystemPrompt,
+  answerUserPrompt,
+  solveSystemPrompt,
+  solveUserPrompt,
+} from './prompts.js';
+import type { Passage } from '../rag/index.js';
 
 export interface LlmUsage {
-  operation: 'analyze' | 'solve';
+  operation: 'analyze' | 'solve' | 'answer';
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -26,7 +40,10 @@ export interface LlmOptions {
 }
 
 export class LlmUnavailableError extends Error {
-  constructor(msg: string, override readonly cause?: unknown) {
+  constructor(
+    msg: string,
+    override readonly cause?: unknown,
+  ) {
     super(msg);
     this.name = 'LlmUnavailableError';
   }
@@ -36,6 +53,7 @@ export class LlmUnavailableError extends Error {
  * AI: Thin service over the Anthropic SDK. Two operations only:
  *  - analyze(): structured output (category, confidence, fields, tone...) - never streamed
  *  - solve():   streamed markdown grounded in ONE knowledge-base article
+ *  - answer():  streamed markdown grounded in retrieved documentation fragments (RAG)
  * The API key lives only here, server-side. Errors are mapped to LlmUnavailableError so the
  * engine can fall back to deterministic behaviour (KB steps verbatim) and never crash the chat.
  */
@@ -46,7 +64,12 @@ export class LlmService {
   constructor(private readonly opts: LlmOptions) {
     this.enabled = Boolean(opts.apiKey);
     this.client = this.enabled
-      ? new Anthropic({ apiKey: opts.apiKey, baseURL: opts.baseURL, timeout: opts.timeoutMs, maxRetries: 1 })
+      ? new Anthropic({
+          apiKey: opts.apiKey,
+          baseURL: opts.baseURL,
+          timeout: opts.timeoutMs,
+          maxRetries: 1,
+        })
       : null;
   }
 
@@ -69,7 +92,13 @@ export class LlmService {
         model: this.opts.model,
         max_tokens: 1024,
         // AI: Stable prefix -> prompt cache hit for every request of this tenant/catalog version.
-        system: [{ type: 'text', text: analyzeSystemPrompt(catalog), cache_control: { type: 'ephemeral' } }],
+        system: [
+          {
+            type: 'text',
+            text: analyzeSystemPrompt(catalog),
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
         messages: [{ role: 'user', content: analyzeUserPrompt(input) }],
         thinking: { type: 'adaptive' },
         output_config: { effort: this.opts.effort, format: zodOutputFormat(AnalysisSchema) },
@@ -107,7 +136,31 @@ export class LlmService {
       article: KbArticle;
       tone: Tone;
       lastMessage: string;
+      passages?: Passage[];
     },
+  ): AsyncGenerator<string, void, void> {
+    yield* this.streamMarkdown('solve', solveSystemPrompt(catalog), solveUserPrompt(input));
+  }
+
+  /** AI: RAG: answer from retrieved fragments only. Same streaming/fallback contract as solve(). */
+  async *answer(
+    catalog: LoadedCatalog,
+    input: {
+      summary: string;
+      categoryName?: string;
+      fields: Record<string, string>;
+      tone: Tone;
+      lastMessage: string;
+      passages: Passage[];
+    },
+  ): AsyncGenerator<string, void, void> {
+    yield* this.streamMarkdown('answer', answerSystemPrompt(catalog), answerUserPrompt(input));
+  }
+
+  private async *streamMarkdown(
+    op: 'solve' | 'answer',
+    system: string,
+    user: string,
   ): AsyncGenerator<string, void, void> {
     if (!this.client) throw new LlmUnavailableError('LLM disabled (no API key)');
     const started = Date.now();
@@ -115,8 +168,8 @@ export class LlmService {
       const stream = this.client.messages.stream({
         model: this.opts.model,
         max_tokens: 2048,
-        system: [{ type: 'text', text: solveSystemPrompt(catalog), cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: solveUserPrompt(input) }],
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: user }],
         thinking: { type: 'adaptive' },
         output_config: { effort: this.opts.effort },
       });
@@ -126,12 +179,12 @@ export class LlmService {
         }
       }
       const final = await stream.finalMessage();
-      this.report('solve', final.usage, started);
+      this.report(op, final.usage, started);
       if (final.stop_reason === 'refusal') {
-        throw new LlmUnavailableError('solve: refusal');
+        throw new LlmUnavailableError(`${op}: refusal`);
       }
     } catch (err) {
-      throw this.wrap(err, 'solve');
+      throw this.wrap(err, op);
     }
   }
 
@@ -160,7 +213,10 @@ export class LlmService {
       return new LlmUnavailableError('auth error', err);
     }
     if (err instanceof Anthropic.APIError || err instanceof Anthropic.APIConnectionError) {
-      this.opts.log.warn({ op, status: (err as { status?: number }).status, message: err.message }, 'llm api error');
+      this.opts.log.warn(
+        { op, status: (err as { status?: number }).status, message: err.message },
+        'llm api error',
+      );
       return new LlmUnavailableError(err.message, err);
     }
     this.opts.log.warn({ op, err }, 'llm unexpected error');

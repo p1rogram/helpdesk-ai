@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { KbSearchResult } from '@helpdesk/shared';
+import type { DocPassage, KbSearchResult } from '@helpdesk/shared';
 import type { AppContext } from '../context.js';
 
 const SearchQuery = z.object({
@@ -17,7 +17,11 @@ export async function kbRoutes(app: FastifyInstance, ctx: AppContext): Promise<v
     const catalog = await ctx.knowledge.catalog(req.user.tenant, req.user.scope ?? 'full');
     return {
       tenant: { id: catalog.id, sphere: catalog.sphere },
-      categories: catalog.categories.map((c) => ({ id: c.id, name: c.name, description: c.description })),
+      categories: catalog.categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+      })),
     };
   });
 
@@ -36,7 +40,21 @@ export async function kbRoutes(app: FastifyInstance, ctx: AppContext): Promise<v
       steps: h.article.steps,
       score: Math.round(h.score * 100) / 100,
     }));
-    return { results };
+    // AI: Documentation fragments (RAG) complement the curated articles; guests see public pages only.
+    const passages = ctx.config.RAG_ENABLED
+      ? await ctx.rag.search(req.user.tenant, q.data.q, {
+          scope: req.user.scope ?? 'full',
+          limit: 5,
+        })
+      : [];
+    const docs: DocPassage[] = passages.map((p) => ({
+      id: p.id,
+      url: p.url,
+      title: p.title,
+      section: p.section,
+      snippet: p.content.length > 280 ? p.content.slice(0, 277).trimEnd() + '…' : p.content,
+    }));
+    return { results, docs };
   });
 
   app.get('/api/kb/articles/:id', async (req, reply) => {

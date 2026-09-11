@@ -3,7 +3,9 @@ import { inspectMessage } from '../modules/safety/index.js';
 
 describe('inspectMessage', () => {
   it('flags profanity as abusive tone', () => {
-    expect(inspectMessage('да что за х**ня, опять ничего не работает бл*ть').toneHint).toBe('abusive');
+    expect(inspectMessage('да что за х**ня, опять ничего не работает бл*ть').toneHint).toBe(
+      'abusive',
+    );
   });
   it('flags aggression markers as frustrated', () => {
     const r = inspectMessage('СКОЛЬКО МОЖНО, третий день не работает!!!');

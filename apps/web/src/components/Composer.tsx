@@ -8,7 +8,11 @@ const MAX_HEIGHT = 132;
  * (the usual messenger behaviour). When the ticket is closed the field is a single
  * non-scrolling line - a disabled multi-line box with a scrollbar looks broken.
  */
-export function Composer(props: { disabled: boolean; placeholder: string; onSend: (text: string) => void }) {
+export function Composer(props: {
+  disabled: boolean;
+  placeholder: string;
+  onSend: (text: string) => void;
+}) {
   const [text, setText] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
 

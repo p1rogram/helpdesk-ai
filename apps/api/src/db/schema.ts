@@ -66,7 +66,33 @@ export const kbArticles = pgTable(
     source: text('source'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.tenantId, t.id] }), index('kb_tenant_cat').on(t.tenantId, t.categoryId)],
+  (t) => [
+    primaryKey({ columns: [t.tenantId, t.id] }),
+    index('kb_tenant_cat').on(t.tenantId, t.categoryId),
+  ],
+);
+
+// ---------- RAG corpus (crawled documentation, chunked and embedded) ----------
+
+export const ragChunks = pgTable(
+  'rag_chunks',
+  {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    sourceUrl: text('source_url').notNull(),
+    title: text('title').notNull(),
+    section: text('section').notNull().default(''),
+    content: text('content').notNull(),
+    audience: text('audience').notNull().default('internal'),
+    /** AI: sha1 of the content - unchanged chunks are not re-embedded on re-ingest. */
+    contentHash: text('content_hash').notNull(),
+    embedding: jsonb('embedding').$type<number[]>(),
+    embeddingModel: text('embedding_model'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('rag_chunks_tenant').on(t.tenantId)],
 );
 
 // ---------- Users / tickets / messages ----------

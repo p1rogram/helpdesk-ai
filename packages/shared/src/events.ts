@@ -51,7 +51,7 @@ export const LlmUsageEventSchema = z.object({
   eventId: z.string(),
   occurredAt: z.string(),
   ticketId: z.string(),
-  operation: z.enum(['analyze', 'solve']),
+  operation: z.enum(['analyze', 'solve', 'answer']),
   model: z.string(),
   inputTokens: z.number(),
   outputTokens: z.number(),

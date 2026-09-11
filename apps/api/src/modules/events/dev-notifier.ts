@@ -18,7 +18,11 @@ export async function attachDevTelegramNotifier(
       body: JSON.stringify({ chat_id: Number(e.platformUserId), text: e.text }),
       signal: AbortSignal.timeout(15_000),
     });
-    if (!res.ok) log.warn({ status: res.status, ticketId: e.ticketId }, 'dev notifier: telegram sendMessage failed');
+    if (!res.ok)
+      log.warn(
+        { status: res.status, ticketId: e.ticketId },
+        'dev notifier: telegram sendMessage failed',
+      );
     else log.info({ ticketId: e.ticketId }, 'dev notifier: telegram notification sent');
   });
   log.info({}, 'dev notifier: in-process Telegram notifications enabled (EVENT_BUS=memory)');

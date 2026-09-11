@@ -10,7 +10,22 @@ marked.setOptions({ breaks: true, gfm: true });
 export function renderMarkdown(md: string): string {
   const html = marked.parse(md, { async: false }) as string;
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['p', 'br', 'ol', 'ul', 'li', 'strong', 'em', 'b', 'i', 'code', 'pre', 'a', 'h3', 'h4'],
+    ALLOWED_TAGS: [
+      'p',
+      'br',
+      'ol',
+      'ul',
+      'li',
+      'strong',
+      'em',
+      'b',
+      'i',
+      'code',
+      'pre',
+      'a',
+      'h3',
+      'h4',
+    ],
     ALLOWED_ATTR: ['href', 'target', 'rel'],
     ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:)/i,
   });

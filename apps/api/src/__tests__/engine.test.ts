@@ -18,7 +18,13 @@ import { TicketRepository } from '../modules/tickets/repository.js';
 class FakeLlm extends LlmService {
   queue: Array<Partial<Analysis> | Error> = [];
   constructor() {
-    super({ model: 'fake', baseURL: 'http://localhost', effort: 'low', timeoutMs: 1000, log: { warn() {}, debug() {} } });
+    super({
+      model: 'fake',
+      baseURL: 'http://localhost',
+      effort: 'low',
+      timeoutMs: 1000,
+      log: { warn() {}, debug() {} },
+    });
   }
   override async analyze(): Promise<Analysis> {
     const next = this.queue.shift();
@@ -52,7 +58,12 @@ async function collect(gen: AsyncGenerator<ChatStreamEvent>) {
   for await (const e of gen) events.push(e);
   const done = events.find((e) => e.type === 'done');
   if (!done || done.type !== 'done') throw new Error('no done event');
-  return { events, text: done.message.content, ticket: done.ticket, quick: done.message.quickReplies ?? [] };
+  return {
+    events,
+    text: done.message.content,
+    ticket: done.ticket,
+    quick: done.message.quickReplies ?? [],
+  };
 }
 
 beforeAll(async () => {
@@ -68,6 +79,7 @@ beforeAll(async () => {
   tickets = new TicketRepository(handle.db);
   engine = new DialogEngine({
     knowledge: new KnowledgeService(catalogs),
+    rag: null,
     llm,
     tickets,
     events: bus,
@@ -120,7 +132,9 @@ describe('DialogEngine', () => {
     expect(r.ticket.state).toBe('closed');
     expect(r.ticket.resolved).toBe(true);
     expect(r.text).toMatch(/решено/);
-    expect(published.some((e) => e.type === 'ticket.resolved' && e.ticketId === ticket.id)).toBe(true);
+    expect(published.some((e) => e.type === 'ticket.resolved' && e.ticketId === ticket.id)).toBe(
+      true,
+    );
   });
 
   it('escalates with a ticket card when the user asks for a human', async () => {
@@ -178,8 +192,15 @@ describe('DialogEngine', () => {
   it('never creates a request on its own: offers escalation and waits for consent', async () => {
     const { user, ticket } = await fresh();
     // AI: Category known, but nothing in the KB matches -> the assistant asks instead of escalating.
-    llm.queue.push({ categoryId: 'general', confidence: 0.9, summary: 'Спор с соседом по комнате из-за шума ночью', fields: {} });
-    const r1 = await collect(engine.handle(ticket, user, 'Сосед по общаге шумит ночью, что делать?'));
+    llm.queue.push({
+      categoryId: 'general',
+      confidence: 0.9,
+      summary: 'Спор с соседом по комнате из-за шума ночью',
+      fields: {},
+    });
+    const r1 = await collect(
+      engine.handle(ticket, user, 'Сосед по общаге шумит ночью, что делать?'),
+    );
     if (r1.ticket.state === 'offer_escalation') {
       expect(r1.ticket.escalated).toBe(false);
       expect(r1.quick.map((q) => q.value)).toEqual([CMD.escalate, CMD.dismiss]);
@@ -230,7 +251,13 @@ describe('DialogEngine', () => {
 
   it('uses the model-written smalltalk reply for off-topic messages', async () => {
     const { user, ticket } = await fresh();
-    llm.queue.push({ offTopic: true, categoryId: 'unknown', confidence: 0, summary: '', smalltalkReply: 'Хех, стихи — не мой профиль. Что сломалось?' });
+    llm.queue.push({
+      offTopic: true,
+      categoryId: 'unknown',
+      confidence: 0,
+      summary: '',
+      smalltalkReply: 'Хех, стихи — не мой профиль. Что сломалось?',
+    });
     const r = await collect(engine.handle(ticket, user, 'напиши стих про кота'));
     expect(r.text).toBe('Хех, стихи — не мой профиль. Что сломалось?');
     expect(r.ticket.summary).toBeNull();

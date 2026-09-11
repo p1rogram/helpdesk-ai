@@ -28,7 +28,10 @@ declare module 'fastify' {
  *  - jwt: short-lived session tokens issued after messenger signature verification
  */
 export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Promise<void> {
-  await app.register(helmet, { contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } });
+  await app.register(helmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
 
   await app.register(cors, {
     origin: (origin, cb) => {

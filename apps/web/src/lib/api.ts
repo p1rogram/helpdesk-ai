@@ -1,4 +1,5 @@
 import type {
+  DocPassage,
   AuthResponse,
   ChatMessage,
   ChatStreamEvent,
@@ -56,7 +57,15 @@ export class ApiClient {
 
   providers() {
     return this.get<{
-      providers: { telegram: boolean; vk: boolean; max: boolean; guest: boolean; sso: boolean; ldap: boolean; email: boolean };
+      providers: {
+        telegram: boolean;
+        vk: boolean;
+        max: boolean;
+        guest: boolean;
+        sso: boolean;
+        ldap: boolean;
+        email: boolean;
+      };
       ssoLabel: string;
       emailDomains: string[];
     }>('/api/auth/providers');
@@ -79,22 +88,39 @@ export class ApiClient {
   }
 
   async loginTelegram(initData: string, tenant?: string): Promise<AuthResponse> {
-    const r = await this.post<AuthResponse>(`/api/auth/telegram${tenant ? `?tenant=${tenant}` : ''}`, { initData });
+    const r = await this.post<AuthResponse>(
+      `/api/auth/telegram${tenant ? `?tenant=${tenant}` : ''}`,
+      { initData },
+    );
     this.token = r.token;
     this.remember();
     return r;
   }
 
   /** AI: VK / MAX: opaque signed payload from the host app. */
-  async loginPlatform(platform: 'vk' | 'max', payload: string, tenant?: string): Promise<AuthResponse> {
-    const r = await this.post<AuthResponse>(`/api/auth/${platform}${tenant ? `?tenant=${tenant}` : ''}`, { payload });
+  async loginPlatform(
+    platform: 'vk' | 'max',
+    payload: string,
+    tenant?: string,
+  ): Promise<AuthResponse> {
+    const r = await this.post<AuthResponse>(
+      `/api/auth/${platform}${tenant ? `?tenant=${tenant}` : ''}`,
+      { payload },
+    );
     this.token = r.token;
     this.remember();
     return r;
   }
 
-  async loginDev(name: string, tenant?: string, scope: 'guest' | 'full' = 'full'): Promise<AuthResponse> {
-    const r = await this.post<AuthResponse>(`/api/auth/dev${tenant ? `?tenant=${tenant}` : ''}`, { name, scope });
+  async loginDev(
+    name: string,
+    tenant?: string,
+    scope: 'guest' | 'full' = 'full',
+  ): Promise<AuthResponse> {
+    const r = await this.post<AuthResponse>(`/api/auth/dev${tenant ? `?tenant=${tenant}` : ''}`, {
+      name,
+      scope,
+    });
     this.token = r.token;
     this.remember();
     return r;
@@ -170,9 +196,11 @@ export class ApiClient {
   }
 
   operatorTicket(id: string) {
-    return this.get<{ ticket: TicketCard; user: { displayName: string; platform: string } | null; messages: ChatMessage[] }>(
-      `/api/operator/tickets/${id}`,
-    );
+    return this.get<{
+      ticket: TicketCard;
+      user: { displayName: string; platform: string } | null;
+      messages: ChatMessage[];
+    }>(`/api/operator/tickets/${id}`);
   }
 
   operatorReply(id: string, text: string) {
@@ -184,12 +212,19 @@ export class ApiClient {
   }
 
   tenants() {
-    return this.get<{ tenants: Array<{ id: string; sphere: string }>; default: string; botUrl?: string }>('/api/tenants');
+    return this.get<{
+      tenants: Array<{ id: string; sphere: string }>;
+      default: string;
+      botUrl?: string;
+    }>('/api/tenants');
   }
 
   /** AI: Opens the current ticket (server reuses an open one); `fresh` forces a new ticket. */
   openTicket(fresh = false) {
-    return this.post<{ ticket: TicketCard; messages: ChatMessage[] }>(`/api/tickets${fresh ? '?new=1' : ''}`, {});
+    return this.post<{ ticket: TicketCard; messages: ChatMessage[] }>(
+      `/api/tickets${fresh ? '?new=1' : ''}`,
+      {},
+    );
   }
 
   listTickets() {
@@ -205,17 +240,24 @@ export class ApiClient {
   }
 
   searchKb(q: string) {
-    return this.get<{ results: KbSearchResult[] }>(`/api/kb/search?q=${encodeURIComponent(q)}`);
-  }
-
-  categories() {
-    return this.get<{ tenant: { id: string; sphere: string }; categories: Array<{ id: string; name: string }> }>(
-      '/api/kb/categories',
+    return this.get<{ results: KbSearchResult[]; docs: DocPassage[] }>(
+      `/api/kb/search?q=${encodeURIComponent(q)}`,
     );
   }
 
+  categories() {
+    return this.get<{
+      tenant: { id: string; sphere: string };
+      categories: Array<{ id: string; name: string }>;
+    }>('/api/kb/categories');
+  }
+
   /** AI: POST + SSE over fetch (EventSource is GET-only). Yields parsed events. */
-  async *sendMessage(ticketId: string, text: string, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  async *sendMessage(
+    ticketId: string,
+    text: string,
+    signal?: AbortSignal,
+  ): AsyncGenerator<ChatStreamEvent> {
     const res = await fetch(`${this.base}/api/tickets/${ticketId}/messages`, {
       method: 'POST',
       headers: this.headers({ 'content-type': 'application/json', accept: 'text/event-stream' }),

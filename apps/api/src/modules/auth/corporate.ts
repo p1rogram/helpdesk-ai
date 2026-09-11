@@ -64,9 +64,12 @@ export class OidcProvider {
 
   private async config(): Promise<OidcDiscovery> {
     if (this.discovery) return this.discovery;
-    const res = await this.fetchImpl(`${this.o.issuer.replace(/\/$/, '')}/.well-known/openid-configuration`, {
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await this.fetchImpl(
+      `${this.o.issuer.replace(/\/$/, '')}/.well-known/openid-configuration`,
+      {
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
     if (!res.ok) throw new Error(`oidc discovery failed: HTTP ${res.status}`);
     this.discovery = (await res.json()) as OidcDiscovery;
     return this.discovery;
@@ -93,9 +96,13 @@ export class OidcProvider {
   }
 
   /** AI: Step 2: exchange the code, read the identity. */
-  async finishLogin(code: string, state: string): Promise<{ identity: CorporateIdentity; returnTo: string }> {
+  async finishLogin(
+    code: string,
+    state: string,
+  ): Promise<{ identity: CorporateIdentity; returnTo: string }> {
     const p = this.pending.get(state);
-    if (!p || Date.now() - p.createdAt > 10 * 60_000) throw new AuthError('oidc: unknown or expired state');
+    if (!p || Date.now() - p.createdAt > 10 * 60_000)
+      throw new AuthError('oidc: unknown or expired state');
     this.pending.delete(state);
     const d = await this.config();
     const body = new URLSearchParams({
@@ -135,7 +142,11 @@ export class OidcProvider {
         id,
         displayName: str(claims[c.name ?? 'name']) ?? id,
         email: str(claims[c.email ?? 'email']),
-        groups: Array.isArray(groupsRaw) ? groupsRaw.map(String) : typeof groupsRaw === 'string' ? [groupsRaw] : [],
+        groups: Array.isArray(groupsRaw)
+          ? groupsRaw.map(String)
+          : typeof groupsRaw === 'string'
+            ? [groupsRaw]
+            : [],
       },
       returnTo: p.returnTo,
     };
@@ -213,7 +224,11 @@ export class LdapProvider {
         id: clean.toLowerCase(),
         displayName: str(e?.[nameAttr]) ?? clean,
         email: str(e?.[mailAttr]),
-        groups: Array.isArray(groupsRaw) ? groupsRaw.map(String) : typeof groupsRaw === 'string' ? [groupsRaw] : [],
+        groups: Array.isArray(groupsRaw)
+          ? groupsRaw.map(String)
+          : typeof groupsRaw === 'string'
+            ? [groupsRaw]
+            : [],
       };
     } catch (err) {
       if (err instanceof AuthError) throw err;
@@ -284,7 +299,8 @@ export class EmailCodeProvider {
       throw new AuthError('email: too many attempts');
     }
     const given = createHash('sha256').update(code.trim()).digest('hex');
-    if (!timingSafeEqual(Buffer.from(given, 'hex'), Buffer.from(rec.hash, 'hex'))) throw new AuthError('email: wrong code');
+    if (!timingSafeEqual(Buffer.from(given, 'hex'), Buffer.from(rec.hash, 'hex')))
+      throw new AuthError('email: wrong code');
     this.codes.delete(e);
     const local = e.split('@')[0]!;
     return { id: local, displayName: local, email: e, groups: [] };
@@ -294,7 +310,9 @@ export class EmailCodeProvider {
 /** AI: Map organisation groups to app roles. `operatorGroups` = DNs / names that grant the operator console. */
 export function rolesFor(identity: CorporateIdentity, operatorGroups: Set<string>): string[] {
   const roles: string[] = [];
-  const hit = identity.groups.some((g) => operatorGroups.has(g) || operatorGroups.has(g.split(',')[0]?.replace(/^CN=/i, '') ?? ''));
+  const hit = identity.groups.some(
+    (g) => operatorGroups.has(g) || operatorGroups.has(g.split(',')[0]?.replace(/^CN=/i, '') ?? ''),
+  );
   if (hit) roles.push('operator');
   return roles;
 }

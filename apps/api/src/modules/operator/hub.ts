@@ -28,7 +28,11 @@ export class OperatorHub {
 
   /** AI: Ask every console of this tenant to reload the queue (and the open ticket, if it matches). */
   notify(tenantId: string, ticketId?: string): void {
-    const payload = JSON.stringify({ type: 'queue', ticketId: ticketId ?? null, at: new Date().toISOString() });
+    const payload = JSON.stringify({
+      type: 'queue',
+      ticketId: ticketId ?? null,
+      at: new Date().toISOString(),
+    });
     for (const c of this.clients) {
       if (c.tenantId !== tenantId) continue;
       try {
@@ -40,11 +44,18 @@ export class OperatorHub {
   }
 
   /** AI: Subscribe to the ticket topic once at boot. */
-  async attach(bus: EventBus, resolveTenant: (ticketId: string) => Promise<string | null>): Promise<void> {
+  async attach(
+    bus: EventBus,
+    resolveTenant: (ticketId: string) => Promise<string | null>,
+  ): Promise<void> {
     await bus.subscribe(TOPICS.ticketEvents, 'operator-hub', async (e: TicketEvent) => {
       if (this.clients.size === 0) return;
       const tenantId =
-        'tenantId' in e ? e.tenantId : 'ticket' in e ? e.ticket.tenantId : await resolveTenant(e.ticketId);
+        'tenantId' in e
+          ? e.tenantId
+          : 'ticket' in e
+            ? e.ticket.tenantId
+            : await resolveTenant(e.ticketId);
       if (tenantId) this.notify(tenantId, e.ticketId);
     });
   }

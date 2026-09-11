@@ -25,7 +25,9 @@ describe('verifyTelegramInitData', () => {
   });
 
   it('rejects a payload signed with another bot token', () => {
-    expect(() => verifyTelegramInitData(sign({ auth_date: String(now), user }, 'other'), BOT)).toThrow(/signature/);
+    expect(() =>
+      verifyTelegramInitData(sign({ auth_date: String(now), user }, 'other'), BOT),
+    ).toThrow(/signature/);
   });
 
   it('rejects tampered data', () => {
@@ -36,6 +38,8 @@ describe('verifyTelegramInitData', () => {
 
   it('rejects expired payloads (replay protection)', () => {
     const old = now - 3 * 24 * 3600;
-    expect(() => verifyTelegramInitData(sign({ auth_date: String(old), user }), BOT)).toThrow(/expired/);
+    expect(() => verifyTelegramInitData(sign({ auth_date: String(old), user }), BOT)).toThrow(
+      /expired/,
+    );
   });
 });

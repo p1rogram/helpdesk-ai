@@ -1,7 +1,14 @@
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { ChatMessage, QuickReply, TicketCard, TicketState, Tone } from '@helpdesk/shared';
 import type { Db } from '../../db/client.js';
-import { messages, tickets, users, type MessageRow, type TicketRow, type UserRow } from '../../db/schema.js';
+import {
+  messages,
+  tickets,
+  users,
+  type MessageRow,
+  type TicketRow,
+  type UserRow,
+} from '../../db/schema.js';
 import type { LoadedCatalog } from '../knowledge/index.js';
 
 export class TicketRepository {
@@ -9,7 +16,11 @@ export class TicketRepository {
 
   // ---------- users ----------
 
-  async upsertUser(platform: string, platformUserId: string, displayName: string): Promise<UserRow> {
+  async upsertUser(
+    platform: string,
+    platformUserId: string,
+    displayName: string,
+  ): Promise<UserRow> {
     const [row] = await this.db
       .insert(users)
       .values({ platform, platformUserId, displayName })
@@ -44,7 +55,12 @@ export class TicketRepository {
     const [row] = await this.db
       .select()
       .from(tickets)
-      .where(and(eq(tickets.userId, userId), inArray(tickets.state, ['intake', 'clarifying', 'choosing_category', 'solving'])))
+      .where(
+        and(
+          eq(tickets.userId, userId),
+          inArray(tickets.state, ['intake', 'clarifying', 'choosing_category', 'solving']),
+        ),
+      )
       .orderBy(desc(tickets.createdAt))
       .limit(1);
     return row;
@@ -85,7 +101,13 @@ export class TicketRepository {
     tenantId: string,
     limit = 100,
   ): Promise<
-    Array<{ ticket: TicketRow; user: UserRow; lastMessageAt: Date | null; unanswered: boolean; group: 0 | 1 | 2 }>
+    Array<{
+      ticket: TicketRow;
+      user: UserRow;
+      lastMessageAt: Date | null;
+      unanswered: boolean;
+      group: 0 | 1 | 2;
+    }>
   > {
     const rows = await this.db
       .select({ ticket: tickets, user: users })
@@ -101,7 +123,13 @@ export class TicketRepository {
       .orderBy(desc(tickets.updatedAt))
       .limit(limit);
 
-    const out: Array<{ ticket: TicketRow; user: UserRow; lastMessageAt: Date | null; unanswered: boolean; group: 0 | 1 | 2 }> = [];
+    const out: Array<{
+      ticket: TicketRow;
+      user: UserRow;
+      lastMessageAt: Date | null;
+      unanswered: boolean;
+      group: 0 | 1 | 2;
+    }> = [];
     for (const r of rows) {
       const recent = await this.db
         .select({ role: messages.role, createdAt: messages.createdAt, meta: messages.meta })
@@ -109,11 +137,19 @@ export class TicketRepository {
         .where(eq(messages.ticketId, r.ticket.id))
         .orderBy(desc(messages.createdAt))
         .limit(50);
-      const operatorReplied = recent.some((m) => Boolean((m.meta as { operator?: string }).operator));
+      const operatorReplied = recent.some((m) =>
+        Boolean((m.meta as { operator?: string }).operator),
+      );
       const last = recent[0];
       const unanswered = !operatorReplied || !last || last.role === 'user';
       const group: 0 | 1 | 2 = r.ticket.state === 'closed' ? 2 : operatorReplied ? 0 : 1;
-      out.push({ ticket: r.ticket, user: r.user, lastMessageAt: last?.createdAt ?? null, unanswered, group });
+      out.push({
+        ticket: r.ticket,
+        user: r.user,
+        lastMessageAt: last?.createdAt ?? null,
+        unanswered,
+        group,
+      });
     }
 
     const time = (d: Date | null | undefined) => (d ? d.getTime() : 0);
@@ -121,7 +157,9 @@ export class TicketRepository {
       if (a.group !== b.group) return a.group - b.group;
       // AI: In progress and closed: latest activity first. Waiting: longest wait first.
       if (a.group === 1) return time(a.ticket.updatedAt) - time(b.ticket.updatedAt);
-      return time(b.lastMessageAt ?? b.ticket.updatedAt) - time(a.lastMessageAt ?? a.ticket.updatedAt);
+      return (
+        time(b.lastMessageAt ?? b.ticket.updatedAt) - time(a.lastMessageAt ?? a.ticket.updatedAt)
+      );
     });
   }
 
@@ -151,7 +189,10 @@ export class TicketRepository {
     content: string,
     meta: Record<string, unknown> = {},
   ): Promise<MessageRow> {
-    const [row] = await this.db.insert(messages).values({ ticketId, role, content, meta }).returning();
+    const [row] = await this.db
+      .insert(messages)
+      .values({ ticketId, role, content, meta })
+      .returning();
     return row!;
   }
 

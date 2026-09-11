@@ -16,7 +16,13 @@ function signed(params: Record<string, string>, secret = SECRET): string {
 }
 
 describe('verifyVkLaunchParams', () => {
-  const params = { vk_user_id: '12345', vk_app_id: '777', vk_ts: String(now), vk_platform: 'mobile_android', vk_language: 'ru' };
+  const params = {
+    vk_user_id: '12345',
+    vk_app_id: '777',
+    vk_ts: String(now),
+    vk_platform: 'mobile_android',
+    vk_language: 'ru',
+  };
 
   it('accepts a correctly signed launch string', () => {
     const v = verifyVkLaunchParams(signed(params), SECRET, { expectedAppId: '777' });
@@ -27,6 +33,8 @@ describe('verifyVkLaunchParams', () => {
     expect(() => verifyVkLaunchParams(signed(params, 'other'), SECRET)).toThrow(/signature/);
   });
   it('rejects a foreign app id', () => {
-    expect(() => verifyVkLaunchParams(signed(params), SECRET, { expectedAppId: '1' })).toThrow(/app id/);
+    expect(() => verifyVkLaunchParams(signed(params), SECRET, { expectedAppId: '1' })).toThrow(
+      /app id/,
+    );
   });
 });

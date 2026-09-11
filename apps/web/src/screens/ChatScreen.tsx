@@ -96,7 +96,12 @@ export function ChatScreen(props: {
     // AI: Optimistic user bubble (commands show their label).
     setMessages((m) => [
       ...m,
-      { id: `tmp-${Date.now()}`, role: 'user', content: label ?? text, createdAt: new Date().toISOString() },
+      {
+        id: `tmp-${Date.now()}`,
+        role: 'user',
+        content: label ?? text,
+        createdAt: new Date().toISOString(),
+      },
     ]);
     setStreaming('');
     const ac = new AbortController();
@@ -113,8 +118,7 @@ export function ChatScreen(props: {
         else if (ev.type === 'delta') {
           setStatus(null);
           setStreaming((s) => (s ?? '') + ev.text);
-        }
-        else if (ev.type === 'done') {
+        } else if (ev.type === 'done') {
           setStreaming(null);
           setMessages((m) => [...m, ev.message]);
           setTicket(ev.ticket);
@@ -134,7 +138,8 @@ export function ChatScreen(props: {
   };
 
   const last = messages[messages.length - 1];
-  const quick: QuickReply[] = !busy && last?.role === 'assistant' && last.quickReplies ? last.quickReplies : [];
+  const quick: QuickReply[] =
+    !busy && last?.role === 'assistant' && last.quickReplies ? last.quickReplies : [];
   const closed = ticket?.state === 'closed';
 
   return (
@@ -146,7 +151,11 @@ export function ChatScreen(props: {
           </button>
           <div className="centre">
             {ticket.categoryName ? (
-              <CategoryBadge categoryId={ticket.categoryId} name={ticket.categoryName} confidence={ticket.confidence} />
+              <CategoryBadge
+                categoryId={ticket.categoryId}
+                name={ticket.categoryName}
+                confidence={ticket.confidence}
+              />
             ) : (
               <StateChip ticket={ticket} />
             )}
@@ -161,7 +170,9 @@ export function ChatScreen(props: {
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} />
         ))}
-        {streaming !== null && <MessageBubble streaming content={streaming} status={status ?? undefined} />}
+        {streaming !== null && (
+          <MessageBubble streaming content={streaming} status={status ?? undefined} />
+        )}
         <div ref={bottomRef} />
       </div>
       {error && <div className="error">{error}</div>}

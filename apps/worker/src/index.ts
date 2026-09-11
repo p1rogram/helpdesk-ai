@@ -21,7 +21,10 @@ const log = pino({
   ...(config.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : {}),
 });
 
-const dbHandle = await connectDb({ url: config.DATABASE_URL, pgliteDir: config.PGLITE_DIR + '-worker' });
+const dbHandle = await connectDb({
+  url: config.DATABASE_URL,
+  pgliteDir: config.PGLITE_DIR + '-worker',
+});
 await ensureSchema(dbHandle.db);
 
 const events = await createEventBus({
@@ -31,16 +34,22 @@ const events = await createEventBus({
   log: { info: (m) => log.info(m), error: (o, m) => log.error(o as object, m) },
 });
 if (config.EVENT_BUS === 'memory') {
-  log.warn('EVENT_BUS=memory: the worker cannot receive events from the API process. Use kafka for real deployments.');
+  log.warn(
+    'EVENT_BUS=memory: the worker cannot receive events from the API process. Use kafka for real deployments.',
+  );
 }
 
-const bot = config.TELEGRAM_BOT_TOKEN ? await startBot(config.TELEGRAM_BOT_TOKEN, config.WEB_APP_URL, log) : null;
+const bot = config.TELEGRAM_BOT_TOKEN
+  ? await startBot(config.TELEGRAM_BOT_TOKEN, config.WEB_APP_URL, log)
+  : null;
 
 const notifier = new NotifierConsumer(bot, log);
 const analytics = new AnalyticsConsumer(dbHandle.db, log);
 
 await events.subscribe(TOPICS.notifications, 'helpdesk-notifier', (e) => notifier.handle(e));
-await events.subscribe(TOPICS.ticketEvents, 'helpdesk-analytics', (e) => analytics.onTicketEvent(e));
+await events.subscribe(TOPICS.ticketEvents, 'helpdesk-analytics', (e) =>
+  analytics.onTicketEvent(e),
+);
 await events.subscribe(TOPICS.llmUsage, 'helpdesk-analytics', (e) => analytics.onLlmUsage(e));
 log.info('worker: consumers running');
 

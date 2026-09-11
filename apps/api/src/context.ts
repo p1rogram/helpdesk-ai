@@ -3,7 +3,13 @@ import { TOPICS } from '@helpdesk/shared';
 import { randomUUID } from 'node:crypto';
 import type { AppConfig } from './config.js';
 import { connectDb, ensureSchema, type DbHandle } from './db/client.js';
-import { devVerifier, maxVerifier, telegramVerifier, vkVerifier, type PlatformVerifier } from './modules/auth/index.js';
+import {
+  devVerifier,
+  maxVerifier,
+  telegramVerifier,
+  vkVerifier,
+  type PlatformVerifier,
+} from './modules/auth/index.js';
 import { DialogEngine } from './modules/dialog/engine.js';
 import { createEventBus, type EventBus } from './modules/events/index.js';
 import { attachDevTelegramNotifier } from './modules/events/dev-notifier.js';
@@ -13,6 +19,7 @@ import { TicketRepository } from './modules/tickets/repository.js';
 import { NaumenHelpdesk, NoopHelpdesk, type HelpdeskConnector } from './modules/helpdesk/index.js';
 import { EmailCodeProvider, LdapProvider, OidcProvider } from './modules/auth/corporate.js';
 import { OperatorHub } from './modules/operator/hub.js';
+import { LocalEmbedder, NullEmbedder, RagService } from './modules/rag/index.js';
 import type { FastifyInstance } from 'fastify';
 
 /** AI: Composition root: every dependency is built once here and injected explicitly. */
@@ -22,13 +29,18 @@ export interface AppContext {
   events: EventBus;
   catalogs: CatalogRepository;
   knowledge: KnowledgeService;
+  rag: RagService;
   llm: LlmService;
   tickets: TicketRepository;
   engine: DialogEngine;
   verifiers: Map<string, PlatformVerifier>;
   helpdesk: HelpdeskConnector;
   operatorHub: OperatorHub;
-  corporate: { oidc: OidcProvider | null; ldap: LdapProvider | null; email: EmailCodeProvider | null };
+  corporate: {
+    oidc: OidcProvider | null;
+    ldap: LdapProvider | null;
+    email: EmailCodeProvider | null;
+  };
   /** AI: Set by buildApp - needed to sign tokens from route modules. */
   app: FastifyInstance;
   close(): Promise<void>;
@@ -54,8 +66,39 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   }
 
   const catalogs = new CatalogRepository(dbHandle.db);
-  await catalogs.seedFromDir(config.CATALOG_SEED_DIR, { info: (m) => log.info(m) }, config.CATALOG_SEED_FORCE);
+  await catalogs.seedFromDir(
+    config.CATALOG_SEED_DIR,
+    { info: (m) => log.info(m) },
+    config.CATALOG_SEED_FORCE,
+  );
   const knowledge = new KnowledgeService(catalogs);
+
+  // AI: RAG corpus: crawled documentation, chunked + embedded locally. Ingest runs in the background
+  // so the API answers from the catalog immediately; RAG joins as soon as the index is ready.
+  const embedder =
+    config.RAG_ENABLED && config.RAG_EMBEDDINGS === 'local'
+      ? new LocalEmbedder({
+          model: config.RAG_EMBEDDING_MODEL,
+          cacheDir: config.RAG_MODEL_DIR,
+          log: { info: (m) => log.info(m) },
+        })
+      : new NullEmbedder();
+  const rag = new RagService(dbHandle.db, embedder, {
+    info: (m) => log.info(m),
+    warn: (m) => log.warn(m),
+  });
+  if (config.RAG_ENABLED && config.RAG_INGEST_ON_BOOT) {
+    void (async () => {
+      const started = Date.now();
+      const docs = await rag.loadRawDir(config.RAG_RAW_DIR);
+      if (!docs.length) return log.info(`rag: no raw documents in ${config.RAG_RAW_DIR}`);
+      const res = await rag.ingest(config.DEFAULT_TENANT, docs);
+      log.info(
+        `rag: ${docs.length} documents -> ${res.chunks} chunks (${res.embedded} newly embedded) in ${Date.now() - started} ms`,
+      );
+    })().catch((err) => log.warn(err, 'rag ingest failed'));
+  }
+  log.info(`rag: ${config.RAG_ENABLED ? `enabled, embeddings=${embedder.model}` : 'disabled'}`);
 
   const llm = new LlmService({
     apiKey: config.ANTHROPIC_API_KEY,
@@ -75,30 +118,40 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
         .catch((err) => log.warn(err, 'failed to publish llm usage'));
     },
   });
-  log.info(`llm: ${llm.enabled ? `${config.LLM_MODEL} (effort=${config.LLM_EFFORT}) via ${config.LLM_BASE_URL}` : 'DISABLED - deterministic fallback mode'}`);
+  log.info(
+    `llm: ${llm.enabled ? `${config.LLM_MODEL} (effort=${config.LLM_EFFORT}) via ${config.LLM_BASE_URL}` : 'DISABLED - deterministic fallback mode'}`,
+  );
 
   const tickets = new TicketRepository(dbHandle.db);
 
   // AI: Live channel for operator consoles, fed by the event bus (works across API replicas on Kafka).
   const operatorHub = new OperatorHub();
-  await operatorHub.attach(events, async (ticketId) => (await tickets.getAny(ticketId))?.tenantId ?? null);
+  await operatorHub.attach(
+    events,
+    async (ticketId) => (await tickets.getAny(ticketId))?.tenantId ?? null,
+  );
 
   let helpdesk: HelpdeskConnector = new NoopHelpdesk();
   if (config.HELPDESK_KIND === 'naumen') {
     if (!config.NAUMEN_URL || !config.NAUMEN_ACCESS_KEY || !config.NAUMEN_DEFAULT_SERVICE) {
-      throw new Error('HELPDESK_KIND=naumen requires NAUMEN_URL, NAUMEN_ACCESS_KEY, NAUMEN_DEFAULT_SERVICE');
+      throw new Error(
+        'HELPDESK_KIND=naumen requires NAUMEN_URL, NAUMEN_ACCESS_KEY, NAUMEN_DEFAULT_SERVICE',
+      );
     }
     helpdesk = new NaumenHelpdesk({
       baseUrl: config.NAUMEN_URL,
       accessKey: config.NAUMEN_ACCESS_KEY,
       defaultServiceId: config.NAUMEN_DEFAULT_SERVICE,
-      serviceByCategory: config.NAUMEN_SERVICE_BY_CATEGORY ? (JSON.parse(config.NAUMEN_SERVICE_BY_CATEGORY) as Record<string, string>) : undefined,
+      serviceByCategory: config.NAUMEN_SERVICE_BY_CATEGORY
+        ? (JSON.parse(config.NAUMEN_SERVICE_BY_CATEGORY) as Record<string, string>)
+        : undefined,
     });
   }
   log.info(`helpdesk connector: ${helpdesk.kind}`);
 
   const engine = new DialogEngine({
     knowledge,
+    rag: config.RAG_ENABLED ? rag : null,
     llm,
     tickets,
     events,
@@ -112,12 +165,15 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   });
 
   const verifiers = new Map<string, PlatformVerifier>();
-  if (config.TELEGRAM_BOT_TOKEN) verifiers.set('telegram', telegramVerifier(config.TELEGRAM_BOT_TOKEN));
+  if (config.TELEGRAM_BOT_TOKEN)
+    verifiers.set('telegram', telegramVerifier(config.TELEGRAM_BOT_TOKEN));
   if (config.VK_APP_SECRET) verifiers.set('vk', vkVerifier(config.VK_APP_SECRET, config.VK_APP_ID));
-  if (config.MAX_BOT_TOKEN) verifiers.set('max', maxVerifier(config.MAX_BOT_TOKEN, config.MAX_SECRET_LABEL));
+  if (config.MAX_BOT_TOKEN)
+    verifiers.set('max', maxVerifier(config.MAX_BOT_TOKEN, config.MAX_SECRET_LABEL));
   if (config.AUTH_DEV_BYPASS) verifiers.set('web', devVerifier());
   log.info(`auth platforms: ${[...verifiers.keys()].join(', ') || 'none'}`);
-  if (config.OPERATOR_OPEN_ACCESS) log.warn('OPERATOR_OPEN_ACCESS=true - the operator console is open to every user (demo mode)');
+  if (config.OPERATOR_OPEN_ACCESS)
+    log.warn('OPERATOR_OPEN_ACCESS=true - the operator console is open to every user (demo mode)');
 
   const corporate = {
     oidc:
@@ -128,7 +184,12 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
             clientSecret: config.OIDC_CLIENT_SECRET,
             redirectUri: config.OIDC_REDIRECT_URI,
             scopes: config.OIDC_SCOPES,
-            claims: { id: config.OIDC_CLAIM_ID, name: config.OIDC_CLAIM_NAME, email: config.OIDC_CLAIM_EMAIL, groups: config.OIDC_CLAIM_GROUPS },
+            claims: {
+              id: config.OIDC_CLAIM_ID,
+              name: config.OIDC_CLAIM_NAME,
+              email: config.OIDC_CLAIM_EMAIL,
+              groups: config.OIDC_CLAIM_GROUPS,
+            },
           })
         : null,
     ldap:
@@ -138,7 +199,11 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
             bindTemplate: config.LDAP_BIND_TEMPLATE,
             baseDn: config.LDAP_BASE_DN,
             searchFilter: config.LDAP_SEARCH_FILTER,
-            attributes: { name: config.LDAP_ATTR_NAME, email: config.LDAP_ATTR_EMAIL, groups: config.LDAP_ATTR_GROUPS },
+            attributes: {
+              name: config.LDAP_ATTR_NAME,
+              email: config.LDAP_ATTR_EMAIL,
+              groups: config.LDAP_ATTR_GROUPS,
+            },
             tlsRejectUnauthorized: config.LDAP_TLS_REJECT_UNAUTHORIZED,
           })
         : null,
@@ -146,7 +211,14 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
       config.EMAIL_AUTH_DOMAINS && config.SMTP_HOST
         ? new EmailCodeProvider({
             domains: config.EMAIL_AUTH_DOMAINS.split(',').map((s) => s.trim().toLowerCase()),
-            smtp: { host: config.SMTP_HOST, port: config.SMTP_PORT, secure: config.SMTP_SECURE, user: config.SMTP_USER, pass: config.SMTP_PASS, from: config.SMTP_FROM },
+            smtp: {
+              host: config.SMTP_HOST,
+              port: config.SMTP_PORT,
+              secure: config.SMTP_SECURE,
+              user: config.SMTP_USER,
+              pass: config.SMTP_PASS,
+              from: config.SMTP_FROM,
+            },
           })
         : null,
   };
@@ -160,6 +232,7 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     events,
     catalogs,
     knowledge,
+    rag,
     llm,
     tickets,
     engine,

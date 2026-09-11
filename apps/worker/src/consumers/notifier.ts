@@ -12,14 +12,18 @@ export class NotifierConsumer {
   async handle(e: NotificationEvent): Promise<void> {
     switch (e.platform) {
       case 'telegram': {
-        if (!this.bot) return this.log.warn({ ticketId: e.ticketId }, 'notification skipped: bot disabled');
+        if (!this.bot)
+          return this.log.warn({ ticketId: e.ticketId }, 'notification skipped: bot disabled');
         await this.bot.api.sendMessage(Number(e.platformUserId), e.text);
         this.log.info({ ticketId: e.ticketId }, 'telegram notification sent');
         return;
       }
       // AI: VK / MAX adapters plug in here with their own send APIs.
       default:
-        this.log.info({ ticketId: e.ticketId, platform: e.platform }, 'notification (no push channel for platform)');
+        this.log.info(
+          { ticketId: e.ticketId, platform: e.platform },
+          'notification (no push channel for platform)',
+        );
     }
   }
 }

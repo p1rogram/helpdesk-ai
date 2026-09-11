@@ -3,7 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 /** AI: Repo root (works from src/ via tsx and from dist/ after build). */
-export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+export const REPO_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+);
 
 /**
  * AI: All runtime configuration is validated once at boot. A typo in .env fails fast
@@ -114,6 +119,21 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true' || v === '1'),
   /** AI: Comma-separated admin user ids (platform:platformUserId) allowed to call /api/admin/*. */
   ADMIN_USERS: z.string().default(''),
+  /** AI: RAG over crawled documentation (data/raw). Off = curated catalog only. */
+  RAG_ENABLED: z
+    .string()
+    .default('true')
+    .transform((v) => v === 'true' || v === '1'),
+  /** AI: local = ONNX model inside the API process (no external calls); off = BM25 only. */
+  RAG_EMBEDDINGS: z.enum(['local', 'off']).default('local'),
+  RAG_EMBEDDING_MODEL: z.string().default('Xenova/multilingual-e5-small'),
+  RAG_RAW_DIR: z.string().default('./data/raw'),
+  RAG_MODEL_DIR: z.string().default('./data/models'),
+  /** AI: Re-read data/raw on boot (dev). In prod ingest via POST /api/admin/rag/ingest. */
+  RAG_INGEST_ON_BOOT: z
+    .string()
+    .default('true')
+    .transform((v) => v === 'true' || v === '1'),
   MAX_CLARIFICATIONS: z.coerce.number().int().min(0).max(5).default(2),
   CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.6),
   HISTORY_TURNS: z.coerce.number().int().min(2).max(40).default(12),
@@ -127,7 +147,11 @@ export type AppConfig = z.infer<typeof EnvSchema> & {
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const parsed = EnvSchema.safeParse(env);
+  // AI: An empty value in .env (`OIDC_ISSUER=`) means "not set", not an empty URL.
+  const defined = Object.fromEntries(
+    Object.entries(env).filter(([, v]) => v !== undefined && v !== ''),
+  );
+  const parsed = EnvSchema.safeParse(defined);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid environment configuration:\n${issues}`);
@@ -143,6 +167,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ...cfg,
     PGLITE_DIR: path.resolve(REPO_ROOT, cfg.PGLITE_DIR),
     CATALOG_SEED_DIR: path.resolve(REPO_ROOT, cfg.CATALOG_SEED_DIR),
+    RAG_RAW_DIR: path.resolve(REPO_ROOT, cfg.RAG_RAW_DIR),
+    RAG_MODEL_DIR: path.resolve(REPO_ROOT, cfg.RAG_MODEL_DIR),
     corsOrigins: cfg.CORS_ORIGINS.split(',')
       .map((s) => s.trim())
       .filter(Boolean),

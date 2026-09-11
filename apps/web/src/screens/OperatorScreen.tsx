@@ -46,7 +46,14 @@ export function OperatorScreen(props: { api: ApiClient }) {
         .catch(() => setQueue((prev) => prev ?? [])),
     [api],
   );
-  const loadTicket = useCallback((id: string) => api.operatorTicket(id).then(setOpen).catch(() => {}), [api]);
+  const loadTicket = useCallback(
+    (id: string) =>
+      api
+        .operatorTicket(id)
+        .then(setOpen)
+        .catch(() => {}),
+    [api],
+  );
 
   useEffect(() => {
     void loadQueue();
@@ -64,13 +71,17 @@ export function OperatorScreen(props: { api: ApiClient }) {
 
   if (!open) {
     if (queue === null) return <SkeletonList rows={4} />;
-    if (!queue.length) return <div className="empty">Очередь пуста — все обращения обработаны.</div>;
+    if (!queue.length)
+      return <div className="empty">Очередь пуста — все обращения обработаны.</div>;
     let lastGroup: number | null = null;
     return (
       <div className="list">
         <div className="queue-head">
           Обращений: {queue.length}
-          <span className={`dot${live ? '' : ' off'}`} title={live ? 'Обновляется в реальном времени' : 'Нет связи'} />
+          <span
+            className={`dot${live ? '' : ' off'}`}
+            title={live ? 'Обновляется в реальном времени' : 'Нет связи'}
+          />
         </div>
         {queue.map((t) => {
           const header = t.group !== lastGroup ? GROUP_TITLE[t.group] : null;
@@ -78,7 +89,10 @@ export function OperatorScreen(props: { api: ApiClient }) {
           return (
             <div key={t.id}>
               {header && <div className="group-title">{header}</div>}
-              <div className={`item${t.group === 2 ? ' muted' : ''}`} onClick={() => loadTicket(t.id)}>
+              <div
+                className={`item${t.group === 2 ? ' muted' : ''}`}
+                onClick={() => loadTicket(t.id)}
+              >
                 <span className={`tile-ico ${categoryVisual(t.categoryId).tone}`}>
                   <Icon name={categoryVisual(t.categoryId).icon} size={19} />
                 </span>
@@ -88,7 +102,9 @@ export function OperatorScreen(props: { api: ApiClient }) {
                       {t.summary ?? 'Без описания'}
                     </span>
                     {t.group === 1 && <span className="chip danger">ждёт ответа</span>}
-                    {t.group === 0 && t.unanswered && <span className="chip warn">новое сообщение</span>}
+                    {t.group === 0 && t.unanswered && (
+                      <span className="chip warn">новое сообщение</span>
+                    )}
                     {t.group === 2 && <span className="chip ok">решено</span>}
                   </div>
                   <div className="m">
@@ -125,12 +141,22 @@ export function OperatorScreen(props: { api: ApiClient }) {
 
   return (
     <>
-      <div style={{ padding: '8px 12px 0', display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, flexWrap: 'wrap' }}>
+      <div
+        style={{
+          padding: '8px 12px 0',
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          fontSize: 13,
+          flexWrap: 'wrap',
+        }}
+      >
         <button className="pill-btn" onClick={() => setOpen(null)}>
           Назад к очереди
         </button>
         <span style={{ flex: 1, minWidth: 120 }}>
-          {open.user?.displayName ?? '—'} · №{open.ticket.externalId ?? open.ticket.id.slice(0, 8).toUpperCase()}
+          {open.user?.displayName ?? '—'} · №
+          {open.ticket.externalId ?? open.ticket.id.slice(0, 8).toUpperCase()}
         </span>
         <button className="pill-btn" onClick={() => setShowCard((v) => !v)}>
           {showCard ? 'Скрыть карточку' : 'Карточка'}
@@ -146,13 +172,20 @@ export function OperatorScreen(props: { api: ApiClient }) {
           </button>
         )}
         {!closed && (
-          <button className="pill-btn active" disabled={busy} onClick={() => act(() => api.operatorClose(open.ticket.id), true)}>
+          <button
+            className="pill-btn active"
+            disabled={busy}
+            onClick={() => act(() => api.operatorClose(open.ticket.id), true)}
+          >
             Закрыть как решённое
           </button>
         )}
       </div>
       {withAssistant && !closed && (
-        <div className="notice">Обращение передано помощнику — он снова ведёт диалог и не будет передавать его специалисту.</div>
+        <div className="notice">
+          Обращение передано помощнику — он снова ведёт диалог и не будет передавать его
+          специалисту.
+        </div>
       )}
       {showCard && <TicketCardPanel ticket={open.ticket} />}
       <div className="chat">

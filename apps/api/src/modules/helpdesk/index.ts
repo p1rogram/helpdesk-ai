@@ -16,7 +16,10 @@ export interface ExternalRequest {
 
 export interface HelpdeskConnector {
   readonly kind: string;
-  createRequest(card: TicketCard, context: { userDisplayName: string; transcript: string }): Promise<ExternalRequest>;
+  createRequest(
+    card: TicketCard,
+    context: { userDisplayName: string; transcript: string },
+  ): Promise<ExternalRequest>;
 }
 
 /** AI: Dev / demo: no external system - the internal short id is shown instead. */
@@ -57,7 +60,8 @@ export class NaumenHelpdesk implements HelpdeskConnector {
     card: TicketCard,
     ctx: { userDisplayName: string; transcript: string },
   ): Promise<ExternalRequest> {
-    const service = (card.categoryId && this.o.serviceByCategory?.[card.categoryId]) || this.o.defaultServiceId;
+    const service =
+      (card.categoryId && this.o.serviceByCategory?.[card.categoryId]) || this.o.defaultServiceId;
     const description = [
       `Обращение создано виртуальным помощником.`,
       `Пользователь: ${ctx.userDisplayName}`,
@@ -96,7 +100,9 @@ export class NaumenHelpdesk implements HelpdeskConnector {
     if (!externalId) throw new Error('naumen: response without request number');
     return {
       externalId,
-      url: data.UUID ? `${this.o.baseUrl.replace(/\/$/, '')}/portal/serviceCall.html?uuid=${encodeURIComponent(data.UUID)}` : undefined,
+      url: data.UUID
+        ? `${this.o.baseUrl.replace(/\/$/, '')}/portal/serviceCall.html?uuid=${encodeURIComponent(data.UUID)}`
+        : undefined,
     };
   }
 }
