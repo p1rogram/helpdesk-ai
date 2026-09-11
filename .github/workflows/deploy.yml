@@ -82,8 +82,8 @@ jobs:
             git reset --hard origin/master
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export IMAGE_PREFIX=${{ env.IMAGE_PREFIX }} IMAGE_TAG=${{ github.sha }}
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose pull api worker web
+            docker compose up -d --remove-orphans
             docker image prune -f
             for i in $(seq 1 30); do
               curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0 || sleep 2

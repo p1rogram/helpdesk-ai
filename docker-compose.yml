@@ -1,6 +1,9 @@
 # AI: Боевой стек: Postgres + Kafka (KRaft, без ZooKeeper) + API + worker + Caddy (HTTPS автоматически).
 #   cp .env.example .env && nano .env        # ANTHROPIC_API_KEY, JWT_SECRET, TELEGRAM_BOT_TOKEN, DOMAIN
-#   docker compose up -d --build
+#
+# Образы api / worker / web не собираются на сервере: их публикует CI/CD в GHCR и подставляет
+# IMAGE_PREFIX / IMAGE_TAG (sha коммита). Запуск: docker compose pull && docker compose up -d
+# Собрать образ локально для проверки: docker build -f deploy/api.Dockerfile -t helpdesk-api:local .
 # Масштабирование: docker compose up -d --scale api=3 --scale worker=2 — Kafka перераспределит партиции.
 services:
   postgres:
@@ -52,7 +55,7 @@ services:
     depends_on: { kafka: { condition: service_healthy } }
 
   api:
-    build: { context: ., dockerfile: deploy/api.Dockerfile }
+    image: ${IMAGE_PREFIX:-ghcr.io/p1rogram/helpdesk-ai}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: .env
     environment:
@@ -67,13 +70,14 @@ services:
       CORS_ORIGINS: https://${DOMAIN}
       WEB_APP_URL: https://${DOMAIN}
       RAG_MODEL_DIR: /app/data/models
+    ports: ['127.0.0.1:8080:8080'] # только для health-check с самого сервера
     depends_on:
       postgres: { condition: service_healthy }
       kafka: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 1g } } }
 
   worker:
-    build: { context: ., dockerfile: deploy/worker.Dockerfile }
+    image: ${IMAGE_PREFIX:-ghcr.io/p1rogram/helpdesk-ai}-worker:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: .env
     environment:
@@ -90,7 +94,7 @@ services:
     deploy: { resources: { limits: { memory: 512m } } }
 
   web:
-    build: { context: ., dockerfile: deploy/web.Dockerfile }
+    image: ${IMAGE_PREFIX:-ghcr.io/p1rogram/helpdesk-ai}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports: ['80:80', '443:443']
     environment:

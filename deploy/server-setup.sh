@@ -29,5 +29,5 @@ if [ ! -f .env ]; then
 fi
 
 ufw allow OpenSSH >/dev/null && ufw allow 80/tcp >/dev/null && ufw allow 443/tcp >/dev/null && ufw --force enable >/dev/null
-echo ">>> Done. First start:  cd $APP_DIR && docker compose up -d --build"
-echo ">>> Afterwards CI/CD deploys on every push to master (see README)."
+echo ">>> Done. Fill in .env, then add the GitHub secrets and push to master (or run the Deploy workflow):"
+echo ">>> CI/CD builds the images, publishes them to GHCR and starts the stack here."

@@ -187,7 +187,7 @@ packages/shared/  Zod-схемы: каталог, диалог, API, событ�
 data/catalog/     сферы: tpu.json (11 категорий, 56 статей), it-support.json
 data/raw/         корпус RAG: help-tpu.json (портал), tpu-site.jsonl (сайт), docs/*.md (регламенты с front-matter)
 scripts/          краулер tpu.ru, сборщик базы help.tpu.ru, check-personal-data — гейт ПД для CI
-deploy/           Dockerfile'ы (api, worker, web+Caddy), Caddyfile; docker-compose.yml (+ .prod.yml) в корне
+deploy/           Dockerfile'ы (api, worker, web+Caddy), Caddyfile, server-setup.sh; docker-compose.yml в корне
 .github/workflows/ CI (проверки, сборка) и CD (образы в GHCR, выкладка по SSH)
 docs/             архитектура
 ```
@@ -209,19 +209,17 @@ npm run dev:web               # http://localhost:5173
 Без `ANTHROPIC_API_KEY` система работает в детерминированном режиме — демонстрация не зависит
 от внешнего API.
 
-**Сервер (docker compose):**
+**Сервер:** образы на сервере не собираются, их публикует CI/CD. Порядок первого запуска:
 
 ```bash
-git clone <repo> && cd helpdesk-ai
-cp .env.example .env
-nano .env                     # DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN
-docker compose up -d --build  # postgres + kafka + api + worker + web (Caddy, HTTPS сам)
-docker compose logs -f api    # ждём «rag: … chunks» и «Server listening»
+# на сервере, под root
+curl -fsSL https://raw.githubusercontent.com/p1rogram/helpdesk-ai/master/deploy/server-setup.sh | bash -s -- DOMAIN
+nano /opt/helpdesk-ai/.env      # ANTHROPIC_API_KEY, LLM_BASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, ADMIN_USERS
 ```
 
-Что происходит при сборке: фронт собирается внутри образа `web` (на хосте Node не нужен),
-модель эмбеддингов скачивается на этапе сборки образа `api` и лежит внутри него — контейнер
-не ходит в интернет за моделью. Kafka-топики создаются приложением при старте.
+Затем в GitHub: секреты `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD` (или `SSH_KEY`), `APP_DIR=/opt/helpdesk-ai`
+и push в `master` (или Actions → Deploy → Run workflow). Дальше всё делает пайплайн: сборка образов,
+публикация в GHCR, `docker compose pull && up -d` на сервере, ожидание `/health`.
 
 Проверка: `curl -s https://DOMAIN/health` → `{"status":"ok","db":"postgres","events":"kafka","llm":true,…}`. Обновление: `git pull && docker compose up -d --build`.
 Просмотр топиков: `docker compose --profile tools up -d kafka-ui` → порт 8090.
@@ -236,7 +234,7 @@ Caddy выдаст HTTPS для `DOMAIN`. В BotFather: `/newapp` → URL = `htt
   в PR дополнительно собираются все три Docker-образа (без публикации).
 - `deploy.yml` — на push в `master`: те же проверки → образы `api`/`worker`/`web` публикуются в
   GitHub Container Registry с тегами `latest` и `<sha>` → по SSH на сервере `docker compose pull && up -d`
-  с override `docker-compose.prod.yml` (образы вместо локальной сборки) → ожидание `/health`.
+  (у сервисов заданы и `image`, и `build`, поэтому тот же compose берёт готовые образы по тегу коммита) → ожидание `/health`.
   Секреты репозитория: `SSH_HOST`, `SSH_USER`, `APP_DIR` (путь к клону на сервере) и либо
   `SSH_PASSWORD`, либо `SSH_KEY` (приватный ключ); `SSH_PORT` — если не 22. Подготовка сервера
   одной командой: `deploy/server-setup.sh <domain>` (Docker, клон в `/opt/helpdesk-ai`, `.env`,
