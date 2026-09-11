@@ -134,6 +134,16 @@ export const T = {
       `Давайте разберёмся здесь: уточните, что именно не получается, и я подскажу по шагам.`,
     ].join('\n'),
 
+  /** AI: Guests get answers, not requests: a specialist works only with identified users. */
+  guestNoEscalation: (reason: EscalationReason) =>
+    [
+      reason === 'user_request' ? '' : escalationLead[reason],
+      `Передать обращение специалисту в гостевом режиме нельзя — для этого нужен вход по учётной записи ТПУ (кнопка «Я студент или сотрудник ТПУ» на входе).`,
+      `Если вопрос срочный: техподдержка ТПУ — https://help.tpu.ru, +7 (3822) 701-811, help@tpu.ru.`,
+    ]
+      .filter(Boolean)
+      .join('\n'),
+
   escalationBlocked: () =>
     [
       `По этому обращению специалист уже принял решение: его нужно решать здесь, без передачи.`,

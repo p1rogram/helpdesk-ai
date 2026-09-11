@@ -123,6 +123,15 @@ export class DialogEngine {
       return;
     }
     if (text === CMD.human || text === CMD.escalate) {
+      if (catalog.scope === 'guest') {
+        yield* this.reply(
+          ticket,
+          catalog,
+          T.guestNoEscalation('user_request'),
+          ticket.articleId ? QR_HELPED_ONLY : undefined,
+        );
+        return;
+      }
       if (ticket.escalationBlocked) {
         // AI: The operator already reviewed this ticket and sent it back - do not re-queue it.
         yield* this.reply(
@@ -241,6 +250,15 @@ export class DialogEngine {
     });
 
     if (analysis.asksForHuman) {
+      if (catalog.scope === 'guest') {
+        yield* this.reply(
+          ticket,
+          catalog,
+          T.guestNoEscalation('user_request'),
+          ticket.articleId ? QR_HELPED_ONLY : undefined,
+        );
+        return;
+      }
       if (ticket.escalationBlocked) {
         yield* this.reply(
           ticket,
@@ -641,6 +659,16 @@ export class DialogEngine {
     catalog: LoadedCatalog,
     reason: EscalationReason,
   ): AsyncGenerator<ChatStreamEvent> {
+    if (catalog.scope === 'guest') {
+      // AI: No request and no operator for guests - explain how to get one, keep the dialogue open.
+      yield* this.reply(
+        ticket,
+        catalog,
+        T.guestNoEscalation(reason),
+        ticket.articleId ? QR_HELPED_ONLY : undefined,
+      );
+      return;
+    }
     if (ticket.escalationBlocked) {
       // AI: A specialist decided this ticket stays with the assistant; never offer to escalate again.
       yield* this.reply(
@@ -665,6 +693,10 @@ export class DialogEngine {
     catalog: LoadedCatalog,
     reason: EscalationReason,
   ): AsyncGenerator<ChatStreamEvent> {
+    if (catalog.scope === 'guest') {
+      yield* this.reply(ticket, catalog, T.guestNoEscalation(reason));
+      return;
+    }
     yield { type: 'status', text: 'Создаю заявку…' };
     // AI: Create the request in the external helpdesk first, so the card shows the real number.
     let external: { externalId: string; url?: string } | null = null;
@@ -758,9 +790,14 @@ export class DialogEngine {
     quickReplies?: QuickReply[],
     meta: Record<string, unknown> = {},
   ): AsyncGenerator<ChatStreamEvent> {
+    // AI: Single choke point: a guest never sees a button that leads to a specialist.
+    const visible =
+      catalog.scope === 'guest'
+        ? (quickReplies ?? []).filter((q) => q.value !== CMD.human && q.value !== CMD.escalate)
+        : (quickReplies ?? []);
     const saved = await this.d.tickets.addMessage(ticket.id, 'assistant', text, {
       ...meta,
-      quickReplies: quickReplies ?? [],
+      quickReplies: visible,
     });
     const fresh = (await this.d.tickets.get(ticket.id, ticket.userId)) ?? ticket;
     yield {
@@ -770,7 +807,7 @@ export class DialogEngine {
         role: 'assistant',
         content: text,
         createdAt: saved.createdAt.toISOString(),
-        ...(quickReplies?.length ? { quickReplies } : {}),
+        ...(visible.length ? { quickReplies: visible } : {}),
       },
       ticket: toCard(fresh, catalog),
     };

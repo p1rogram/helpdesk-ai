@@ -214,6 +214,37 @@ describe('DialogEngine', () => {
     }
   });
 
+  it('never lets a guest reach a specialist: no request, no operator, no such buttons', async () => {
+    const { user, ticket } = await fresh();
+    // AI: free-text request for a human
+    llm.queue.push({ asksForHuman: true, categoryId: 'general', summary: 'Хочет оператора' });
+    const r1 = await collect(engine.handle(ticket, user, 'Позовите оператора', 'guest'));
+    expect(r1.ticket.state).not.toBe('escalated');
+    expect(r1.ticket.escalated).toBe(false);
+    expect(r1.text).toMatch(/гостевом режиме/);
+    // AI: the button commands are refused too
+    for (const cmd of [CMD.human, CMD.escalate]) {
+      const t = (await tickets.get(ticket.id, user.id))!;
+      const r = await collect(engine.handle(t, user, cmd, 'guest'));
+      expect(r.ticket.escalated).toBe(false);
+      expect(r.quick.map((q) => q.value)).not.toContain(CMD.human);
+      expect(r.quick.map((q) => q.value)).not.toContain(CMD.escalate);
+    }
+    // AI: a topic without a public article ends with contacts, not with an offer to create a request
+    const { user: u2, ticket: t2 } = await fresh();
+    llm.queue.push({
+      categoryId: 'general',
+      confidence: 0.9,
+      summary: 'Спор с соседом',
+      fields: {},
+    });
+    const r2 = await collect(
+      engine.handle(t2, u2, 'Сосед по общаге шумит ночью, что делать?', 'guest'),
+    );
+    expect(r2.ticket.state).not.toBe('offer_escalation');
+    expect(r2.quick.map((q) => q.value)).not.toContain(CMD.escalate);
+  });
+
   it('stays silent while an operator owns the ticket, and only acknowledges', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Проблема с доступом' });

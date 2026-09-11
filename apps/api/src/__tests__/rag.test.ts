@@ -3,7 +3,7 @@ import { connectDb, ensureSchema } from '../db/client.js';
 import { tenants } from '../db/schema.js';
 import { chunkText, stripBoilerplate } from '../modules/rag/chunker.js';
 import { RagService, type Embedder } from '../modules/rag/index.js';
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -116,5 +116,36 @@ describe('RagService', () => {
     expect(guest.every((p) => !p.url.startsWith('https://help.example'))).toBe(true);
 
     await h.close();
+  });
+});
+
+describe('markdown documents', () => {
+  it('reads docs/*.md with a front-matter header', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'raw-'));
+    mkdirSync(path.join(dir, 'docs'));
+    const header = [
+      '---',
+      'title: Порядок выплат',
+      'source: https://example.org/order',
+      'audience: internal',
+      '---',
+    ];
+    writeFileSync(
+      path.join(dir, 'docs', 'order.md'),
+      [...header, '# Раздел', 'Текст документа.', ''].join('\n'),
+    );
+    writeFileSync(path.join(dir, 'docs', 'broken.md'), 'без шапки');
+    const rag = new RagService(null as never, new ToyEmbedder(), {
+      info: () => {},
+      warn: () => {},
+    });
+    expect(await rag.loadRawDir(dir)).toEqual([
+      {
+        url: 'https://example.org/order',
+        title: 'Порядок выплат',
+        text: '# Раздел\nТекст документа.',
+        audience: 'internal',
+      },
+    ]);
   });
 });
