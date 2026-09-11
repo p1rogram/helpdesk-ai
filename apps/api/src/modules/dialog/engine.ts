@@ -241,13 +241,29 @@ export class DialogEngine {
     // AI: Summary: never from chit-chat; refine while the problem is still being understood, freeze once solving.
     const keepSummary =
       analysis.offTopic || analysis.asksToClose === true || ticket.state === 'solving';
+    const summary = keepSummary
+      ? ticket.summary
+      : (soberSummary(analysis.summary) ?? ticket.summary);
     ticket = await this.d.tickets.update(ticket.id, {
       fields,
       tone,
       pendingField: null,
       priority: bumpPriority(ticket.priority, tone),
-      summary: keepSummary ? ticket.summary : analysis.summary?.trim() || ticket.summary,
+      summary,
     });
+    this.d.log.info(
+      {
+        ticketId: ticket.id,
+        state: ticket.state,
+        category: analysis.categoryId,
+        confidence: analysis.confidence,
+        tone,
+        offTopic: analysis.offTopic,
+        asksForHuman: analysis.asksForHuman,
+        llmDown,
+      },
+      'message analysed',
+    );
 
     if (analysis.asksForHuman) {
       if (catalog.scope === 'guest') {
@@ -372,6 +388,7 @@ export class DialogEngine {
         clarificationsAsked: ticket.clarificationsAsked + 1,
       });
       yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      this.d.log.info({ ticketId: ticket.id, field: field.id }, 'clarification asked');
       yield* this.reply(
         ticket,
         catalog,
@@ -422,6 +439,10 @@ export class DialogEngine {
       pendingField: null,
     });
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
+    this.d.log.info(
+      { ticketId: ticket.id, articleId: article.id, score: Math.round(best.score * 10) / 10 },
+      'solution: article',
+    );
     yield { type: 'status', text: `Подбираю решение: «${article.title}»…` };
     await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
       ...eventBase(ticket.id, user.id),
@@ -460,6 +481,10 @@ export class DialogEngine {
       noSolution = r.noSolution;
     }
     if (noSolution) {
+      this.d.log.info(
+        { ticketId: ticket.id, articleId: article.id },
+        'solution: article rejected by model',
+      );
       // AI: The model judged the best article irrelevant: do not show it, do not retrieve it again.
       // Try the documentation corpus, then offer a hand-over honestly.
       const firstTry = !ticket.triedArticles.length;
@@ -525,6 +550,10 @@ export class DialogEngine {
     if (!passages.length) return false;
 
     yield { type: 'status', text: 'Ищу ответ в документации…' };
+    this.d.log.info(
+      { ticketId: ticket.id, passages: passages.map((p) => p.url) },
+      'solution: documentation',
+    );
     const r = yield* this.streamGrounded(
       this.d.llm.answer(catalog, {
         summary: ticket.summary ?? lastText,
@@ -701,6 +730,10 @@ export class DialogEngine {
       closedAt: new Date(),
     });
     const card = toCard(ticket, catalog);
+    this.d.log.info(
+      { ticketId: ticket.id, reason, articleId: ticket.articleId },
+      'ticket resolved',
+    );
     await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
       ...eventBase(ticket.id, user.id),
       type: 'ticket.resolved',
@@ -743,6 +776,7 @@ export class DialogEngine {
       state: 'offer_escalation',
       pendingEscalation: reason,
     });
+    this.d.log.info({ ticketId: ticket.id, reason }, 'escalation offered');
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
     yield* this.reply(ticket, catalog, T.offerEscalation(reason), QR_OFFER_ESCALATION);
   }
@@ -788,6 +822,15 @@ export class DialogEngine {
         reason === 'user_request' ? bumpPriority(ticket.priority, 'frustrated') : ticket.priority,
     });
     const card = toCard(ticket, catalog);
+    this.d.log.info(
+      {
+        ticketId: ticket.id,
+        reason,
+        externalId: ticket.externalId,
+        helpdesk: this.d.helpdesk.kind,
+      },
+      'ticket escalated',
+    );
     await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
       ...eventBase(ticket.id, user.id),
       type: 'ticket.escalated',
@@ -928,6 +971,19 @@ function isQuestion(text: string): boolean {
     t.endsWith('?') ||
     /^(а |и )?(как|где|когда|какой|какая|какие|сколько|кто|что|можно ли|куда|почему)\b/.test(t)
   );
+}
+
+/**
+ * AI: The card summary must describe a problem. The model occasionally echoes chit-chat
+ * ("ты тут?") or returns a stub; such values are dropped and the previous summary is kept.
+ */
+function soberSummary(raw: string | undefined): string | undefined {
+  const s = (raw ?? '').trim().replace(/\s+/g, ' ');
+  if (s.length < 8) return undefined;
+  if (isSmalltalk(s) || /^(ты тут|ты здесь|есть кто|привет|тест|проверка)/i.test(s))
+    return undefined;
+  if (/^(нет|не указано|неизвестно|n\/a|null|none)$/i.test(s)) return undefined;
+  return s.slice(0, 300);
 }
 
 function isSmalltalk(text: string): boolean {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatMessage, QuickReply, TicketCard } from '@helpdesk/shared';
-import type { ApiClient } from '../lib/api';
+import { ApiError, type ApiClient } from '../lib/api';
 import type { PlatformAdapter } from '../lib/platform';
 import { Composer } from '../components/Composer';
 import { MessageBubble } from '../components/MessageBubble';
@@ -37,7 +37,15 @@ export function ChatScreen(props: {
     async (id?: string, fresh = false) => {
       setError(null);
       try {
-        const r = id ? await api.getTicket(id) : await api.openTicket(fresh);
+        let r;
+        try {
+          r = id ? await api.getTicket(id) : await api.openTicket(fresh);
+        } catch (err) {
+          // AI: The remembered ticket is gone (wiped database, another account) - open the
+          // current one instead of showing an error for a stale id.
+          if (!(id && err instanceof ApiError && err.status === 404)) throw err;
+          r = await api.openTicket(false);
+        }
         loadedRef.current = r.ticket.id;
         setTicket(r.ticket);
         setMessages(r.messages);

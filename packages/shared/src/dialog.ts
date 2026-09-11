@@ -61,6 +61,8 @@ export const TicketCardSchema = z.object({
   confidence: z.number().nullable(),
   summary: z.string().nullable(),
   fields: z.record(z.string(), z.string()),
+  /** AI: Field id -> human label from the category (falls back to the id on the client). */
+  fieldLabels: z.record(z.string(), z.string()),
   tone: ToneSchema,
   articleId: z.string().nullable(),
   articleTitle: z.string().nullable(),

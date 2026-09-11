@@ -227,6 +227,7 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     confidence: t.confidence,
     summary: t.summary,
     fields: t.fields,
+    fieldLabels: Object.fromEntries((cat?.clarify ?? []).map((f) => [f.id, f.label ?? f.id])),
     tone: t.tone as Tone,
     articleId: t.articleId,
     articleTitle: art?.title ?? null,

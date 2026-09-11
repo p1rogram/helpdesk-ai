@@ -42,7 +42,7 @@ export function HistoryScreen(props: {
     const all = items ?? [];
     return {
       all: all.length,
-      resolved: all.filter((t) => t.resolved).length,
+      resolved: all.filter((t) => t.resolved && !t.escalated).length,
       escalated: all.filter((t) => t.escalated || t.state === 'escalated').length,
     };
   }, [items]);
@@ -70,7 +70,7 @@ export function HistoryScreen(props: {
     filter === 'all'
       ? true
       : filter === 'resolved'
-        ? t.resolved
+        ? t.resolved && !t.escalated // AI: closed by the assistant; specialist cases live under "Переданные"
         : t.escalated || t.state === 'escalated',
   );
 

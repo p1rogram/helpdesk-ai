@@ -111,6 +111,14 @@ KRaft-режим (без ZooKeeper), 6 партиций, retention 7 дней. C
 - Масштабирование: API stateless (JWT), N реплик за Caddy; worker — по партициям Kafka; Postgres —
   индексы по `(user_id, created_at)`, `(ticket_id, created_at)`.
 
+## Наблюдаемость
+
+Движок пишет одну структурированную запись на решение (pino, `LOG_LEVEL=info`): `message analysed`
+(категория, уверенность, тон, off-topic), `clarification asked`, `solution: article | documentation |
+article rejected by model`, `escalation offered`, `ticket escalated`, `ticket resolved` — всегда с
+`ticketId`, без текста пользователя. Стоимость и задержка модели — `llm usage` на уровне `debug`
+и в топике `support.llm-usage.v1`. Этого достаточно, чтобы по логу восстановить путь любого обращения.
+
 ## Точки расширения
 
 - **VK / MAX**: `PlatformVerifier` (сервер) + `PlatformAdapter` (клиент) — по одному файлу на платформу;

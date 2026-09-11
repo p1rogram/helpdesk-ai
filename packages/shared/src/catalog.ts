@@ -6,6 +6,8 @@ import { z } from 'zod';
  */
 export const ClarifyingFieldSchema = z.object({
   id: z.string().min(1),
+  /** AI: Human label for the ticket card ("Срочность", not "urgency"). */
+  label: z.string().min(1).optional(),
   /** AI: Question shown to the user when the field is missing. Deterministic - no LLM cost. */
   question: z.string().min(1),
   /** AI: Optional quick-reply options rendered as buttons. */

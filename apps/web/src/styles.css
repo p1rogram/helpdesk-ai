@@ -84,6 +84,32 @@ body {
 a {
   color: var(--accent);
 }
+
+/* AI: Scrollbars follow the theme: a thin rounded thumb in the border colour, no track, no arrows
+   (the OS default grey bar with arrows stood out on the dark theme in the browser version). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted);
+}
+*::-webkit-scrollbar-button {
+  display: none;
+}
 button {
   font: inherit;
   cursor: pointer;
@@ -744,7 +770,7 @@ select {
 
 /* ------------------------------------------------------------ kb screen --- */
 .search {
-  padding: 12px 14px 0;
+  padding: 12px 14px 8px;
   position: relative;
 }
 .search input {

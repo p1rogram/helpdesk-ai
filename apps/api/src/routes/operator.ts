@@ -36,26 +36,37 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     };
   });
 
-  /** AI: Live queue updates (SSE): a new escalation or a user message appears without reloading. */
-  app.get('/api/operator/stream', { config: { rateLimit: false } }, async (req, reply) => {
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-      ...sseCors(req.headers.origin, ctx.config.corsOrigins),
-    });
-    reply.raw.write(`data: ${JSON.stringify({ type: 'ready' })}\n\n`);
-    const detach = ctx.operatorHub.add({
-      tenantId: req.user.tenant,
-      send: (payload) => reply.raw.write(`data: ${payload}\n\n`),
-    });
-    const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), 20_000);
-    req.raw.on('close', () => {
-      clearInterval(heartbeat);
-      detach();
-    });
-    await new Promise(() => {}); // held open until the client disconnects
+  /**
+   * AI: Live queue updates (SSE): a new escalation or a user message appears without reloading.
+   * POST is the primary method (CDN tunnels buffer GET bodies); GET stays for EventSource / curl.
+   */
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/api/operator/stream',
+    config: { rateLimit: false },
+    handler: async (req, reply) => {
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+        ...sseCors(req.headers.origin, ctx.config.corsOrigins),
+      });
+      // AI: 2 KB of comment padding: some proxies (Cloudflare quick tunnels among them) hold the
+      // first bytes of a chunked response until a buffer fills; SSE clients ignore comment lines.
+      reply.raw.write(`: ${' '.repeat(2048)}\n\n`);
+      reply.raw.write(`data: ${JSON.stringify({ type: 'ready' })}\n\n`);
+      const detach = ctx.operatorHub.add({
+        tenantId: req.user.tenant,
+        send: (payload) => reply.raw.write(`data: ${payload}\n\n`),
+      });
+      const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), 20_000);
+      req.raw.on('close', () => {
+        clearInterval(heartbeat);
+        detach();
+      });
+      await new Promise(() => {}); // held open until the client disconnects
+    },
   });
 
   /**

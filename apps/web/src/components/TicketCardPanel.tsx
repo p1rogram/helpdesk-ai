@@ -35,7 +35,7 @@ export function TicketCardPanel({ ticket }: { ticket: TicketCard }) {
       <span className="k">Тон</span>
       <span>{TONE[ticket.tone]}</span>
       {Object.entries(ticket.fields).map(([k, v]) => (
-        <FieldRow key={k} k={k} v={v} />
+        <FieldRow key={k} k={ticket.fieldLabels?.[k] ?? k} v={v} />
       ))}
       <span className="k">Статья</span>
       <span>{ticket.articleTitle ?? '—'}</span>

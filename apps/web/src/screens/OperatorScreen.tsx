@@ -63,8 +63,13 @@ export function OperatorScreen(props: { api: ApiClient }) {
       void loadQueue();
       if (ticketId && ticketId === openIdRef.current) void loadTicket(ticketId);
     }, ac.signal);
+    // AI: Safety net for proxies that block streams entirely: a slow poll while the tab is visible.
+    const poll = setInterval(() => {
+      if (document.visibilityState === 'visible') void loadQueue();
+    }, 30_000);
     return () => {
       ac.abort();
+      clearInterval(poll);
       setLive(false);
     };
   }, [api, loadQueue, loadTicket]);

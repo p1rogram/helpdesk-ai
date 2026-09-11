@@ -161,7 +161,10 @@ export class ApiClient {
     const run = async () => {
       while (!signal.aborted) {
         try {
+          // AI: POST, not GET: CDN tunnels (Cloudflare) buffer GET bodies for cache decisions and
+          // hold SSE frames back; a POST response streams through untouched.
           const res = await fetch(`${this.base}/api/operator/stream`, {
+            method: 'POST',
             headers: this.headers({ accept: 'text/event-stream' }),
             signal,
           });
