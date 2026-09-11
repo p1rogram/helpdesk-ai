@@ -147,9 +147,12 @@ export type AppConfig = z.infer<typeof EnvSchema> & {
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  // AI: An empty value in .env (`OIDC_ISSUER=`) means "not set", not an empty URL.
+  // AI: A blank value in .env (`OIDC_ISSUER=` or `OIDC_ISSUER=    # comment`) means "not set",
+  // not an empty URL. docker compose keeps the whitespace before an inline comment, Node does not.
   const defined = Object.fromEntries(
-    Object.entries(env).filter(([, v]) => v !== undefined && v !== ''),
+    Object.entries(env)
+      .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v] as const)
+      .filter(([, v]) => v !== undefined && v !== ''),
   );
   const parsed = EnvSchema.safeParse(defined);
   if (!parsed.success) {
