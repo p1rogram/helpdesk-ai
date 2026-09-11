@@ -8,7 +8,6 @@ import { MessageBubble } from '../components/MessageBubble';
 import { QuickReplies } from '../components/QuickReplies';
 import { RatingStars } from '../components/RatingStars';
 import { TicketCardPanel } from '../components/TicketCardPanel';
-import { CategoryBadge } from '../components/CategoryBadge';
 
 const NEW_TICKET = '__new';
 
@@ -126,6 +125,12 @@ export function ChatScreen(props: {
     abortRef.current = ac;
     try {
       for await (const ev of api.sendMessage(ticketId, text, ac.signal)) {
+        // AI: Движок мог открыть новое обращение (следующая проблема из того же сообщения):
+        // дальше пишем уже в него, история обновляется.
+        if ('ticket' in ev && ev.ticket.id !== loadedRef.current) {
+          loadedRef.current = ev.ticket.id;
+          props.onTicketChange?.(ev.ticket.id);
+        }
         if (ev.type === 'meta') {
           // AI: Карточка изменилась посреди ответа (категория, суть): список истории уже может
           // показать тикет, не дожидаясь полного ответа.
@@ -160,8 +165,8 @@ export function ChatScreen(props: {
     }
   };
 
-  // AI: "Закрыть обращение" from the bar under the chat: same effect as the chat command, one
-  // round-trip, no streaming. Asks first - the specialist gets a notification.
+  // AI: «Закрыть обращение» с панели под чатом: тот же эффект, что у команды в чате, один запрос,
+  // без стрима. Сначала спрашивает - специалист получит уведомление.
   const closeTicket = async () => {
     if (!ticket || busy) return;
     if (!(await platform.confirm('Закрыть обращение? Специалист получит уведомление.'))) return;
@@ -202,15 +207,8 @@ export function ChatScreen(props: {
             Новый чат
           </button>
           <div className="centre">
-            {ticket.categoryName ? (
-              <CategoryBadge
-                categoryId={ticket.categoryId}
-                name={ticket.categoryName}
-                confidence={ticket.confidence}
-              />
-            ) : (
-              <StateChip ticket={ticket} />
-            )}
+            {/* AI: Категория и уверенность - служебные данные; пользователь видит только этап. */}
+            <StateChip ticket={ticket} />
           </div>
           <button className="pill-btn" onClick={() => setShowCard((v) => !v)}>
             {showCard ? 'Скрыть' : 'Карточка'}

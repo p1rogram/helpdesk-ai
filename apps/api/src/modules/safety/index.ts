@@ -9,7 +9,8 @@ import type { Tone } from '@helpdesk/shared';
  * спокойнее.
  */
 
-// AI: Stems, normalised (ё->е, latin look-alikes). Intentionally short - false positives cost more than misses.
+// AI: Основы, нормализованные (ё->е, латинские двойники). Намеренно коротко - ложные срабатывания
+// стоят дороже пропусков.
 const PROFANITY_STEMS = [
   'бля',
   'блят',

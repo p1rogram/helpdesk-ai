@@ -14,13 +14,14 @@ export { LocalEmbedder, NullEmbedder, type Embedder } from './embedder.js';
 export { redactNames } from './redact.js';
 
 /**
- * AI: Retrieval-augmented generation over crawled documentation (help.tpu.ru articles, tpu.ru
- * pages). The curated catalog answers the frequent problems with vetted steps; RAG covers the long
- * tail - "как получить справку", "кто проректор по образованию", "график приёма ректора".
+ * AI: Генерация с поиском (RAG) по скачанной документации (статьи help.tpu.ru, страницы tpu.ru).
+ * Проверенный каталог отвечает на частые проблемы выверенными шагами; RAG закрывает длинный хвост -
+ * «как получить справку», «кто проректор по образованию», «график приёма ректора».
  *
- * Retrieval is hybrid: BM25 over the chunk text (exact identifiers: "ЛК", "SOGo", "Вершинина 37")
- * fused with dense cosine similarity (paraphrases: "не могу зайти" ~ "ошибка входа") via
- * reciprocal-rank fusion. Either half alone still works - without an embedder it is plain BM25.
+ * Поиск гибридный: BM25 по тексту фрагментов (точные идентификаторы: «ЛК», «SOGo», «Вершинина 37»),
+ * слитый с косинусной близостью векторов (парафразы: «не могу зайти» ~ «ошибка входа») через
+ * слияние взаимных рангов. Каждая половина работает и сама по себе - без эмбеддера это обычный
+ * BM25.
  */
 export interface SourceDoc {
   url: string;

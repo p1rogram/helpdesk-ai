@@ -31,8 +31,14 @@ import {
   type EscalationReason,
 } from './templates.js';
 
+/** AI: Пользователь плюс то, что знает только маршрут: оператор не ограничен дневными лимитами. */
+export type Actor = UserRow & { operator?: boolean };
+
 export interface EngineConfig {
   maxClarifications: number;
+  /** AI: Дневные лимиты: заявки специалисту и просьбы позвать человека; 0 = без ограничений. */
+  dailyRequestLimit: number;
+  dailyHumanLimit: number;
   confidenceThreshold: number;
   historyTurns: number;
 }
@@ -65,7 +71,7 @@ export class DialogEngine {
 
   async *handle(
     ticket: TicketRow,
-    user: UserRow,
+    user: Actor,
     rawText: string,
     scope: Scope = 'full',
   ): AsyncGenerator<ChatStreamEvent> {
@@ -80,6 +86,11 @@ export class DialogEngine {
       isCmd ? { command: text } : {},
     );
 
+    // AI: Следующая проблема из того же сообщения: новое обращение, старое остаётся как есть.
+    if (text === CMD.next && ticket.pendingProblems.length) {
+      yield* this.nextProblem(ticket, user, catalog);
+      return;
+    }
     // AI: Пользователь может отозвать обращение из любого состояния - в том числе пока оно у
     // специалиста.
     if (text === CMD.close) {
@@ -108,7 +119,8 @@ export class DialogEngine {
         type: 'ticket.updated',
         tenantId: ticket.tenantId,
       });
-      // AI: "Уже не актуально" while waiting for a specialist: offer to close, never close on a guess.
+      // AI: «Уже не актуально», пока обращение у специалиста: предлагаем закрыть, никогда не
+      // закрываем по догадке.
       if (looksLikeWithdrawal(text)) {
         yield { type: 'meta', ticket: toCard(touched, catalog) };
         yield* this.reply(touched, catalog, T.confirmClose(), QR_CONFIRM_CLOSE);
@@ -149,43 +161,42 @@ export class DialogEngine {
       yield* this.nextSolution(ticket, user, catalog);
       return;
     }
-    if (text === CMD.human || text === CMD.escalate) {
+    if (text === CMD.human) {
+      yield* this.humanRequested(ticket, user, catalog, ticket.summary ?? '');
+      return;
+    }
+    if (text === CMD.escalate) {
+      // AI: Согласие на предложение помощника («Создать заявку?») - решение уже пробовали.
       if (catalog.scope === 'guest') {
+        yield* this.reply(ticket, catalog, T.guestNoEscalation('user_request'));
+        return;
+      }
+      yield* this.escalate(
+        ticket,
+        user,
+        catalog,
+        (ticket.pendingEscalation as EscalationReason | null) ?? 'user_request',
+      );
+      return;
+    }
+    if (text.startsWith(CMD.pick)) {
+      const n = Number(text.slice(CMD.pick.length));
+      const chosen = ticket.pendingProblems[n];
+      if (chosen === undefined) {
         yield* this.reply(
           ticket,
           catalog,
-          T.guestNoEscalation('user_request'),
-          ticket.articleId ? QR_HELPED_ONLY : undefined,
+          T.chooseCategory(),
+          T.problemButtons(ticket.pendingProblems),
         );
         return;
       }
-      if (ticket.escalationBlocked) {
-        // AI: Оператор уже смотрел этот тикет и вернул его - не ставим в очередь снова.
-        yield* this.reply(
-          ticket,
-          catalog,
-          T.escalationBlocked(),
-          ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY,
-        );
-        return;
-      }
-      const reason: EscalationReason =
-        text === CMD.escalate
-          ? ((ticket.pendingEscalation as EscalationReason | null) ?? 'user_request')
-          : 'user_request';
-      if (
-        text === CMD.human &&
-        !ticket.categoryId &&
-        !ticket.summary &&
-        !ticket.pendingEscalation
-      ) {
-        // AI: Кнопка нажата до того, как проблема названа: специалисту нечего передавать.
-        ticket = await this.d.tickets.update(ticket.id, { pendingEscalation: 'user_request' });
-        yield { type: 'meta', ticket: toCard(ticket, catalog) };
-        yield* this.reply(ticket, catalog, T.describeBeforeHuman());
-        return;
-      }
-      yield* this.escalate(ticket, user, catalog, reason);
+      ticket = await this.d.tickets.update(ticket.id, {
+        summary: chosen,
+        pendingProblems: ticket.pendingProblems.filter((_, i) => i !== n),
+      });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      yield* this.freeText(ticket, user, catalog, chosen);
       return;
     }
     if (text === CMD.dismiss) {
@@ -235,7 +246,16 @@ export class DialogEngine {
       });
     }
 
-    // ---------- свободный текст ----------
+    yield* this.freeText(ticket, user, catalog, text);
+  }
+
+  /** AI: Свободный текст: понять (модель или запасной разбор), затем выбрать переход. */
+  private async *freeText(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+    text: string,
+  ): AsyncGenerator<ChatStreamEvent> {
     // AI: Приветствия / «ты тут?» / спасибо не требуют модели - отвечаем мгновенно и тепло.
     if (isSmalltalk(text)) {
       const solving = ticket.state === 'solving';
@@ -315,24 +335,6 @@ export class DialogEngine {
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
 
     if (analysis.asksForHuman) {
-      if (catalog.scope === 'guest') {
-        yield* this.reply(
-          ticket,
-          catalog,
-          T.guestNoEscalation('user_request'),
-          ticket.articleId ? QR_HELPED_ONLY : undefined,
-        );
-        return;
-      }
-      if (ticket.escalationBlocked) {
-        yield* this.reply(
-          ticket,
-          catalog,
-          T.escalationBlocked(),
-          ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY,
-        );
-        return;
-      }
       // AI: «Позовите человека» первым сообщением: категория, которую увидела модель, всё равно
       // попадает на карточку - от неё зависят нужные поля и очередь, куда уйдёт заявка.
       if (
@@ -348,39 +350,13 @@ export class DialogEngine {
           analysis.confidence,
         );
       }
-      // AI: «Свяжи с оператором» без единого слова о проблеме - специалисту нечего передавать.
-      // Один раз просим описать, что случилось; повторная просьба уходит как есть (не держим).
-      if (!ticket.categoryId && !ticket.summary && !ticket.pendingEscalation) {
-        ticket = await this.d.tickets.update(ticket.id, { pendingEscalation: 'user_request' });
-        yield { type: 'meta', ticket: toCard(ticket, catalog) };
-        yield* this.reply(ticket, catalog, T.describeBeforeHuman());
-        return;
-      }
-      yield* this.escalate(ticket, user, catalog, 'user_request', text);
+      yield* this.humanRequested(ticket, user, catalog, text);
       return;
     }
-    if (
-      ticket.pendingEscalation === 'user_request' &&
-      ticket.state === 'intake' &&
-      !analysis.offTopic
-    ) {
-      // AI: Описание после «свяжи с оператором» пришло - продолжаем передачу с тем, что узнали
-      // (обязательные поля категории escalate() доберёт сам).
-      if (
-        !ticket.categoryId &&
-        catalog.categoryById.has(analysis.categoryId) &&
-        analysis.confidence >= this.d.config.confidenceThreshold
-      ) {
-        ticket = await this.setCategory(
-          ticket,
-          user,
-          catalog,
-          analysis.categoryId,
-          analysis.confidence,
-        );
-      }
-      yield* this.escalate(ticket, user, catalog, 'user_request', text);
-      return;
+    if (ticket.pendingEscalation === 'user_request' && ticket.state === 'intake') {
+      // AI: Описание после «свяжи с оператором» пришло: сначала пробуем решить сами, как и обещали;
+      // кнопка «Нужен специалист» появится вместе с решением.
+      ticket = await this.d.tickets.update(ticket.id, { pendingEscalation: null });
     }
     if ((analysis.reportsResolved && ticket.state === 'solving') || analysis.asksToClose) {
       // AI: Явное «закрой» завершает обращение даже до показа решения.
@@ -399,6 +375,20 @@ export class DialogEngine {
       const model = analysis.smalltalkReply?.trim() ?? '';
       const redirectOnly = model.length > 0 && model.length <= 220 && !/[0-9:\n]/.test(model);
       yield* this.reply(ticket, catalog, redirectOnly ? model : T.offTopic());
+      return;
+    }
+
+    // AI: Несколько проблем в одном сообщении: не смешиваем их в одну заявку - пользователь
+    // выбирает первую, остальные ждут своей очереди (каждая станет отдельным обращением).
+    const problems = (analysis.problems ?? [])
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+    if (!ticket.categoryId && ticket.state === 'intake' && problems.length > 1) {
+      ticket = await this.d.tickets.update(ticket.id, { pendingProblems: problems, summary: null });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      this.d.log.info({ ticketId: ticket.id, problems: problems.length }, 'several problems');
+      yield* this.reply(ticket, catalog, T.severalProblems(problems), T.problemButtons(problems));
       return;
     }
 
@@ -458,6 +448,7 @@ export class DialogEngine {
     catalog: LoadedCatalog,
     lastText: string,
     llmDown = false,
+    lead?: string,
   ): AsyncGenerator<ChatStreamEvent> {
     const category = catalog.categoryById.get(ticket.categoryId!)!;
 
@@ -502,12 +493,12 @@ export class DialogEngine {
       yield* this.reply(
         ticket,
         catalog,
-        T.clarify(field.question),
+        (lead ? lead + '\n\n' : '') + T.clarify(field.question),
         T.clarifyButtons(field.options),
       );
       return;
     }
-    yield* this.solve(ticket, user, catalog, lastText, llmDown);
+    yield* this.solve(ticket, user, catalog, lastText, llmDown, lead);
   }
 
   private async *solve(
@@ -741,9 +732,8 @@ export class DialogEngine {
   }
 
   /**
-   * AI: A question asked while a solution is on screen ("а где находится деканат?") is answered
-   * from the best-matching article across the whole catalog, or from the documentation; the
-   * current solution and its buttons stay in place.
+   * AI: Вопрос, заданный, пока на экране решение («а где находится деканат?»), отвечается по лучшей
+   * статье из всего каталога или по документации; текущее решение и его кнопки остаются на месте.
    */
   private async *followUp(
     ticket: TicketRow,
@@ -802,7 +792,7 @@ export class DialogEngine {
         return;
       }
     }
-    yield* this.reply(ticket, catalog, T.noted(), QR_AFTER_SOLUTION);
+    yield* this.reply(ticket, catalog, T.noAnswer(), QR_AFTER_SOLUTION);
   }
 
   private async *nextSolution(
@@ -853,7 +843,43 @@ export class DialogEngine {
       ticket: card,
     });
     yield { type: 'meta', ticket: card };
-    yield* this.reply(ticket, catalog, T.resolved(card, reason), QR_CLOSED);
+    yield* this.reply(ticket, catalog, T.resolved(card, reason) + this.remainingTail(ticket), [
+      ...QR_CLOSED,
+      ...this.remainingButtons(ticket),
+    ]);
+  }
+
+  private remainingTail(ticket: TicketRow): string {
+    const [next] = ticket.pendingProblems;
+    return next ? T.remainingProblem(next, ticket.pendingProblems.length) : '';
+  }
+
+  private remainingButtons(ticket: TicketRow): QuickReply[] {
+    const [next] = ticket.pendingProblems;
+    return next ? [T.nextButton(next)] : [];
+  }
+
+  /**
+   * AI: Переход к следующей проблеме из того же сообщения: новое обращение с этой сутью,
+   * очередь остальных переезжает в него, текущее остаётся закрытым / у специалиста.
+   */
+  private async *nextProblem(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+  ): AsyncGenerator<ChatStreamEvent> {
+    const [next, ...rest] = ticket.pendingProblems;
+    await this.d.tickets.update(ticket.id, { pendingProblems: [] });
+    let fresh = await this.d.tickets.create(ticket.tenantId, user.id);
+    fresh = await this.d.tickets.update(fresh.id, { summary: next, pendingProblems: rest });
+    await this.d.tickets.addMessage(fresh.id, 'user', next!, {});
+    await this.d.events.publish(TOPICS.ticketEvents, fresh.id, {
+      ...eventBase(fresh.id, user.id),
+      type: 'ticket.created',
+      ticket: toCard(fresh, catalog),
+    });
+    yield { type: 'meta', ticket: toCard(fresh, catalog) };
+    yield* this.freeText(fresh, user, catalog, next!);
   }
 
   /**
@@ -895,9 +921,82 @@ export class DialogEngine {
     yield* this.reply(ticket, catalog, T.offerEscalation(reason), QR_OFFER_ESCALATION);
   }
 
+  /**
+   * AI: Заявка специалисту - только когда помощник уже пробовал: решение показано (или его
+   * не нашлось, и помощник сам предложил передачу). До этого просьба «позовите человека» -
+   * повод попробовать, а не передать.
+   */
+  private canEscalateNow(ticket: TicketRow): boolean {
+    return (
+      ticket.state === 'solving' ||
+      ticket.state === 'offer_escalation' ||
+      ticket.articleId !== null ||
+      ticket.triedArticles.length > 0
+    );
+  }
+
+  /**
+   * AI: Пользователь просит человека (кнопка или текст). Порядок: гость - нельзя; оператор
+   * уже вернул - нельзя; дневной лимит просьб; сначала попытка решить; и только затем заявка.
+   */
+  private async *humanRequested(
+    ticket: TicketRow,
+    user: Actor,
+    catalog: LoadedCatalog,
+    text: string,
+  ): AsyncGenerator<ChatStreamEvent> {
+    if (catalog.scope === 'guest') {
+      yield* this.reply(
+        ticket,
+        catalog,
+        T.guestNoEscalation('user_request'),
+        ticket.articleId ? QR_HELPED_ONLY : undefined,
+      );
+      return;
+    }
+    if (ticket.escalationBlocked) {
+      // AI: Оператор уже смотрел этот тикет и вернул его - не ставим в очередь снова.
+      yield* this.reply(
+        ticket,
+        catalog,
+        T.escalationBlocked(),
+        ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY,
+      );
+      return;
+    }
+    const limit = this.d.config.dailyHumanLimit;
+    if (!user.operator && limit > 0) {
+      const c = await this.d.tickets.countersToday(user.id);
+      if (c.humanCalls >= limit) {
+        this.d.log.info({ ticketId: ticket.id, userId: user.id }, 'daily human-call limit reached');
+        yield* this.reply(
+          ticket,
+          catalog,
+          T.tooManyHumanCalls(limit),
+          ticket.state === 'solving' ? QR_HELPED_ONLY : undefined,
+        );
+        return;
+      }
+      await this.d.tickets.bumpCounter(user.id, 'humanCalls');
+    }
+    if (!this.canEscalateNow(ticket)) {
+      if (!ticket.categoryId) {
+        // AI: О проблеме ещё ни слова (или категория не понята): просим описать, что случилось.
+        ticket = await this.d.tickets.update(ticket.id, { pendingEscalation: 'user_request' });
+        yield { type: 'meta', ticket: toCard(ticket, catalog) };
+        yield* this.reply(ticket, catalog, T.describeBeforeHuman());
+        return;
+      }
+      // AI: Категория есть, решения ещё не было: обещаем специалиста, если не поможет, и решаем.
+      yield* this.advance(ticket, user, catalog, text, false, T.tryFirst());
+      return;
+    }
+    yield* this.escalate(ticket, user, catalog, 'user_request', text);
+  }
+
   private async *escalate(
     ticket: TicketRow,
-    user: UserRow,
+    user: Actor,
     catalog: LoadedCatalog,
     reason: EscalationReason,
     lastText = '',
@@ -905,6 +1004,23 @@ export class DialogEngine {
     if (catalog.scope === 'guest') {
       yield* this.reply(ticket, catalog, T.guestNoEscalation(reason));
       return;
+    }
+    const limit = this.d.config.dailyRequestLimit;
+    if (!user.operator && limit > 0) {
+      const c = await this.d.tickets.countersToday(user.id);
+      if (c.requests >= limit) {
+        this.d.log.info({ ticketId: ticket.id, userId: user.id }, 'daily request limit reached');
+        const back = ticket.articleId ? 'solving' : 'intake';
+        ticket = await this.d.tickets.update(ticket.id, { state: back, pendingEscalation: null });
+        yield { type: 'meta', ticket: toCard(ticket, catalog) };
+        yield* this.reply(
+          ticket,
+          catalog,
+          T.tooManyRequests(limit),
+          back === 'solving' ? QR_HELPED_ONLY : undefined,
+        );
+        return;
+      }
     }
     // AI: Специалист не должен начинать с вопросов, которые мог задать помощник: сначала собираем
     // обязательные поля категории (по одному вопросу, в пределах обычного лимита). Пользователь не
@@ -916,7 +1032,7 @@ export class DialogEngine {
         fields: { ...ticket.fields, ...found.fields },
       });
     if (found.reject) {
-      // AI: "Позовите человека, корпус 40" - the place does not exist; no request goes out for it.
+      // AI: «Позовите человека, корпус 40» - такого места нет; заявка на него не уходит.
       ticket = await this.d.tickets.update(ticket.id, {
         state: 'clarifying',
         pendingField: found.reject.fieldId,
@@ -982,6 +1098,7 @@ export class DialogEngine {
         reason === 'user_request' ? bumpPriority(ticket.priority, 'frustrated') : ticket.priority,
     });
     const card = toCard(ticket, catalog);
+    if (!user.operator) await this.d.tickets.bumpCounter(user.id, 'requests');
     this.d.log.info(
       {
         ticketId: ticket.id,
@@ -1013,15 +1130,15 @@ export class DialogEngine {
         card,
         reason,
         missing.map((f) => f.label ?? f.id),
-      ),
-      QR_ESCALATED,
+      ) + this.remainingTail(ticket),
+      [...QR_ESCALATED, ...this.remainingButtons(ticket)],
     );
   }
 
   /**
-   * AI: The user withdraws the request: from the chat (button / "уже не актуально") or from the
-   * card. A withdrawn ticket is closed but not "resolved" - the statistics stay honest. If a
-   * specialist had it, the console and the external helpdesk are told.
+   * AI: Пользователь отзывает обращение: из чата (кнопка / «уже не актуально») или из карточки.
+   * Отозванный тикет закрыт, но не «решён» - статистика остаётся честной. Если он был у
+   * специалиста, консоль и внешний helpdesk уведомляются.
    */
   private async *withdraw(
     ticket: TicketRow,
@@ -1058,7 +1175,7 @@ export class DialogEngine {
     yield* this.reply(ticket, catalog, T.closedByUser(card), QR_CLOSED);
   }
 
-  /** AI: Same as the chat command, for the REST endpoint behind the "Закрыть обращение" button. */
+  /** AI: То же, что команда в чате, - для REST-эндпоинта за кнопкой «Закрыть обращение». */
   async closeByUser(
     ticket: TicketRow,
     user: UserRow,
@@ -1166,7 +1283,7 @@ export class DialogEngine {
     const confidence = ticket.categoryId ? 1 : best ? Math.min(0.95, 0.5 + best.score / 10) : 0;
     const lower = text.toLowerCase();
     const offTopic = isSmalltalk(text) || (!ticket.categoryId && !best);
-    // AI: Fill clarifying fields whose options are literally mentioned ("из дома" -> location).
+    // AI: Заполняем поля уточнения, чьи варианты названы буквально («из дома» -> location).
     const fields: Record<string, string> = {};
     const category = catalog.categoryById.get(categoryId);
     for (const f of category?.clarify ?? []) {
@@ -1188,7 +1305,7 @@ export class DialogEngine {
   }
 }
 
-// AI: One or several chit-chat tokens ("ок, спасибо!") and nothing else.
+// AI: Один или несколько разговорных токенов («ок, спасибо!») и ничего больше.
 const SMALLTALK =
   /^(?:(?:привет|приветствую|здравствуй(?:те)?|добрый (?:день|вечер|утро)|доброе утро|хай|hi|hello|hey|ты тут|ты здесь|есть кто|ау|эй|как дела|кто ты|ты кто|что ты умеешь|спасибо|спс|благодарю|ок|окей|ok|понял|пон|ясно|хорошо|ладно|пока|до свидания|тест|test|проверка)[\s!?.,)]*){1,3}$/i;
 
@@ -1205,18 +1322,20 @@ function looksLikeWithdrawal(text: string): boolean {
 const WITHDRAWAL =
   /не\s?актуальн|закр(ой|ыть|ывай)те? (обращение|заявку|вопрос)|отмен(и|ить|яю) (обращение|заявку)|больше не (нужно|надо|требуется)|уже (решил|решилось|разобрал|не нужно|не надо)|само (решилось|заработало)|вопрос (снят|закрыт)/;
 
-/** AI: "Где / как / когда / сколько …?" - a question, not feedback on the steps. */
+/** AI: «Где / как / когда / сколько …?» - вопрос, а не отзыв о шагах. */
 function isQuestion(text: string): boolean {
   const t = text.trim().toLowerCase();
   return (
     t.endsWith('?') ||
-    /^(а |и )?(как|где|когда|какой|какая|какие|сколько|кто|что|можно ли|куда|почему)\b/.test(t)
+    /(^|[^а-яё])(как|где|когда|какой|какая|какие|каких|каком|сколько|кто|что|можно ли|есть ли|куда|почему|зачем)([^а-яё]|$)/.test(
+      t,
+    )
   );
 }
 
 /**
- * AI: The card summary must describe a problem. The model occasionally echoes chit-chat
- * ("ты тут?") or returns a stub; such values are dropped and the previous summary is kept.
+ * AI: Суть на карточке должна описывать проблему. Модель иногда повторяет болтовню («ты тут?») или
+ * возвращает заглушку; такие значения отбрасываются, прежняя суть сохраняется.
  */
 function soberSummary(raw: string | undefined): string | undefined {
   const s = (raw ?? '').trim().replace(/\s+/g, ' ');
@@ -1273,6 +1392,8 @@ function labelFor(cmd: string, catalog: LoadedCatalog): string {
   if (cmd === CMD.escalate) return 'Создать заявку специалисту';
   if (cmd === CMD.dismiss) return 'Не нужно';
   if (cmd === CMD.close) return 'Закрыть обращение';
+  if (cmd === CMD.next) return 'Следующий вопрос';
+  if (cmd.startsWith(CMD.pick)) return `Сначала: вопрос ${Number(cmd.slice(CMD.pick.length)) + 1}`;
   if (cmd === CMD.keep) return 'Оставить';
   if (cmd.startsWith(CMD.category))
     return catalog.categoryById.get(cmd.slice(CMD.category.length))?.name ?? cmd;

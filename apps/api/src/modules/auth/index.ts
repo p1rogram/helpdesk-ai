@@ -14,9 +14,9 @@ export interface VerifiedIdentity {
 }
 
 /**
- * AI: Data minimisation (152-ФЗ): the service never stores what the messenger or the directory
- * knows about a person - no first name, no surname, no username. Users are addressed by a
- * stable pseudonym derived from the platform id ("Пользователь 4F2A9C"); operators see the same.
+ * AI: Минимизация данных (152-ФЗ): сервис никогда не хранит то, что мессенджер или каталог знают о
+ * человеке - ни имени, ни фамилии, ни username. К пользователю обращаемся по стабильному
+ * псевдониму, выведенному из id платформы («Пользователь 4F2A9C»); операторы видят то же самое.
  */
 export function pseudonym(platform: string, platformUserId: string): string {
   const tag = createHash('sha256')

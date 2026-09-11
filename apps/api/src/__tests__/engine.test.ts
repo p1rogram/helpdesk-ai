@@ -84,7 +84,13 @@ beforeAll(async () => {
     tickets,
     events: bus,
     helpdesk: new NoopHelpdesk(),
-    config: { maxClarifications: 2, confidenceThreshold: 0.6, historyTurns: 6 },
+    config: {
+      maxClarifications: 2,
+      confidenceThreshold: 0.6,
+      historyTurns: 6,
+      dailyRequestLimit: 4,
+      dailyHumanLimit: 3,
+    },
     log: { info() {}, warn() {} },
   });
 });
@@ -95,6 +101,18 @@ async function fresh() {
   const user = await tickets.upsertUser('web', `u-${Math.random()}`, 'Тест');
   const ticket = await tickets.create('tpu', user.id);
   return { user, ticket };
+}
+
+/** AI: A ticket that already reached a specialist: problem -> solution shown -> "a human, please". */
+async function escalated() {
+  const { user, ticket } = await fresh();
+  llm.queue.push({ fields: { location: 'Из корпуса' } });
+  await collect(engine.handle(ticket, user, 'VPN не работает'));
+  const t2 = (await tickets.get(ticket.id, user.id))!;
+  llm.queue.push({ asksForHuman: true, categoryId: 'network', summary: 'Не подключается VPN' });
+  const r = await collect(engine.handle(t2, user, 'Позовите специалиста'));
+  expect(r.ticket.state).toBe('escalated');
+  return { user, ticket, r };
 }
 
 describe('DialogEngine', () => {
@@ -137,59 +155,69 @@ describe('DialogEngine', () => {
     );
   });
 
-  it('escalates with a ticket card when the user asks for a human', async () => {
+  it('tries to solve first; hands over only after a solution was shown', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push({
       asksForHuman: true,
-      categoryId: 'account',
-      summary: 'Заблокирован аккаунт',
-      fields: { role: 'Студент' },
+      categoryId: 'network',
+      summary: 'Не подключается VPN',
+      fields: { location: 'Из дома / удалённо' },
     });
-    const r = await collect(engine.handle(ticket, user, 'Позовите живого человека, я студент'));
-    expect(r.ticket.state).toBe('escalated');
-    expect(r.text).toMatch(/Заявка №/);
-    expect(r.ticket.externalId).toBeTruthy();
+    const r1 = await collect(
+      engine.handle(ticket, user, 'Позовите живого человека, VPN не работает из дома'),
+    );
+    // AI: Not a request yet: the assistant promises a specialist if this does not help, and tries.
+    expect(r1.ticket.state).toBe('solving');
+    expect(r1.text).toMatch(/сначала попробую помочь/);
+    expect(r1.quick.map((q) => q.value)).toEqual([CMD.helped, CMD.notHelped, CMD.human]);
+
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t2, user, CMD.human));
+    expect(r2.ticket.state).toBe('escalated');
+    expect(r2.text).toMatch(/Заявка №/);
+    expect(r2.ticket.externalId).toBeTruthy();
   });
 
   it('collects the required fields before handing over, without a second model call', async () => {
     const { user, ticket } = await fresh();
-    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Заблокирован аккаунт' });
-    const r1 = await collect(engine.handle(ticket, user, 'Позовите живого человека'));
-    // AI: Пока не передано: специалисту пришлось бы первым делом спросить именно это.
+    // AI: The solution was shown without the role (clarification budget spent); the hand-over asks it.
+    await tickets.update(ticket.id, { clarificationsAsked: 2 });
+    llm.queue.push({ categoryId: 'account', summary: 'Заблокирован аккаунт' });
+    const t1 = (await tickets.get(ticket.id, user.id))!;
+    const r0 = await collect(engine.handle(t1, user, 'заблокировали аккаунт'));
+    expect(r0.ticket.state).toBe('solving');
+    await tickets.update(ticket.id, { clarificationsAsked: 0 });
+
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r1 = await collect(engine.handle(t2, user, CMD.human));
     expect(r1.ticket.state).toBe('clarifying');
     expect(r1.text).toMatch(/Передам специалисту/);
     expect(r1.quick.map((q) => q.label)).toContain('Студент');
 
-    const t2 = (await tickets.get(ticket.id, user.id))!;
-    const r2 = await collect(engine.handle(t2, user, 'Студент'));
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t3, user, 'Студент'));
     expect(llm.queue.length).toBe(0);
     expect(r2.ticket.state).toBe('escalated');
     expect(r2.ticket.fields.role).toBe('Студент');
-    expect(r2.text).toMatch(/Заявка №/);
     expect(r2.text).not.toMatch(/Не уточнено/);
   });
 
   it('hands over after the clarification limit even when the data is still missing', async () => {
     const { user, ticket } = await fresh();
     await tickets.update(ticket.id, { clarificationsAsked: 2 });
-    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Заблокирован аккаунт' });
-    const t = (await tickets.get(ticket.id, user.id))!;
-    const r = await collect(engine.handle(t, user, 'Позовите живого человека'));
+    llm.queue.push({ categoryId: 'account', summary: 'Заблокирован аккаунт' });
+    const t1 = (await tickets.get(ticket.id, user.id))!;
+    await collect(engine.handle(t1, user, 'заблокировали аккаунт'));
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r = await collect(engine.handle(t2, user, CMD.human));
     expect(r.ticket.state).toBe('escalated');
     expect(r.text).toMatch(/Не уточнено: Кто обращается/);
   });
 
   it('lets the user withdraw a request that is with a specialist - after a confirmation', async () => {
-    const { user, ticket } = await fresh();
-    llm.queue.push({
-      asksForHuman: true,
-      categoryId: 'account',
-      summary: 'Заблокирован аккаунт',
-      fields: { role: 'Студент' },
-    });
-    await collect(engine.handle(ticket, user, 'Позовите специалиста'));
+    const { user, ticket } = await escalated();
 
-    // AI: «Уже не актуально» не закрывается по догадке - помощник спрашивает.
+    // AI: "No longer relevant" is not closed on a guess - the assistant asks.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const r2 = await collect(engine.handle(t2, user, 'уже не актуально, разобрался'));
     expect(r2.ticket.state).toBe('escalated');
@@ -258,7 +286,7 @@ describe('DialogEngine', () => {
     expect(r.text).toMatch(/корпуса №99 в ТПУ нет/);
   });
 
-  it('asks what happened before handing over a request that has no problem in it', async () => {
+  it('asks what happened when a human is requested before any problem is named', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push({
       asksForHuman: true,
@@ -272,7 +300,7 @@ describe('DialogEngine', () => {
     expect(r1.ticket.summary).toBeNull(); // "wants an operator" is not a problem statement
     expect(r1.text).toMatch(/опишите, что случилось/i);
 
-    // AI: The description arrives: category from the model, required field collected, then the request.
+    // AI: The description arrives: the assistant solves first, as promised; no request yet.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     llm.queue.push({
       categoryId: 'account',
@@ -281,20 +309,94 @@ describe('DialogEngine', () => {
       fields: { role: 'Студент' },
     });
     const r2 = await collect(engine.handle(t2, user, 'заблокировали аккаунт, я студент'));
-    expect(r2.ticket.state).toBe('escalated');
+    expect(r2.ticket.state).toBe('solving');
     expect(r2.ticket.categoryId).toBe('account');
     expect(r2.ticket.summary).toBe('Заблокирован аккаунт');
+
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    const r3 = await collect(engine.handle(t3, user, CMD.human));
+    expect(r3.ticket.state).toBe('escalated');
   });
 
-  it('does not trap the user: a second request for a human goes through as it is', async () => {
+  it('stops repeated calls for a human at the daily limit and keeps solving instead', async () => {
     const { user, ticket } = await fresh();
     const ask = { asksForHuman: true, categoryId: 'unknown', confidence: 0, summary: '' };
+    for (let i = 0; i < 3; i++) {
+      llm.queue.push(ask);
+      const t = (await tickets.get(ticket.id, user.id))!;
+      const r = await collect(engine.handle(t, user, 'позовите оператора'));
+      expect(r.ticket.escalated).toBe(false);
+    }
     llm.queue.push(ask);
-    await collect(engine.handle(ticket, user, 'оператора'));
+    const t = (await tickets.get(ticket.id, user.id))!;
+    const r = await collect(engine.handle(t, user, 'позовите оператора'));
+    expect(r.text).toMatch(/3 раза звали специалиста/);
+    expect(r.ticket.escalated).toBe(false);
+  });
+
+  it('caps requests per day for a regular user, never for an operator', async () => {
+    const { user, ticket } = await fresh();
+    for (let i = 0; i < 4; i++) await tickets.bumpCounter(user.id, 'requests');
+    llm.queue.push({ fields: { location: 'Из корпуса' } });
+    await collect(engine.handle(ticket, user, 'VPN не работает'));
     const t2 = (await tickets.get(ticket.id, user.id))!;
-    llm.queue.push(ask);
-    const r = await collect(engine.handle(t2, user, 'просто позовите оператора'));
-    expect(r.ticket.state).toBe('escalated');
+    const r = await collect(engine.handle(t2, user, CMD.human));
+    expect(r.ticket.state).toBe('solving');
+    expect(r.text).toMatch(/4 заявки специалисту - это дневной лимит/);
+
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    const op = await collect(engine.handle(t3, { ...user, operator: true }, CMD.human));
+    expect(op.ticket.state).toBe('escalated');
+  });
+
+  it('splits several problems from one message into separate requests, one at a time', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({
+      categoryId: 'network',
+      confidence: 0.5,
+      summary: 'VPN и вода',
+      problems: ['Не работает VPN из дома', 'В общежитии 12 нет горячей воды'],
+    });
+    const r1 = await collect(
+      engine.handle(ticket, user, 'не работает VPN из дома, и ещё в общаге 12 нет горячей воды'),
+    );
+    expect(r1.ticket.state).toBe('intake');
+    expect(r1.ticket.pendingProblems).toHaveLength(2);
+    expect(r1.quick.map((q) => q.value)).toEqual([`${CMD.pick}0`, `${CMD.pick}1`]);
+
+    // AI: Выбрана первая проблема: модель видит только её, вторая ждёт.
+    llm.queue.push({ categoryId: 'network', confidence: 0.9, summary: 'Не работает VPN из дома' });
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t2, user, `${CMD.pick}0`));
+    expect(r2.ticket.categoryId).toBe('network');
+    expect(r2.ticket.pendingProblems).toEqual(['В общежитии 12 нет горячей воды']);
+    expect(r2.ticket.state).toBe('solving'); // "из дома" was extracted, no clarification needed
+
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    const r3 = await collect(engine.handle(t3, user, CMD.helped));
+    expect(r3.ticket.state).toBe('closed');
+    expect(r3.text).toMatch(/Остался ещё вопрос/);
+    expect(r3.quick.map((q) => q.value)).toEqual([CMD.next]);
+
+    // AI: «Следующий» открывает новое обращение со второй проблемой; закрытое остаётся закрытым.
+    llm.queue.push({ categoryId: 'campus', confidence: 0.9, summary: 'Нет горячей воды' });
+    const t4 = (await tickets.get(ticket.id, user.id))!;
+    const r4 = await collect(engine.handle(t4, user, CMD.next));
+    expect(r4.ticket.id).not.toBe(ticket.id);
+    expect(r4.ticket.categoryId).toBe('campus');
+    expect(r4.ticket.pendingProblems).toEqual([]);
+    expect((await tickets.get(ticket.id, user.id))!.state).toBe('closed');
+  });
+
+  it('answers a follow-up question in the middle of a sentence while a solution is shown', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({ fields: { location: 'Из корпуса' } });
+    await collect(engine.handle(ticket, user, 'VPN не работает'));
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    llm.queue.push({ categoryId: 'general', confidence: 0.8, summary: 'Где столовые' });
+    const r = await collect(engine.handle(t2, user, 'в каких корпусах есть столовые'));
+    expect(r.text).not.toMatch(/^Учёл/);
+    expect(r.text).toMatch(/кафе|столов/i);
   });
 
   it('treats a short campus-life question as a real request (catalog, model down)', async () => {
@@ -408,18 +510,10 @@ describe('DialogEngine', () => {
   });
 
   it('stays silent while an operator owns the ticket, and only acknowledges', async () => {
-    const { user, ticket } = await fresh();
-    llm.queue.push({
-      asksForHuman: true,
-      categoryId: 'account',
-      summary: 'Проблема с доступом',
-      fields: { role: 'Студент' },
-    });
-    const r = await collect(engine.handle(ticket, user, 'Позовите специалиста'));
-    expect(r.ticket.state).toBe('escalated');
+    const { user, ticket, r } = await escalated();
     expect(r.ticket.handledBy).toBe('operator');
 
-    // AI: Следующее сообщение НЕ должно порождать ответ помощника - оно принадлежит оператору.
+    // AI: A follow-up message must NOT produce an assistant answer - it belongs to the operator.
     const t2 = (await tickets.get(ticket.id, user.id))!;
     const events: ChatStreamEvent[] = [];
     for await (const e of engine.handle(t2, user, 'Ещё деталь: логин ivanov')) events.push(e);

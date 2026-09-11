@@ -1,9 +1,9 @@
 /**
- * AI: Splits a crawled page into retrieval units. The crawler emits one text element per line, so
- * a chunk is a run of consecutive lines of roughly `target` characters; long paragraphs are cut at
- * sentence boundaries with a small overlap so a fact that straddles the border is still found.
- * A short caption-like line followed by real text is treated as a heading and travels with every
- * chunk of its section - the model sees "Экскурсии в ТПУ › Минералогический музей".
+ * AI: Делит скачанную страницу на единицы поиска. Краулер выдаёт по одному текстовому элементу на
+ * строку, поэтому фрагмент - это ряд соседних строк примерно на `target` символов; длинные абзацы
+ * режутся по границам предложений с небольшим перекрытием, чтобы факт на стыке всё равно находился.
+ * Короткая строка-подпись, за которой идёт настоящий текст, считается заголовком и идёт с каждым
+ * фрагментом своего раздела - модель видит «Проректор по … · Пожаловаться на ошибку».
  */
 export interface Chunk {
   section: string;
@@ -53,8 +53,9 @@ export function chunkText(
     const pieces = line.length <= max ? [line] : windows(line, max, overlap);
     for (const piece of pieces) {
       if (buf && buf.length + piece.length + 1 > target) {
-        // AI: Never orphan a label ("Проректор по …", "Адрес") at the end of a chunk - the row it
-        // introduces (hours, room, phone) must travel with it.
+        // AI: Никогда не оставляем подпись («Проректор по …», «Адрес») в конце фрагмента без
+        // продолжения - строка, которую она вводит (часы, кабинет, телефон), должна идти вместе с
+        // ней.
         const cut = buf.lastIndexOf('\n');
         const tail = buf.slice(cut + 1);
         if (cut > 0 && isLabel(tail)) {

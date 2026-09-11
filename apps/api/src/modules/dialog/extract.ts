@@ -1,12 +1,12 @@
 import type { ClarifyingField, ExtractRule } from '@helpdesk/shared';
 
 /**
- * AI: Deterministic value extraction for clarifying fields.
+ * AI: Детерминированное извлечение значений для полей уточнения.
  *
- * The model is good at understanding intent but unreliable at pulling exact identifiers ("общежитие 12")
- * out of a sentence - it often answers the question and leaves `fields` empty, which made the assistant
- * ask for something the user had already said. The rules live in the catalog (database), so a new sphere
- * adds its own patterns without touching this file.
+ * Модель хорошо понимает намерение, но ненадёжно вытаскивает точные идентификаторы («общежитие 12»)
+ * из предложения - часто отвечает на вопрос и оставляет `fields` пустым, из-за чего помощник
+ * переспрашивал уже сказанное. Правила живут в каталоге (в базе), так что новая сфера добавляет
+ * свои шаблоны, не трогая этот файл.
  */
 export type ExtractResult = {
   /** AI: Значения, распознанные в сообщении, по id поля уточнения. */
@@ -27,8 +27,8 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
 
   for (const field of clarify) {
     if (!field.extract) {
-      // AI: Fields with fixed options ("из дома / из корпуса", "студент / сотрудник"): an option
-      // named in the message is the answer - as long as exactly one of them is.
+      // AI: Поля с фиксированными вариантами («из дома / из корпуса», «студент / сотрудник»):
+      // вариант, названный в сообщении, и есть ответ - если назван ровно один.
       const mentioned = (field.options ?? []).filter((o) => optionMentioned(o, lower));
       if (mentioned.length === 1) fields[field.id] = mentioned[0]!;
       continue;
@@ -47,10 +47,10 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
 }
 
 /**
- * AI: The model fills fields too, and it happily copies "корпус 40" from the message. Every value
- * that looks like something a rule knows (a dorm, a building) must pass the same whitelist as text
- * from the user - otherwise it is dropped and reported, so the dialogue asks again instead of
- * sending a request to a place that does not exist.
+ * AI: Модель тоже заполняет поля и охотно копирует «корпус 40» из сообщения. Каждое значение,
+ * похожее на то, что знает правило (общежитие, корпус), должно пройти тот же белый список, что и
+ * текст пользователя, - иначе оно отбрасывается и сообщается, и диалог переспрашивает вместо заявки
+ * в несуществующее место.
  */
 export function validateFields(
   clarify: ClarifyingField[],
@@ -69,7 +69,8 @@ export function validateFields(
       if (!reject) reject = { fieldId: id, ...r.rejected };
       continue;
     }
-    // AI: Normalised form when a rule recognised it ("общ. 12" -> "общежитие №12"), else as given.
+    // AI: Нормализованная форма, если правило распознало значение («общ. 12» -> «общежитие №12»),
+    // иначе как есть.
     out[id] = r.value ?? value;
   }
   return { fields: out, reject };
@@ -127,8 +128,8 @@ function applyRules(
 }
 
 /**
- * AI: "Из дома / удалённо" is mentioned when a meaningful word of it starts a word in the text.
- * Matching on the first five letters absorbs Russian case endings ("общежития" ~ "в общежитии").
+ * AI: «Из дома / удалённо» упомянуто, когда значимое слово из варианта начинает слово в тексте.
+ * Сравнение по первым пяти буквам гасит русские падежные окончания («общежития» ~ «в общежитии»).
  */
 export function optionMentioned(option: string, lowerText: string): boolean {
   const words = option

@@ -165,6 +165,12 @@ const EnvSchema = z.object({
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
   MAX_CLARIFICATIONS: z.coerce.number().int().min(0).max(5).default(2),
+  /**
+   * AI: Дневные лимиты на пользователя (операторов не касаются): сколько заявок специалисту можно
+   * создать и сколько раз позвать человека. Сверх лимита помощник продолжает решать по базе знаний.
+   */
+  DAILY_REQUEST_LIMIT: z.coerce.number().int().min(0).default(4),
+  DAILY_HUMAN_LIMIT: z.coerce.number().int().min(0).default(3),
   CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.6),
   HISTORY_TURNS: z.coerce.number().int().min(2).max(40).default(12),
 });

@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { ChatMessage, QuickReply, TicketCard, TicketState, Tone } from '@helpdesk/shared';
 import type { Db } from '../../db/client.js';
 import {
+  dailyUserCounters,
   messages,
   tickets,
   users,
@@ -208,6 +209,29 @@ export class TicketRepository {
     return row!;
   }
 
+  // ---------- дневные лимиты ----------
+
+  /** AI: Счётчики за сегодня (по UTC-дате сервера): заявки и просьбы позвать человека. */
+  async countersToday(userId: string): Promise<{ requests: number; humanCalls: number }> {
+    const [row] = await this.db
+      .select()
+      .from(dailyUserCounters)
+      .where(and(eq(dailyUserCounters.userId, userId), eq(dailyUserCounters.day, today())))
+      .limit(1);
+    return { requests: row?.requests ?? 0, humanCalls: row?.humanCalls ?? 0 };
+  }
+
+  async bumpCounter(userId: string, kind: 'requests' | 'humanCalls'): Promise<void> {
+    const col = kind === 'requests' ? dailyUserCounters.requests : dailyUserCounters.humanCalls;
+    await this.db
+      .insert(dailyUserCounters)
+      .values({ userId, day: today(), [kind]: 1 })
+      .onConflictDoUpdate({
+        target: [dailyUserCounters.userId, dailyUserCounters.day],
+        set: { [kind]: sql`${col} + 1` },
+      });
+  }
+
   // ---------- сообщения ----------
 
   async addMessage(
@@ -256,6 +280,7 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     escalated: t.escalated,
     rating: t.rating,
     closedBy: t.closedBy as TicketCard['closedBy'],
+    pendingProblems: t.pendingProblems ?? [],
     handledBy: t.handledBy as 'ai' | 'operator',
     escalationBlocked: t.escalationBlocked,
     externalId: t.externalId,
@@ -275,4 +300,8 @@ export function toChatMessage(m: MessageRow): ChatMessage {
     ...(meta.quickReplies?.length ? { quickReplies: meta.quickReplies } : {}),
     ...(meta.operator ? { author: meta.operator } : {}),
   };
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
 }

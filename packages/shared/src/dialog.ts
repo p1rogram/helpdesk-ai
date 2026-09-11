@@ -43,10 +43,18 @@ export const AnalysisSchema = z.object({
   smalltalkReply: z.string().optional(),
   /** AI: Пользователь прямо говорит, что проблема решена. */
   reportsResolved: z.boolean(),
-  /** AI: User asks to finish / close the request ("закрой заявку", "всё, спасибо, закрывай"). */
+  /**
+   * AI: Пользователь просит завершить / закрыть обращение («закрой заявку», «всё, спасибо,
+   * закрывай»).
+   */
   asksToClose: z.boolean().optional(),
   /** AI: Пользователь прямо просит человека. */
   asksForHuman: z.boolean(),
+  /**
+   * AI: Несколько независимых проблем в одном сообщении («не работает VPN и в общаге нет воды») -
+   * каждая коротко, 2-3 штуки. Пусто или одна, когда проблема одна.
+   */
+  problems: z.array(z.string()).optional(),
 });
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
@@ -75,6 +83,8 @@ export const TicketCardSchema = z.object({
   resolved: z.boolean(),
   escalated: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
+  /** AI: Проблемы из того же сообщения, до которых ещё не дошли (по одной на обращение). */
+  pendingProblems: z.array(z.string()),
   /** AI: Кто завершил тикет: помощник (решено), специалист или пользователь (отозвано). */
   closedBy: z.enum(['assistant', 'operator', 'user']).nullable(),
   /** AI: Кто сейчас владеет диалогом. Пока 'operator', помощник молчит. */

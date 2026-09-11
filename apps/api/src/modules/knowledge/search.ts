@@ -204,7 +204,7 @@ export function tokenize(text: string, opts: { keepShort?: boolean } = {}): stri
     .map(stem);
 }
 
-/** AI: Prefix stemmer: good enough to match "подключиться" ~ "подключается" ~ "подключение". */
+/** AI: Префиксный стеммер: достаточно, чтобы «подключение» ~ «подключения» ~ «подключить». */
 function stem(t: string): string {
   if (/^[a-z0-9]+$/.test(t)) return t; // latin tokens (vpn, moodle, wifi) untouched
   return t.length > 6 ? t.slice(0, 6) : t.length > 4 ? t.slice(0, 4) : t;
@@ -248,8 +248,9 @@ export class KnowledgeIndex {
   ): ScoredArticle[] {
     const q = tokenize(query, { keepShort: true });
     if (!q.length) return [];
-    // AI: Autocomplete behaviour: a query token matches an index term exactly or as its prefix
-    // ("v" -> vpn/vap, "vp" -> vpn, "мудл" -> мудла). Prefix hits are weighted below exact ones.
+    // AI: Поведение автодополнения: токен запроса совпадает с термом индекса точно или как его
+    // префикс («v» -> vpn/vap, «vp» -> vpn, «прин» -> принтер). Префиксные попадания весят меньше
+    // точных.
     const terms = [...this.df.keys()];
     const expansions = q.map((t) => {
       const exact = this.df.has(t);

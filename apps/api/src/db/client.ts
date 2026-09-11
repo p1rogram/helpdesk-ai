@@ -51,6 +51,7 @@ export async function ensureSchema(db: Db): Promise<void> {
     'escalation_blocked BOOLEAN NOT NULL DEFAULT false',
     'closed_by TEXT',
     'busy_until TIMESTAMPTZ',
+    "pending_problems JSONB NOT NULL DEFAULT '[]'",
   ]) {
     await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
   }
@@ -160,6 +161,13 @@ const DDL: string[] = [
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`,
   `CREATE INDEX IF NOT EXISTS rag_chunks_tenant ON rag_chunks(tenant_id)`,
+  `CREATE TABLE IF NOT EXISTS daily_user_counters (
+      user_id UUID NOT NULL REFERENCES users(id),
+      day TEXT NOT NULL,
+      requests INTEGER NOT NULL DEFAULT 0,
+      human_calls INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, day)
+    )`,
   `CREATE TABLE IF NOT EXISTS daily_stats (
       day TEXT NOT NULL,
       tenant_id TEXT NOT NULL,

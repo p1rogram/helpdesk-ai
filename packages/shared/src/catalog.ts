@@ -20,7 +20,7 @@ export type ExtractRule = z.infer<typeof ExtractRuleSchema>;
 
 export const ClarifyingFieldSchema = z.object({
   id: z.string().min(1),
-  /** AI: Human label for the ticket card ("Срочность", not "urgency"). */
+  /** AI: Человеческая подпись для карточки тикета («Срочность», а не «urgency»). */
   label: z.string().min(1).optional(),
   /**
    * AI: Вопрос, который видит пользователь, когда поле не заполнено. Детерминированный - без затрат
@@ -37,11 +37,11 @@ export const ClarifyingFieldSchema = z.object({
    */
   requiredWhen: z.object({ field: z.string().min(1), pattern: z.string().min(1) }).optional(),
   /**
-   * AI: Deterministic extraction rules. Let the engine pull the value straight out of the user's
-   * text (dorm number, room, building) without relying on the model, and reject values that do not
-   * exist in the organisation. Several rules = several forms of the same place ("общежитие 12",
-   * "корпус 8"); the first rule whose pattern matches decides. Lives in the catalog - i.e. in the
-   * database - not in the code.
+   * AI: Детерминированные правила извлечения. Позволяют движку вытащить значение прямо из текста
+   * пользователя (номер общежития, комната, корпус), не полагаясь на модель, и отклонить значения,
+   * которых в организации нет. Несколько правил = несколько форм одного места («общежитие 12»,
+   * «корпус 8»); решает первое правило, чей шаблон совпал. Живут в каталоге - то есть в базе, - а
+   * не в коде.
    */
   extract: z.union([ExtractRuleSchema, z.array(ExtractRuleSchema).min(1)]).optional(),
 });

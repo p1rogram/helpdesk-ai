@@ -1,11 +1,11 @@
 import type { TicketCard } from '@helpdesk/shared';
 
 /**
- * AI: External helpdesk integration. The assistant collects a structured ticket card; when the user
- * agrees to escalate, the card becomes a real request in the organisation's service desk and a
- * specialist picks it up there - the assistant never "is" the specialist.
+ * AI: Интеграция с внешним helpdesk. Помощник собирает структурированную карточку; когда
+ * пользователь соглашается на передачу, карточка становится настоящей заявкой в сервис-деске
+ * организации, и специалист берёт её там - помощник никогда не «является» специалистом.
  *
- * One interface, one implementation per system. Adding Jira / ServiceDesk Plus / 1С = one file.
+ * Один интерфейс, одна реализация на систему. Добавить Jira / ServiceDesk Plus / 1С = один файл.
  */
 export interface ExternalRequest {
   /** AI: Номер, который видит пользователь («102723») - тот же, что в интерфейсе helpdesk. */

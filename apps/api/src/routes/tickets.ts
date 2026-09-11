@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   RateRequestSchema,
@@ -21,6 +21,13 @@ const IdParam = z.object({ id: z.string().uuid() });
 
 export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.addHook('preHandler', app.authenticate);
+
+  /** AI: Операторы не ограничены дневными лимитами на заявки и вызовы специалиста. */
+  const isOperator = (req: FastifyRequest): boolean =>
+    req.user.scope !== 'guest' &&
+    (ctx.config.OPERATOR_OPEN_ACCESS ||
+      ctx.config.adminUsers.has(`${req.user.platform}:${req.user.puid}`) ||
+      (req.user.roles?.includes('operator') ?? false));
 
   /**
    * AI: Открыть текущий тикет: переиспользуем последний открытый (чтобы повторное открытие
@@ -84,7 +91,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
     if (!ticket) return reply.code(404).send({ error: 'not_found' });
     if (!(await ctx.tickets.tryLock(ticket.id, LEASE_MS)))
       return reply.code(409).send({ error: 'busy' });
-    const user = (await ctx.tickets.getUser(req.user.sub))!;
+    const user = { ...(await ctx.tickets.getUser(req.user.sub))!, operator: isOperator(req) };
 
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
@@ -115,8 +122,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   /**
-   * AI: The user withdraws the request ("уже не актуально") - allowed in every state, including
-   * while a specialist has it; the console and the helpdesk are notified by the engine.
+   * AI: Пользователь отзывает обращение («уже не актуально») - разрешено в любом состоянии, в том
+   * числе пока оно у специалиста; консоль и helpdesk уведомляет движок.
    */
   app.post('/api/tickets/:id/close', async (req, reply) => {
     const { id } = IdParam.parse(req.params);

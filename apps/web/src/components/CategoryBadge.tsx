@@ -1,6 +1,6 @@
 import { Icon, categoryVisual } from './Icon';
 
-/** AI: Category pill with the system's confidence, as in the design: "Сеть и Wi-Fi · 92%". */
+/** AI: Плашка категории с уверенностью системы, как в дизайне: «Сеть и Wi-Fi · 92%». */
 export function CategoryBadge({
   categoryId,
   name,

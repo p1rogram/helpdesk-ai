@@ -158,6 +158,8 @@ export const tickets = pgTable(
     ratingComment: text('rating_comment'),
     /** AI: 'assistant' | 'operator' | 'user' - ставится вместе с closed_at. */
     closedBy: text('closed_by'),
+    /** AI: Остальные проблемы из сообщения с несколькими: каждая станет своим обращением. */
+    pendingProblems: jsonb('pending_problems').$type<string[]>().notNull().default([]),
     /**
      * AI: Аренда обработки тикета: один проход движка за раз, в том числе между репликами API.
      * Упавший процесс не блокирует тикет - аренда истекает сама.
@@ -183,6 +185,20 @@ export const messages = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('messages_ticket_created').on(t.ticketId, t.createdAt)],
+);
+
+/** AI: Дневные счётчики пользователя: заявки специалисту и просьбы позвать человека. */
+export const dailyUserCounters = pgTable(
+  'daily_user_counters',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    day: text('day').notNull(), // YYYY-MM-DD
+    requests: integer('requests').notNull().default(0),
+    humanCalls: integer('human_calls').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
 );
 
 /** AI: Агрегаты, которые ведёт worker аналитики (consumer Kafka). */

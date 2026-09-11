@@ -5,8 +5,8 @@
 # IMAGE_PREFIX / IMAGE_TAG (sha коммита). Запуск: docker compose pull && docker compose up -d
 # Собрать образ локально для проверки: docker build -f deploy/api.Dockerfile -t helpdesk-api:local .
 # Масштабирование: docker compose up -d --scale api=3 --scale worker=2 — Kafka перераспределит партиции.
-# AI: Container logs are capped (json-file grows without limit otherwise and once filled the disk
-# under Kafka). Every service opts in via the anchor below.
+# AI: Логи контейнеров ограничены (json-file иначе растёт без предела и однажды заполнил диск под
+# Kafka). Каждый сервис подключает якорь ниже.
 x-logging: &logging
   logging: { driver: json-file, options: { max-size: '20m', max-file: '3' } }
 

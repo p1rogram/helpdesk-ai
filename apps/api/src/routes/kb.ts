@@ -9,7 +9,7 @@ const SearchQuery = z.object({
   limit: z.coerce.number().int().min(1).max(20).default(5),
 });
 
-/** AI: Public (authenticated) knowledge base: categories and search - "поиск по базе знаний". */
+/** AI: Публичная (после входа) база знаний: категории и поиск - «поиск по базе знаний». */
 export async function kbRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.addHook('preHandler', app.authenticate);
 

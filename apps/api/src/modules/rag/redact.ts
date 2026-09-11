@@ -1,13 +1,12 @@
 /**
- * AI: Personal-data hygiene for the knowledge corpus (152-ФЗ). Crawled pages name officials,
- * managers, coaches and club leaders; the assistant needs their roles and office contacts, not
- * their identities. Removed before chunking:
- *   - full names in either order ("Иванова Анна Петровна", "Анна Петровна Иванова"),
- *   - initial forms ("Иванова А. П.", "А. П. Иванов"),
- *   - first name + surname pairs ("Данил Казаков", "Новикова Юлия") - a first-name list plus
- *     Russian surname endings,
- *   - mobile numbers (+7 9xx …): on a university site they belong to people, not to offices.
- * Landline numbers, e-mails, addresses and hours stay.
+ * AI: Гигиена персональных данных для корпуса знаний (152-ФЗ). Скачанные страницы называют
+ * должностных лиц, руководителей, тренеров и кураторов клубов; помощнику нужны их роли и служебные
+ * контакты, а не личности. Удаляется до нарезки:
+ *   - полные ФИО в любом порядке («Иванова Анна Петровна», «Анна Петровна Иванова»),
+ *   - формы с инициалами («Иванова А. П.», «А. П. Иванова»),
+ *   - пары имя + фамилия («Анна Иванова», «Иванова Анна») - список имён плюс русские фамильные окончания,
+ *   - мобильные номера (+7 9xx …): на сайте университета они принадлежат людям, а не кабинетам.
+ * Городские номера, e-mail, адреса и часы работы остаются.
  */
 const PATRONYMIC = '(?:ович|евич|ьич|ич|овна|евна|ична|инична|ьевна)(?:а|у|е|ем|ой|ы)?';
 const WORD = '[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?';
@@ -28,12 +27,12 @@ const FIRST_NAMES = `
 `
   .trim()
   .split(/\s+/);
-// AI: Stems cover declension: "Данил" also matches "Данила", "Юли" matches "Юлия/Юлии".
+// AI: Основы покрывают склонение: «Данил» ловит и «Данила», «Юли» - «Юлия/Юлии».
 const FIRST_NAME = `(?:${[...new Set(FIRST_NAMES.map((n) => n.slice(0, Math.max(3, n.length - 1))))].join('|')})[а-яё]{0,3}`;
 const SURNAME =
   '[А-ЯЁ][а-яё]+(?:ов|ова|ев|ева|ёв|ёва|ин|ина|ын|ына|ский|ская|цкий|цкая|ко|ук|юк|ич|ых|их)';
 
-// AI: Streets and "named after" objects keep the name: "ул. Аркадия Иванова, 8", "корпус имени Кижнера".
+// AI: Улицы и объекты «имени» сохраняют имя: «ул. Аркадия Иванова, 8», «корпус имени Кижнера».
 const NOT_A_PLACE =
   '(?<!(?:ул\\.|улица|пр\\.|проспект|пер\\.|переулок|пл\\.|площадь|им\\.|имени|музей|кабинет)\\s{0,2})';
 

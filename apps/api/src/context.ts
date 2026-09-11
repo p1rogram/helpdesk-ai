@@ -169,6 +169,8 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     helpdesk,
     config: {
       maxClarifications: config.MAX_CLARIFICATIONS,
+      dailyRequestLimit: config.DAILY_REQUEST_LIMIT,
+      dailyHumanLimit: config.DAILY_HUMAN_LIMIT,
       confidenceThreshold: config.CONFIDENCE_THRESHOLD,
       historyTurns: config.HISTORY_TURNS,
     },

@@ -46,7 +46,7 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 /** AI: События Server-Sent Events, выдаваемые при ответе на одно сообщение пользователя. */
 export const ChatStreamEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('meta'), ticket: TicketCardSchema }),
-  /** AI: Progress hint shown while the model works ("Определяю категорию…"). */
+  /** AI: Подсказка о ходе работы, пока думает модель («Определяю категорию…»). */
   z.object({ type: z.literal('status'), text: z.string() }),
   z.object({ type: z.literal('delta'), text: z.string() }),
   /** AI: Сообщение принято, но помощник намеренно молчит (чатом владеет оператор). */
