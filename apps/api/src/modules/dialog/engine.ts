@@ -173,6 +173,18 @@ export class DialogEngine {
         text === CMD.escalate
           ? ((ticket.pendingEscalation as EscalationReason | null) ?? 'user_request')
           : 'user_request';
+      if (
+        text === CMD.human &&
+        !ticket.categoryId &&
+        !ticket.summary &&
+        !ticket.pendingEscalation
+      ) {
+        // AI: Кнопка нажата до того, как проблема названа: специалисту нечего передавать.
+        ticket = await this.d.tickets.update(ticket.id, { pendingEscalation: 'user_request' });
+        yield { type: 'meta', ticket: toCard(ticket, catalog) };
+        yield* this.reply(ticket, catalog, T.describeBeforeHuman());
+        return;
+      }
       yield* this.escalate(ticket, user, catalog, reason);
       return;
     }
@@ -321,8 +333,39 @@ export class DialogEngine {
         );
         return;
       }
-      // AI: "Позовите человека" in the first message: the category the model saw still goes on
-      // the card - it decides which fields the specialist needs and which queue the request lands in.
+      // AI: «Позовите человека» первым сообщением: категория, которую увидела модель, всё равно
+      // попадает на карточку - от неё зависят нужные поля и очередь, куда уйдёт заявка.
+      if (
+        !ticket.categoryId &&
+        catalog.categoryById.has(analysis.categoryId) &&
+        analysis.confidence >= this.d.config.confidenceThreshold
+      ) {
+        ticket = await this.setCategory(
+          ticket,
+          user,
+          catalog,
+          analysis.categoryId,
+          analysis.confidence,
+        );
+      }
+      // AI: «Свяжи с оператором» без единого слова о проблеме - специалисту нечего передавать.
+      // Один раз просим описать, что случилось; повторная просьба уходит как есть (не держим).
+      if (!ticket.categoryId && !ticket.summary && !ticket.pendingEscalation) {
+        ticket = await this.d.tickets.update(ticket.id, { pendingEscalation: 'user_request' });
+        yield { type: 'meta', ticket: toCard(ticket, catalog) };
+        yield* this.reply(ticket, catalog, T.describeBeforeHuman());
+        return;
+      }
+      yield* this.escalate(ticket, user, catalog, 'user_request', text);
+      return;
+    }
+    if (
+      ticket.pendingEscalation === 'user_request' &&
+      ticket.state === 'intake' &&
+      !analysis.offTopic
+    ) {
+      // AI: Описание после «свяжи с оператором» пришло - продолжаем передачу с тем, что узнали
+      // (обязательные поля категории escalate() доберёт сам).
       if (
         !ticket.categoryId &&
         catalog.categoryById.has(analysis.categoryId) &&
@@ -1181,6 +1224,13 @@ function soberSummary(raw: string | undefined): string | undefined {
   if (isSmalltalk(s) || /^(ты тут|ты здесь|есть кто|привет|тест|проверка)/i.test(s))
     return undefined;
   if (/^(нет|не указано|неизвестно|n\/a|null|none)$/i.test(s)) return undefined;
+  // AI: «Просит связать с оператором» - это не проблема, а просьба; карточке она не нужна.
+  if (
+    /(связ|соедин|позов|позва|подключ|нужен|хочет|просит|хочу)[^.]{0,40}(оператор|специалист|человек)/i.test(
+      s,
+    )
+  )
+    return undefined;
   return s.slice(0, 300);
 }
 

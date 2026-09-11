@@ -258,6 +258,45 @@ describe('DialogEngine', () => {
     expect(r.text).toMatch(/корпуса №99 в ТПУ нет/);
   });
 
+  it('asks what happened before handing over a request that has no problem in it', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({
+      asksForHuman: true,
+      categoryId: 'unknown',
+      confidence: 0,
+      summary: 'Пользователь просит связать с оператором',
+    });
+    const r1 = await collect(engine.handle(ticket, user, 'Свяжи с оператором'));
+    expect(r1.ticket.state).toBe('intake');
+    expect(r1.ticket.escalated).toBe(false);
+    expect(r1.ticket.summary).toBeNull(); // "wants an operator" is not a problem statement
+    expect(r1.text).toMatch(/опишите, что случилось/i);
+
+    // AI: The description arrives: category from the model, required field collected, then the request.
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    llm.queue.push({
+      categoryId: 'account',
+      confidence: 0.9,
+      summary: 'Заблокирован аккаунт',
+      fields: { role: 'Студент' },
+    });
+    const r2 = await collect(engine.handle(t2, user, 'заблокировали аккаунт, я студент'));
+    expect(r2.ticket.state).toBe('escalated');
+    expect(r2.ticket.categoryId).toBe('account');
+    expect(r2.ticket.summary).toBe('Заблокирован аккаунт');
+  });
+
+  it('does not trap the user: a second request for a human goes through as it is', async () => {
+    const { user, ticket } = await fresh();
+    const ask = { asksForHuman: true, categoryId: 'unknown', confidence: 0, summary: '' };
+    llm.queue.push(ask);
+    await collect(engine.handle(ticket, user, 'оператора'));
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    llm.queue.push(ask);
+    const r = await collect(engine.handle(t2, user, 'просто позовите оператора'));
+    expect(r.ticket.state).toBe('escalated');
+  });
+
   it('treats a short campus-life question as a real request (catalog, model down)', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push(new LlmUnavailableError('down'));
