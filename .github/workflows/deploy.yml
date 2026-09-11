@@ -24,11 +24,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run build -w @helpdesk/shared
+      # AI: worker imports the built API (dist), so both must exist before typecheck.
+      - run: npm run build -w @helpdesk/shared && npm run build -w @helpdesk/api
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test -w @helpdesk/api
-      - run: npm run build -w @helpdesk/api
       - name: Personal-data gate (knowledge corpus)
         run: node scripts/check-personal-data.mjs
 
