@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Icon } from '../components/Icon';
+import { getSoundSettings, setSoundSettings, type SoundSettings } from '../lib/sound';
 import type { PlatformAdapter } from '../lib/platform';
 import type { ThemeMode } from '../lib/theme';
 
@@ -21,6 +23,12 @@ export function ProfileScreen(props: {
   onTheme: (m: ThemeMode) => void;
   onLogout?: () => void;
 }) {
+  const [sound, setSound] = useState<SoundSettings>(getSoundSettings);
+  const toggle = (key: keyof SoundSettings) => {
+    const next = { ...sound, [key]: !sound[key] };
+    setSound(next);
+    setSoundSettings(next);
+  };
   return (
     <div className="profile">
       <div className="panel">
@@ -66,6 +74,26 @@ export function ProfileScreen(props: {
           «Авто» подстраивается под оформление{' '}
           {props.platform.kind === 'telegram' ? 'Telegram' : 'системы'}.
         </div>
+      </div>
+
+      <div className="panel">
+        <h3>Звук</h3>
+        <label className="switch-row">
+          <span>
+            Звуки нажатий
+            <span className="hint">Короткий отклик на кнопки и отправку</span>
+          </span>
+          <input type="checkbox" checked={sound.sfx} onChange={() => toggle('sfx')} />
+          <span className="switch" aria-hidden="true" />
+        </label>
+        <label className="switch-row">
+          <span>
+            Фоновая музыка
+            <span className="hint">Тихо, на повторе; выключается здесь же</span>
+          </span>
+          <input type="checkbox" checked={sound.music} onChange={() => toggle('music')} />
+          <span className="switch" aria-hidden="true" />
+        </label>
       </div>
 
       {props.scope === 'guest' && (

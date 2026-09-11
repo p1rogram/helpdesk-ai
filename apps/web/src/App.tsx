@@ -8,6 +8,7 @@ import {
   watchSystemTheme,
   type ThemeMode,
 } from './lib/theme';
+import { installSoundHooks } from './lib/sound';
 import { useSwipeNavigation } from './lib/swipe';
 import { BottomNav, type NavItem } from './components/BottomNav';
 import { Icon } from './components/Icon';
@@ -88,6 +89,7 @@ export function App() {
     platform.ready();
     platform.expand();
   }, [platform]);
+  useEffect(() => installSoundHooks(), []);
 
   // ----------------------------------------------------------------- auth ---
   useEffect(() => {

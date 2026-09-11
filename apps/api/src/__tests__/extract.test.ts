@@ -28,17 +28,27 @@ describe('deterministic field extraction', () => {
 
   it('reads dorm and room together', () => {
     const r = extractFields(clarify, 'в общежитии 12, комната 305, не работает розетка').fields;
-    expect(r).toEqual({ building: 'общежитие №12', room: '305' });
+    expect(r).toEqual({ building: 'общежитие №12', room: 'комната 305' });
   });
 
   it('reads a building number and the main building', () => {
     expect(extractFields(clarify, 'в 8 корпусе, ауд. 214, сломан проектор').fields).toEqual({
       building: 'корпус №8',
-      room: '214',
+      room: 'ауд. 214',
     });
     expect(extractFields(clarify, 'в главном корпусе холодно').fields.building).toBe(
       'Главный корпус',
     );
+  });
+
+  it('reads the place in a dorm: room, or floor and shared room, as written', () => {
+    const where = (t: string) => extractFields(clarify, t).fields.room;
+    expect(where('комната 305')).toBe('комната 305');
+    expect(where('на кухне 3 этажа нет воды')).toBe('кухне 3 этажа');
+    expect(where('3 этаж, душевая')).toBe('3 этаж, душевая');
+    expect(where('в прачечной сломалась машинка')).toBe('прачечной');
+    expect(where('на 5 этаже нет света')).toBe('5 этаже');
+    expect(where('не работает интернет')).toBeUndefined();
   });
 
   it('rejects a building that does not exist in TPU', () => {
