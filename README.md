@@ -237,9 +237,11 @@ Caddy выдаст HTTPS для `DOMAIN`. В BotFather: `/newapp` → URL = `htt
 - `deploy.yml` — на push в `master`: те же проверки → образы `api`/`worker`/`web` публикуются в
   GitHub Container Registry с тегами `latest` и `<sha>` → по SSH на сервере `docker compose pull && up -d`
   с override `docker-compose.prod.yml` (образы вместо локальной сборки) → ожидание `/health`.
-  Секреты репозитория: `SSH_HOST`, `SSH_USER`, `SSH_KEY` (приватный ключ деплой-пользователя),
-  `APP_DIR` (путь к клону на сервере). Окружение `production` в настройках репозитория можно
-  защитить обязательным ревью — тогда выкладка ждёт подтверждения.
+  Секреты репозитория: `SSH_HOST`, `SSH_USER`, `APP_DIR` (путь к клону на сервере) и либо
+  `SSH_PASSWORD`, либо `SSH_KEY` (приватный ключ); `SSH_PORT` — если не 22. Подготовка сервера
+  одной командой: `deploy/server-setup.sh <domain>` (Docker, клон в `/opt/helpdesk-ai`, `.env`,
+  firewall). Окружение `production` в настройках репозитория можно защитить обязательным
+  ревью — тогда выкладка ждёт подтверждения.
 
 **Тесты:** `npm test -w @helpdesk/api` — 52 теста: подпись Telegram и VK, минимизация данных о
 пользователе, фильтр контента, поиск по базе, извлечение полей из текста, RAG (нарезка, гибридный

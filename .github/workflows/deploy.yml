@@ -67,15 +67,19 @@ jobs:
     needs: build
     environment: production
     steps:
+      # AI: Either SSH_KEY (private key) or SSH_PASSWORD works; set the one you have.
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          password: ${{ secrets.SSH_PASSWORD }}
           script: |
             set -e
             cd ${{ secrets.APP_DIR }}
-            git pull --ff-only
+            git fetch --all --prune
+            git reset --hard origin/master
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export IMAGE_PREFIX=${{ env.IMAGE_PREFIX }} IMAGE_TAG=${{ github.sha }}
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
