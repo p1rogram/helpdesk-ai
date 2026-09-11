@@ -33,7 +33,8 @@ await page.goto(BASE);
 await ask('\nВойдите в help.tpu.ru в открывшемся окне, затем нажмите Enter здесь... ');
 
 // ---------- services catalog ----------
-await page.goto(BASE + 'navigator-services.html?activeTab=2', { waitUntil: 'networkidle' });
+await page.goto(BASE + 'navigator-services.html?activeTab=2', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.waitForTimeout(2000);
 for (let i = 0; i < 40; i++) {
   const more = page.getByText('Показать еще', { exact: true }).first();
   if (!(await more.isVisible().catch(() => false))) break;
@@ -53,7 +54,8 @@ const services = await page.evaluate(() => {
 console.log(`services: ${services.length}`);
 
 // ---------- article list ----------
-await page.goto(BASE + 'articles.html', { waitUntil: 'networkidle' });
+await page.goto(BASE + 'articles.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.waitForTimeout(2000);
 const allTab = page.getByText('Все', { exact: true }).first();
 if (await allTab.isVisible().catch(() => false)) await allTab.click();
 await page.waitForTimeout(1500);
@@ -77,7 +79,8 @@ console.log(`articles: ${ids.length}`);
 const articles = [];
 for (const [i, id] of ids.entries()) {
   const url = `${BASE}article.html?kb=KB$${id}`;
-  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(2000);
   await page.waitForTimeout(1200);
   const data = await page.evaluate(() => {
     const lines = document.body.innerText.split('\n').map((s) => s.trim()).filter(Boolean);
