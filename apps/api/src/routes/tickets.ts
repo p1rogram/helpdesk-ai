@@ -11,6 +11,9 @@ import { eventBase } from '../modules/events/index.js';
 import { toCard, toChatMessage } from '../modules/tickets/repository.js';
 import { QR_CLOSED, T } from '../modules/dialog/templates.js';
 
+/** AI: Longest engine pass we tolerate before another request may take the ticket over. */
+const LEASE_MS = 90_000;
+
 const IdParam = z.object({ id: z.string().uuid() });
 
 export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -65,9 +68,9 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
 
   /**
    * AI: Send a message; the answer streams back as Server-Sent Events. One message per ticket at a
-   * time: a double-tap on "send" must not run two engine passes over the same state.
+   * time: a double-tap on "send" must not run two engine passes over the same state. The lease
+   * lives in the database, so it holds across API replicas and expires if a process dies.
    */
-  const inFlight = new Set<string>();
   app.post('/api/tickets/:id/messages', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
     const body = SendMessageRequestSchema.safeParse(req.body);
@@ -75,8 +78,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
     const ticket = await ctx.tickets.get(id, req.user.sub);
     if (!ticket) return reply.code(404).send({ error: 'not_found' });
-    if (inFlight.has(ticket.id)) return reply.code(409).send({ error: 'busy' });
-    inFlight.add(ticket.id);
+    if (!(await ctx.tickets.tryLock(ticket.id, LEASE_MS)))
+      return reply.code(409).send({ error: 'busy' });
     const user = (await ctx.tickets.getUser(req.user.sub))!;
 
     reply.raw.writeHead(200, {
@@ -100,11 +103,32 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       req.log.error(err, 'dialog engine failed');
       send({ type: 'error', message: 'Не удалось обработать сообщение. Попробуйте ещё раз.' });
     } finally {
-      inFlight.delete(ticket.id);
+      await ctx.tickets.unlock(ticket.id).catch(() => undefined);
       clearInterval(heartbeat);
       reply.raw.end();
     }
     return reply;
+  });
+
+  /**
+   * AI: The user withdraws the request ("уже не актуально") - allowed in every state, including
+   * while a specialist has it; the console and the helpdesk are notified by the engine.
+   */
+  app.post('/api/tickets/:id/close', async (req, reply) => {
+    const { id } = IdParam.parse(req.params);
+    const ticket = await ctx.tickets.get(id, req.user.sub);
+    if (!ticket) return reply.code(404).send({ error: 'not_found' });
+    if (ticket.state === 'closed') return reply.code(409).send({ error: 'already_closed' });
+    if (!(await ctx.tickets.tryLock(ticket.id, LEASE_MS)))
+      return reply.code(409).send({ error: 'busy' });
+    try {
+      const user = (await ctx.tickets.getUser(req.user.sub))!;
+      const closed = await ctx.engine.closeByUser(ticket, user, req.user.scope ?? 'full');
+      ctx.operatorHub.notify(ticket.tenantId, ticket.id);
+      return closed;
+    } finally {
+      await ctx.tickets.unlock(ticket.id).catch(() => undefined);
+    }
   });
 
   /** AI: Rate the answer (1..5) - "оценка ответа". */
@@ -115,6 +139,8 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       return reply.code(400).send({ error: 'bad_request', issues: body.error.issues });
     const ticket = await ctx.tickets.get(id, req.user.sub);
     if (!ticket) return reply.code(404).send({ error: 'not_found' });
+    if (ticket.state !== 'closed') return reply.code(409).send({ error: 'not_closed' });
+    if (ticket.rating !== null) return reply.code(409).send({ error: 'already_rated' });
     const updated = await ctx.tickets.update(ticket.id, {
       rating: body.data.rating,
       ratingComment: body.data.comment ?? null,
@@ -125,8 +151,14 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
       rating: body.data.rating,
       ...(body.data.comment ? { comment: body.data.comment } : {}),
     });
+    // AI: The acknowledgement is a real chat message, so the result of rating is visible - now and
+    // when the ticket is reopened from the history.
+    const thanks = await ctx.tickets.addMessage(ticket.id, 'assistant', T.rated(body.data.rating), {
+      rating: body.data.rating,
+      quickReplies: QR_CLOSED,
+    });
     const catalog = await ctx.knowledge.catalog(ticket.tenantId);
-    return { ticket: toCard(updated, catalog), quickReplies: QR_CLOSED };
+    return { ticket: toCard(updated, catalog), message: toChatMessage(thanks) };
   });
 }
 

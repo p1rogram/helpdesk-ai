@@ -1,5 +1,6 @@
 import type {
   Analysis,
+  ChatMessage,
   ChatStreamEvent,
   QuickReply,
   Scope,
@@ -12,7 +13,7 @@ import { eventBase, type EventBus } from '../events/index.js';
 import type { KnowledgeService, LoadedCatalog } from '../knowledge/index.js';
 import { LlmUnavailableError, type LlmService } from '../llm/index.js';
 import type { Passage, RagService } from '../rag/index.js';
-import { extractFields } from './extract.js';
+import { extractFields, optionMentioned } from './extract.js';
 import { inspectMessage, strongerTone } from '../safety/index.js';
 import { toCard, type TicketRepository } from '../tickets/repository.js';
 import type { HelpdeskConnector } from '../helpdesk/index.js';
@@ -21,6 +22,8 @@ import {
   QR_AFTER_SOLUTION,
   QR_CLOSED,
   QR_CLOSED_OR_NEW,
+  QR_CONFIRM_CLOSE,
+  QR_ESCALATED,
   QR_HELPED_ONLY,
   QR_NEW_ONLY,
   QR_OFFER_ESCALATION,
@@ -74,11 +77,25 @@ export class DialogEngine {
       isCmd ? { command: text } : {},
     );
 
+    // AI: The user can withdraw the request from any state - including while a specialist has it.
+    if (text === CMD.close) {
+      if (ticket.state === 'closed') {
+        yield* this.reply(ticket, catalog, T.closedHint(), QR_CLOSED);
+        return;
+      }
+      yield* this.withdraw(ticket, user, catalog);
+      return;
+    }
+    if (text === CMD.keep && ticket.state === 'escalated') {
+      yield* this.reply(ticket, catalog, T.keptOpen(), QR_ESCALATED);
+      return;
+    }
+
     // AI: A specialist owns this dialogue: the assistant must not speak over them. The message is
     // stored and pushed to the operator console; the client gets a silent acknowledgement.
     if (ticket.state === 'escalated') {
       if (isCmd) {
-        yield* this.reply(ticket, catalog, T.withOperator(), QR_CLOSED);
+        yield* this.reply(ticket, catalog, T.withOperator(), QR_ESCALATED);
         return;
       }
       const touched = await this.d.tickets.update(ticket.id, { updatedAt: new Date() });
@@ -87,6 +104,12 @@ export class DialogEngine {
         type: 'ticket.updated',
         tenantId: ticket.tenantId,
       });
+      // AI: "Уже не актуально" while waiting for a specialist: offer to close, never close on a guess.
+      if (looksLikeWithdrawal(text)) {
+        yield { type: 'meta', ticket: toCard(touched, catalog) };
+        yield* this.reply(touched, catalog, T.confirmClose(), QR_CONFIRM_CLOSE);
+        return;
+      }
       yield { type: 'ack', ticket: toCard(touched, catalog) };
       return;
     }
@@ -287,7 +310,22 @@ export class DialogEngine {
         );
         return;
       }
-      yield* this.escalate(ticket, user, catalog, 'user_request');
+      // AI: "Позовите человека" in the first message: the category the model saw still goes on
+      // the card - it decides which fields the specialist needs and which queue the request lands in.
+      if (
+        !ticket.categoryId &&
+        catalog.categoryById.has(analysis.categoryId) &&
+        analysis.confidence >= this.d.config.confidenceThreshold
+      ) {
+        ticket = await this.setCategory(
+          ticket,
+          user,
+          catalog,
+          analysis.categoryId,
+          analysis.confidence,
+        );
+      }
+      yield* this.escalate(ticket, user, catalog, 'user_request', text);
       return;
     }
     if ((analysis.reportsResolved && ticket.state === 'solving') || analysis.asksToClose) {
@@ -385,6 +423,12 @@ export class DialogEngine {
       });
       yield { type: 'meta', ticket: toCard(ticket, catalog) };
       yield* this.reply(ticket, catalog, found.reject.message);
+      return;
+    }
+
+    // AI: The hand-over was paused for one question (see escalate()); the answer is in - continue it.
+    if (ticket.pendingEscalation && ticket.state === 'clarifying') {
+      yield* this.escalate(ticket, user, catalog, ticket.pendingEscalation as EscalationReason);
       return;
     }
 
@@ -736,6 +780,7 @@ export class DialogEngine {
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'closed',
       resolved: true,
+      closedBy: 'assistant',
       closedAt: new Date(),
     });
     const card = toCard(ticket, catalog);
@@ -795,9 +840,39 @@ export class DialogEngine {
     user: UserRow,
     catalog: LoadedCatalog,
     reason: EscalationReason,
+    lastText = '',
   ): AsyncGenerator<ChatStreamEvent> {
     if (catalog.scope === 'guest') {
       yield* this.reply(ticket, catalog, T.guestNoEscalation(reason));
+      return;
+    }
+    // AI: A specialist must not start by asking what the assistant could have asked: the required
+    // fields of the category are collected first (one question at a time, within the usual limit).
+    // The user is never trapped - after the limit the request goes through as it is.
+    const category = ticket.categoryId ? catalog.categoryById.get(ticket.categoryId) : undefined;
+    const found = category ? extractFields(category.clarify, lastText).fields : {};
+    if (Object.keys(found).length)
+      ticket = await this.d.tickets.update(ticket.id, { fields: { ...ticket.fields, ...found } });
+    const missing = (category?.clarify ?? []).filter((f) => f.required && !ticket.fields[f.id]);
+    if (missing.length && ticket.clarificationsAsked < this.d.config.maxClarifications) {
+      const field = missing[0]!;
+      ticket = await this.d.tickets.update(ticket.id, {
+        state: 'clarifying',
+        pendingField: field.id,
+        pendingEscalation: reason,
+        clarificationsAsked: ticket.clarificationsAsked + 1,
+      });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      this.d.log.info(
+        { ticketId: ticket.id, field: field.id, reason },
+        'clarification asked before escalation',
+      );
+      yield* this.reply(
+        ticket,
+        catalog,
+        T.clarifyBeforeEscalation(field.question),
+        T.clarifyButtons(field.options),
+      );
       return;
     }
     yield { type: 'status', text: 'Создаю заявку…' };
@@ -855,7 +930,72 @@ export class DialogEngine {
       text: `Заявка №${card.externalId ?? ticket.id.slice(0, 8).toUpperCase()} создана и передана специалисту. Ответ придёт в этот чат.`,
     });
     yield { type: 'meta', ticket: card };
-    yield* this.reply(ticket, catalog, T.escalated(card, reason), QR_CLOSED);
+    yield* this.reply(
+      ticket,
+      catalog,
+      T.escalated(
+        card,
+        reason,
+        missing.map((f) => f.label ?? f.id),
+      ),
+      QR_ESCALATED,
+    );
+  }
+
+  /**
+   * AI: The user withdraws the request: from the chat (button / "уже не актуально") or from the
+   * card. A withdrawn ticket is closed but not "resolved" - the statistics stay honest. If a
+   * specialist had it, the console and the external helpdesk are told.
+   */
+  private async *withdraw(
+    ticket: TicketRow,
+    user: UserRow,
+    catalog: LoadedCatalog,
+  ): AsyncGenerator<ChatStreamEvent> {
+    const wasEscalated = ticket.state === 'escalated';
+    if (wasEscalated && ticket.externalId && this.d.helpdesk.closeRequest) {
+      try {
+        await this.d.helpdesk.closeRequest(ticket.externalId, 'Закрыто пользователем из чата');
+      } catch (err) {
+        this.d.log.warn(
+          { ticketId: ticket.id, err: (err as Error).message },
+          'helpdesk request close failed',
+        );
+      }
+    }
+    ticket = await this.d.tickets.update(ticket.id, {
+      state: 'closed',
+      closedBy: 'user',
+      closedAt: new Date(),
+      pendingEscalation: null,
+      pendingField: null,
+    });
+    const card = toCard(ticket, catalog);
+    this.d.log.info({ ticketId: ticket.id, wasEscalated }, 'ticket closed by user');
+    await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
+      ...eventBase(ticket.id, user.id),
+      type: 'ticket.closed',
+      by: 'user',
+      ticket: card,
+    });
+    yield { type: 'meta', ticket: card };
+    yield* this.reply(ticket, catalog, T.closedByUser(card), QR_CLOSED);
+  }
+
+  /** AI: Same as the chat command, for the REST endpoint behind the "Закрыть обращение" button. */
+  async closeByUser(
+    ticket: TicketRow,
+    user: UserRow,
+    scope: Scope = 'full',
+  ): Promise<{ ticket: TicketCard; message: ChatMessage }> {
+    const catalog = await this.d.knowledge.catalog(ticket.tenantId, scope);
+    await this.d.tickets.addMessage(ticket.id, 'user', 'Закрыть обращение', { command: CMD.close });
+    let last: { ticket: TicketCard; message: ChatMessage } | null = null;
+    for await (const ev of this.withdraw(ticket, user, catalog)) {
+      if (ev.type === 'done') last = { ticket: ev.ticket, message: ev.message };
+    }
+    if (!last) throw new Error('withdraw produced no message');
+    return last;
   }
 
   private async setCategory(
@@ -973,6 +1113,19 @@ export class DialogEngine {
 const SMALLTALK =
   /^(?:(?:привет|приветствую|здравствуй(?:те)?|добрый (?:день|вечер|утро)|доброе утро|хай|hi|hello|hey|ты тут|ты здесь|есть кто|ау|эй|как дела|кто ты|ты кто|что ты умеешь|спасибо|спс|благодарю|ок|окей|ok|понял|пон|ясно|хорошо|ладно|пока|до свидания|тест|test|проверка)[\s!?.,)]*){1,3}$/i;
 
+/**
+ * AI: A short message to the specialist that reads as "drop it": the assistant then asks whether
+ * to close. Long messages are left alone - they may merely mention closing something else.
+ */
+function looksLikeWithdrawal(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.length > 120) return false;
+  return WITHDRAWAL.test(t);
+}
+
+const WITHDRAWAL =
+  /не\s?актуальн|закр(ой|ыть|ывай)те? (обращение|заявку|вопрос)|отмен(и|ить|яю) (обращение|заявку)|больше не (нужно|надо|требуется)|уже (решил|решилось|разобрал|не нужно|не надо)|само (решилось|заработало)|вопрос (снят|закрыт)/;
+
 /** AI: "Где / как / когда / сколько …?" - a question, not feedback on the steps. */
 function isQuestion(text: string): boolean {
   const t = text.trim().toLowerCase();
@@ -997,15 +1150,6 @@ function soberSummary(raw: string | undefined): string | undefined {
 
 function isSmalltalk(text: string): boolean {
   return text.trim().length <= 40 && SMALLTALK.test(text.trim());
-}
-
-/** AI: "Из дома / удалённо" is mentioned when any of its meaningful words appears in the text. */
-function optionMentioned(option: string, lowerText: string): boolean {
-  const words = option
-    .toLowerCase()
-    .split(/[^a-zа-яё0-9]+/)
-    .filter((w) => w.length >= 3 && !['или', 'для', 'при', 'нет'].includes(w));
-  return words.some((w) => lowerText.includes(w));
 }
 
 /** AI: Marker the model emits when the retrieved article does not fit the problem. */
@@ -1042,6 +1186,8 @@ function labelFor(cmd: string, catalog: LoadedCatalog): string {
   if (cmd === CMD.human) return 'Нужен специалист';
   if (cmd === CMD.escalate) return 'Создать заявку специалисту';
   if (cmd === CMD.dismiss) return 'Не нужно';
+  if (cmd === CMD.close) return 'Закрыть обращение';
+  if (cmd === CMD.keep) return 'Оставить';
   if (cmd.startsWith(CMD.category))
     return catalog.categoryById.get(cmd.slice(CMD.category.length))?.name ?? cmd;
   return cmd;

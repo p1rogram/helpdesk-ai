@@ -69,6 +69,8 @@ export const TicketCardSchema = z.object({
   resolved: z.boolean(),
   escalated: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
+  /** AI: Who finished the ticket: the assistant (solved), a specialist, or the user (withdrawn). */
+  closedBy: z.enum(['assistant', 'operator', 'user']).nullable(),
   /** AI: Who owns the dialogue right now. While 'operator', the assistant stays silent. */
   handledBy: z.enum(['ai', 'operator']),
   /** AI: The operator handed this ticket back to the assistant and declined further escalation. */

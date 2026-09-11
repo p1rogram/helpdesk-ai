@@ -32,6 +32,13 @@ export const TicketEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ ...base, type: z.literal('ticket.solution_shown'), articleId: z.string() }),
   z.object({ ...base, type: z.literal('ticket.resolved'), ticket: TicketCardSchema }),
+  /** AI: Finished without a solution: the user withdrew the request (not counted as resolved). */
+  z.object({
+    ...base,
+    type: z.literal('ticket.closed'),
+    by: z.enum(['user', 'operator']),
+    ticket: TicketCardSchema,
+  }),
   z.object({
     ...base,
     type: z.literal('ticket.escalated'),

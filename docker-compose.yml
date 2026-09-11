@@ -7,7 +7,9 @@
 # Масштабирование: docker compose up -d --scale api=3 --scale worker=2 — Kafka перераспределит партиции.
 services:
   postgres:
-    image: postgres:16-alpine
+    # AI: Official postgres:16 plus the pgvector extension (same major version: the data volume
+    # created by postgres:16 is reused as is).
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_USER: helpdesk
@@ -39,7 +41,11 @@ services:
       CLUSTER_ID: helpdesk-kraft-cluster-0001
     volumes: [kafkadata:/var/lib/kafka/data]
     healthcheck:
-      test: ['CMD-SHELL', '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1']
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1',
+        ]
       interval: 10s
       timeout: 10s
       retries: 20

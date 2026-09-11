@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 import type { ChatMessage, QuickReply, TicketCard, TicketState, Tone } from '@helpdesk/shared';
 import type { Db } from '../../db/client.js';
 import {
@@ -178,6 +178,24 @@ export class TicketRepository {
       .limit(limit);
   }
 
+  /**
+   * AI: Take the processing lease for one engine pass. Atomic in the database, so two replicas (or
+   * a double-tap) cannot both run over the same ticket; an expired lease is taken over.
+   */
+  async tryLock(id: string, ttlMs: number): Promise<boolean> {
+    const now = new Date();
+    const rows = await this.db
+      .update(tickets)
+      .set({ busyUntil: new Date(now.getTime() + ttlMs) })
+      .where(and(eq(tickets.id, id), or(isNull(tickets.busyUntil), lt(tickets.busyUntil, now))))
+      .returning({ id: tickets.id });
+    return rows.length > 0;
+  }
+
+  async unlock(id: string): Promise<void> {
+    await this.db.update(tickets).set({ busyUntil: null }).where(eq(tickets.id, id));
+  }
+
   async update(id: string, patch: Partial<TicketRow>): Promise<TicketRow> {
     const [row] = await this.db
       .update(tickets)
@@ -234,6 +252,7 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     resolved: t.resolved,
     escalated: t.escalated,
     rating: t.rating,
+    closedBy: t.closedBy as TicketCard['closedBy'],
     handledBy: t.handledBy as 'ai' | 'operator',
     escalationBlocked: t.escalationBlocked,
     externalId: t.externalId,

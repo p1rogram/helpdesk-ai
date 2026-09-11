@@ -87,15 +87,25 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     info: (m) => log.info(m),
     warn: (m) => log.warn(m),
   });
-  if (config.RAG_ENABLED && config.RAG_INGEST_ON_BOOT) {
+  if (config.RAG_ENABLED) {
+    // AI: In the background: the API answers /health at once; ingest (when enabled) and then the
+    // warm-up (model load + index build) happen before the first user asks anything.
     void (async () => {
+      await rag.prepareStorage();
+      if (config.RAG_INGEST_ON_BOOT) {
+        const started = Date.now();
+        const docs = await rag.loadRawDir(config.RAG_RAW_DIR);
+        if (!docs.length) log.info(`rag: no raw documents in ${config.RAG_RAW_DIR}`);
+        else {
+          const res = await rag.ingest(config.DEFAULT_TENANT, docs);
+          log.info(
+            `rag: ${docs.length} documents -> ${res.chunks} chunks (${res.embedded} newly embedded) in ${Date.now() - started} ms`,
+          );
+        }
+      }
       const started = Date.now();
-      const docs = await rag.loadRawDir(config.RAG_RAW_DIR);
-      if (!docs.length) return log.info(`rag: no raw documents in ${config.RAG_RAW_DIR}`);
-      const res = await rag.ingest(config.DEFAULT_TENANT, docs);
-      log.info(
-        `rag: ${docs.length} documents -> ${res.chunks} chunks (${res.embedded} newly embedded) in ${Date.now() - started} ms`,
-      );
+      await rag.warmup(config.DEFAULT_TENANT);
+      log.info(`rag: warm-up done in ${Date.now() - started} ms`);
     })().catch((err) => log.warn(err, 'rag ingest failed'));
   }
   log.info(`rag: ${config.RAG_ENABLED ? `enabled, embeddings=${embedder.model}` : 'disabled'}`);

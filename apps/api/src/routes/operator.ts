@@ -4,7 +4,7 @@ import { TOPICS } from '@helpdesk/shared';
 import type { AppContext } from '../context.js';
 import { eventBase } from '../modules/events/index.js';
 import { toCard, toChatMessage } from '../modules/tickets/repository.js';
-import { QR_CLOSED, QR_AFTER_SOLUTION, T } from '../modules/dialog/templates.js';
+import { QR_CLOSED, QR_AFTER_SOLUTION, QR_ESCALATED, T } from '../modules/dialog/templates.js';
 import { sseCors } from './tickets.js';
 
 const IdParam = z.object({ id: z.string().uuid() });
@@ -133,7 +133,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     const user = (await ctx.tickets.getUser(ticket.userId))!;
     const saved = await ctx.tickets.addMessage(ticket.id, 'assistant', body.data.text, {
       operator: req.user.name,
-      quickReplies: [],
+      quickReplies: QR_ESCALATED,
     });
     await ctx.tickets.update(ticket.id, { state: 'escalated', handledBy: 'operator' });
     ctx.operatorHub.notify(ticket.tenantId, ticket.id);
@@ -164,6 +164,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
     const updated = await ctx.tickets.update(ticket.id, {
       state: 'closed',
       resolved: true,
+      closedBy: 'operator',
       closedAt: new Date(),
     });
     ctx.operatorHub.notify(ticket.tenantId, ticket.id);

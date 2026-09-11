@@ -1,30 +1,39 @@
 import { useState } from 'react';
 
-export function RatingStars(props: { onRate: (rating: number) => Promise<void> }) {
+/**
+ * AI: Five stars under a closed ticket. Once rated the stars stay on screen, filled, so the result
+ * of the click is visible (the "thank you" line itself arrives as a chat message).
+ */
+export function RatingStars(props: {
+  value: number | null;
+  onRate: (rating: number) => Promise<void>;
+}) {
   const [hover, setHover] = useState(0);
-  const [done, setDone] = useState(false);
-  if (done)
-    return (
-      <div className="sub" style={{ padding: '6px 12px', color: 'var(--muted)' }}>
-        Спасибо за оценку!
-      </div>
-    );
+  const [busy, setBusy] = useState(false);
+  const rated = props.value !== null;
+  const lit = rated ? props.value! : hover;
   return (
-    <div className="stars" aria-label="Оценка ответа">
+    <div className={`stars${rated ? ' rated' : ''}`} aria-label="Оценка ответа">
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
-          className={n <= hover ? '' : 'off'}
-          onMouseEnter={() => setHover(n)}
+          className={n <= lit ? '' : 'off'}
+          disabled={rated || busy}
+          onMouseEnter={() => !rated && setHover(n)}
           onMouseLeave={() => setHover(0)}
           onClick={async () => {
-            await props.onRate(n);
-            setDone(true);
+            setBusy(true);
+            try {
+              await props.onRate(n);
+            } finally {
+              setBusy(false);
+            }
           }}
         >
           ★
         </button>
       ))}
+      {rated && <span className="sub">Ваша оценка: {props.value} из 5</span>}
     </div>
   );
 }

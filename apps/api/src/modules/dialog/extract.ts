@@ -24,7 +24,13 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
 
   for (const field of clarify) {
     const rule = field.extract;
-    if (!rule) continue;
+    if (!rule) {
+      // AI: Fields with fixed options ("из дома / из корпуса", "студент / сотрудник"): an option
+      // named in the message is the answer - as long as exactly one of them is.
+      const mentioned = (field.options ?? []).filter((o) => optionMentioned(o, lower));
+      if (mentioned.length === 1) fields[field.id] = mentioned[0]!;
+      continue;
+    }
     let re: RegExp;
     try {
       re = new RegExp(rule.pattern, 'iu');
@@ -50,4 +56,17 @@ export function extractFields(clarify: ClarifyingField[], text: string): Extract
   }
 
   return { fields, reject };
+}
+
+/**
+ * AI: "Из дома / удалённо" is mentioned when a meaningful word of it starts a word in the text.
+ * Matching on the first five letters absorbs Russian case endings ("общежития" ~ "в общежитии").
+ */
+export function optionMentioned(option: string, lowerText: string): boolean {
+  const words = option
+    .toLowerCase()
+    .split(/[^a-zа-яё0-9]+/)
+    .filter((w) => w.length >= 3 && !['или', 'для', 'при', 'нет'].includes(w));
+  // AI: `words` contains letters and digits only (split above), so the stem is regex-safe.
+  return words.some((w) => new RegExp(`(^|[^a-zа-яё0-9])${w.slice(0, 5)}`, 'u').test(lowerText));
 }

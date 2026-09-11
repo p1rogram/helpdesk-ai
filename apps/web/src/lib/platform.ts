@@ -14,6 +14,8 @@ export interface PlatformAdapter {
   ready(): void;
   haptic(kind: 'light' | 'success' | 'error'): void;
   expand(): void;
+  /** AI: Native yes/no dialog of the host (Telegram popup, browser confirm). */
+  confirm(message: string): Promise<boolean>;
 }
 
 interface TelegramWebApp {
@@ -22,6 +24,7 @@ interface TelegramWebApp {
   themeParams?: Record<string, string>;
   ready(): void;
   expand(): void;
+  showConfirm?(message: string, callback: (ok: boolean) => void): void;
   HapticFeedback?: {
     impactOccurred(style: 'light' | 'medium' | 'heavy'): void;
     notificationOccurred(type: 'success' | 'error' | 'warning'): void;
@@ -59,6 +62,10 @@ function telegramAdapter(tg: TelegramWebApp): PlatformAdapter {
         ? tg.HapticFeedback?.impactOccurred('light')
         : tg.HapticFeedback?.notificationOccurred(k),
     expand: () => tg.expand(),
+    confirm: (message) =>
+      tg.showConfirm
+        ? new Promise((resolve) => tg.showConfirm!(message, resolve))
+        : Promise.resolve(window.confirm(message)),
   };
 }
 
@@ -82,6 +89,7 @@ function vkAdapter(bridge: VkBridgeLike | undefined): PlatformAdapter {
         style: k === 'light' ? 'light' : 'medium',
       }),
     expand: () => {},
+    confirm: (message) => Promise.resolve(window.confirm(message)),
   };
 }
 
@@ -102,6 +110,7 @@ function maxAdapter(m: MaxWebApp): PlatformAdapter {
     ready: () => m.ready?.(),
     haptic: () => {},
     expand: () => m.expand?.(),
+    confirm: (message) => Promise.resolve(window.confirm(message)),
   };
 }
 
@@ -114,6 +123,7 @@ function webAdapter(): PlatformAdapter {
     ready: () => {},
     haptic: () => {},
     expand: () => {},
+    confirm: (message) => Promise.resolve(window.confirm(message)),
   };
 }
 

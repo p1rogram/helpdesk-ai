@@ -147,6 +147,13 @@ export const tickets = pgTable(
     pendingEscalation: text('pending_escalation'),
     rating: integer('rating'),
     ratingComment: text('rating_comment'),
+    /** AI: 'assistant' | 'operator' | 'user' - set together with closed_at. */
+    closedBy: text('closed_by'),
+    /**
+     * AI: Per-ticket processing lease: one engine pass at a time, across API replicas. A crash
+     * never leaves the ticket stuck - the lease expires on its own.
+     */
+    busyUntil: timestamp('busy_until', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     closedAt: timestamp('closed_at', { withTimezone: true }),

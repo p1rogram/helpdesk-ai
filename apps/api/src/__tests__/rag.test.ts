@@ -98,6 +98,9 @@ describe('RagService', () => {
     await ensureSchema(h.db);
     await h.db.insert(tenants).values({ id: 't', sphere: 'test', organisation: 'org' });
     const rag = new RagService(h.db, new ToyEmbedder(), { info: () => {}, warn: () => {} });
+    // AI: PGlite ships pgvector: the dense half runs in the database here exactly as in production.
+    await rag.prepareStorage();
+    expect(rag.denseBackend).toBe('pgvector');
 
     expect(await rag.ingest('t', docs)).toEqual({ chunks: 3, embedded: 3 });
     // the same corpus again: nothing changed, nothing re-embedded
@@ -116,6 +119,34 @@ describe('RagService', () => {
     const guest = await rag.search('t', 'не могу зайти логин', { scope: 'guest', limit: 3 });
     expect(guest.every((p) => !p.url.startsWith('https://help.example'))).toBe(true);
 
+    // AI: Same corpus, no extension: the in-memory fallback ranks identically.
+    const plain = new RagService(h.db, new ToyEmbedder(), { info: () => {}, warn: () => {} });
+    expect(plain.denseBackend).toBe('memory');
+    expect((await plain.search('t', 'не могу зайти', { limit: 3 }))[0]?.url).toBe(
+      'https://help.example/login',
+    );
+
+    await h.close();
+  });
+
+  it('a second replica picks up an ingest it did not perform, without a shared cache', async () => {
+    const h = await connectDb({
+      url: undefined,
+      pgliteDir: mkdtempSync(path.join(tmpdir(), 'rag-')),
+    });
+    await ensureSchema(h.db);
+    await h.db.insert(tenants).values({ id: 't', sphere: 'test', organisation: 'org' });
+    const quiet = { info: () => {}, warn: () => {} };
+    const replicaA = new RagService(h.db, new ToyEmbedder(), quiet, { stampTtlMs: 0 });
+    const replicaB = new RagService(h.db, new ToyEmbedder(), quiet, { stampTtlMs: 0 });
+
+    await replicaA.ingest('t', docs.slice(0, 1));
+    expect((await replicaB.search('t', 'экскурсия в музей')).length).toBe(0);
+    // AI: B has an index in memory; A re-ingests; B notices through the database fingerprint.
+    await replicaA.ingest('t', docs);
+    expect((await replicaB.search('t', 'экскурсия в музей'))[0]?.url).toBe(
+      'https://example/excursion',
+    );
     await h.close();
   });
 });

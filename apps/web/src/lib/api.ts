@@ -240,7 +240,14 @@ export class ApiClient {
   }
 
   rate(id: string, rating: number) {
-    return this.post<{ ticket: TicketCard }>(`/api/tickets/${id}/rating`, { rating });
+    return this.post<{ ticket: TicketCard; message: ChatMessage }>(`/api/tickets/${id}/rating`, {
+      rating,
+    });
+  }
+
+  /** AI: The user withdraws the request (works while a specialist has it, too). */
+  closeTicket(id: string) {
+    return this.post<{ ticket: TicketCard; message: ChatMessage }>(`/api/tickets/${id}/close`, {});
   }
 
   searchKb(q: string) {

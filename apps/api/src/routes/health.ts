@@ -7,6 +7,8 @@ export async function healthRoutes(app: FastifyInstance, ctx: AppContext): Promi
     db: ctx.dbHandle.kind,
     events: ctx.config.EVENT_BUS,
     llm: ctx.llm.enabled,
+    /** AI: off | memory | pgvector - where the dense half of retrieval runs. */
+    rag: ctx.config.RAG_ENABLED ? ctx.rag.denseBackend : 'disabled',
     uptime: Math.round(process.uptime()),
   }));
 

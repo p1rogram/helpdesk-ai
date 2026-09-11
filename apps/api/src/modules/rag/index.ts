@@ -53,11 +53,25 @@ interface IndexedChunk {
   embedding: number[] | null;
 }
 
+/**
+ * AI: In-memory index of one tenant. `postings` is the inverted index (term -> chunks that contain
+ * it), so a query touches only the chunks sharing a term with it, not the whole corpus; `terms`
+ * is sorted for prefix expansion by binary search. `stamp` is the database fingerprint the index
+ * was built from - see index().
+ */
 interface TenantIndex {
   chunks: IndexedChunk[];
+  byId: Map<string, IndexedChunk>;
   df: Map<string, number>;
+  postings: Map<string, number[]>;
+  terms: string[];
   avgLen: number;
+  stamp: string;
+  checkedAt: number;
 }
+
+/** AI: How long a replica trusts its copy before asking the database whether the corpus changed. */
+const STAMP_TTL_MS = 5_000;
 
 const RRF_K = 60;
 /** AI: A chunk found only by the dense ranker must be a close paraphrase to count. */
@@ -65,15 +79,67 @@ const DENSE_FLOOR = 0.8;
 
 export class RagService {
   private readonly indexes = new Map<string, TenantIndex>();
+  private readonly stampTtlMs: number;
+  /** AI: pgvector column + HNSW index are in place; dense search runs in the database. */
+  private vectorReady = false;
 
   constructor(
     private readonly db: Db,
     private readonly embedder: Embedder,
     private readonly log: { info: (m: string) => void; warn: (m: string) => void },
-  ) {}
+    opts: { stampTtlMs?: number } = {},
+  ) {
+    this.stampTtlMs = opts.stampTtlMs ?? STAMP_TTL_MS;
+  }
 
   get embeddingModel(): string {
     return this.embedder.model;
+  }
+
+  get denseBackend(): 'pgvector' | 'memory' | 'off' {
+    if (this.embedder.dims === 0) return 'off';
+    return this.vectorReady ? 'pgvector' : 'memory';
+  }
+
+  /**
+   * AI: Nearest-neighbour search belongs in the database, not in a loop over every row: with
+   * pgvector the dense half of retrieval is an HNSW index lookup, O(log n) instead of O(n), and
+   * the index is shared by every API replica. The JSONB copy of the vector stays as the portable
+   * fallback: on a Postgres without the extension the service keeps working from memory.
+   */
+  async prepareStorage(): Promise<void> {
+    if (this.embedder.dims === 0) return;
+    const dims = this.embedder.dims;
+    try {
+      await this.db.execute(sql.raw('CREATE EXTENSION IF NOT EXISTS vector'));
+      await this.db.execute(
+        sql.raw(`ALTER TABLE rag_chunks ADD COLUMN IF NOT EXISTS embedding_vec vector(${dims})`),
+      );
+    } catch (err) {
+      this.vectorReady = false;
+      this.log.warn(
+        `pgvector unavailable, dense search stays in memory: ${(err as Error).message}`,
+      );
+      return;
+    }
+    try {
+      await this.db.execute(
+        sql.raw(
+          'CREATE INDEX IF NOT EXISTS rag_chunks_vec ON rag_chunks USING hnsw (embedding_vec vector_cosine_ops)',
+        ),
+      );
+    } catch (err) {
+      // AI: Older pgvector without HNSW: the query still works, as a sequential scan.
+      this.log.warn(`hnsw index not created: ${(err as Error).message}`);
+    }
+    // AI: Databases embedded before this column existed: copy the JSONB vectors over once.
+    await this.db.execute(
+      sql.raw(
+        'UPDATE rag_chunks SET embedding_vec = embedding::text::vector WHERE embedding IS NOT NULL AND embedding_vec IS NULL',
+      ),
+    );
+    this.vectorReady = true;
+    this.log.info('rag: dense search via pgvector (hnsw)');
   }
 
   // ---------- ingest ----------
@@ -208,6 +274,10 @@ export class RagService {
     }
     const stale = existing.filter((r) => !keep.has(r.id)).map((r) => r.id);
     if (stale.length) await this.db.delete(ragChunks).where(inArray(ragChunks.id, stale));
+    if (this.vectorReady)
+      await this.db.execute(
+        sql`UPDATE rag_chunks SET embedding_vec = NULL WHERE tenant_id = ${tenantId} AND embedding IS NULL`,
+      );
 
     let embedded = 0;
     if (this.embedder.dims > 0 && pending.length) {
@@ -219,12 +289,16 @@ export class RagService {
             'passage',
           );
           await Promise.all(
-            batch.map((b, j) =>
-              this.db
+            batch.map(async (b, j) => {
+              await this.db
                 .update(ragChunks)
                 .set({ embedding: vectors[j], embeddingModel: this.embedder.model })
-                .where(and(eq(ragChunks.id, b.id), eq(ragChunks.tenantId, tenantId))),
-            ),
+                .where(and(eq(ragChunks.id, b.id), eq(ragChunks.tenantId, tenantId)));
+              if (this.vectorReady)
+                await this.db.execute(
+                  sql`UPDATE rag_chunks SET embedding_vec = ${toVectorLiteral(vectors[j]!)}::vector WHERE id = ${b.id}`,
+                );
+            }),
           );
           embedded += batch.length;
         }
@@ -239,12 +313,35 @@ export class RagService {
 
   // ---------- retrieval ----------
 
+  /**
+   * AI: The corpus fingerprint (row count + latest change) is one indexed query. Every replica
+   * compares it with the fingerprint of its in-memory index, so an ingest on any replica - or from
+   * the admin API - is picked up everywhere within STAMP_TTL_MS, with no shared cache to invalidate.
+   */
+  private async stamp(tenantId: string): Promise<string> {
+    const [row] = await this.db
+      .select({
+        n: sql<number>`count(*)`,
+        t: sql<string | null>`max(${ragChunks.updatedAt})`,
+      })
+      .from(ragChunks)
+      .where(eq(ragChunks.tenantId, tenantId));
+    return `${row?.n ?? 0}|${row?.t ?? ''}`;
+  }
+
   private async index(tenantId: string): Promise<TenantIndex> {
     const cached = this.indexes.get(tenantId);
-    if (cached) return cached;
+    const now = Date.now();
+    if (cached && now - cached.checkedAt < this.stampTtlMs) return cached;
+    const stamp = await this.stamp(tenantId);
+    if (cached && cached.stamp === stamp) {
+      cached.checkedAt = now;
+      return cached;
+    }
     const rows = await this.db.select().from(ragChunks).where(eq(ragChunks.tenantId, tenantId));
     const df = new Map<string, number>();
-    const chunks: IndexedChunk[] = rows.map((r) => {
+    const postings = new Map<string, number[]>();
+    const chunks: IndexedChunk[] = rows.map((r, i) => {
       const tf = new Map<string, number>();
       let len = 0;
       const add = (text: string, w: number) => {
@@ -256,7 +353,12 @@ export class RagService {
       add(r.title, 2);
       add(r.section, 1.5);
       add(r.content, 1);
-      for (const t of tf.keys()) df.set(t, (df.get(t) ?? 0) + 1);
+      for (const t of tf.keys()) {
+        df.set(t, (df.get(t) ?? 0) + 1);
+        const list = postings.get(t);
+        if (list) list.push(i);
+        else postings.set(t, [i]);
+      }
       return {
         id: r.id,
         url: r.sourceUrl,
@@ -271,11 +373,30 @@ export class RagService {
     });
     const idx: TenantIndex = {
       chunks,
+      byId: new Map(chunks.map((c) => [c.id, c])),
       df,
+      postings,
+      terms: [...df.keys()].sort(),
       avgLen: chunks.reduce((s, c) => s + c.len, 0) / Math.max(1, chunks.length),
+      stamp,
+      checkedAt: now,
     };
     this.indexes.set(tenantId, idx);
+    if (rows.length) this.log.info(`rag index built: ${tenantId}, ${rows.length} chunks`);
     return idx;
+  }
+
+  /**
+   * AI: Loads the embedding model and builds the index ahead of the first user, so the first
+   * question is not the one that pays for the cold start.
+   */
+  async warmup(tenantId: string): Promise<void> {
+    try {
+      await this.index(tenantId);
+      if (this.embedder.dims > 0) await this.embedder.embed(['прогрев'], 'query');
+    } catch (err) {
+      this.log.warn(`rag warmup failed: ${(err as Error).message}`);
+    }
   }
 
   async size(tenantId: string): Promise<{ chunks: number; embedded: number }> {
@@ -294,12 +415,14 @@ export class RagService {
       opts.scope === 'guest' ? idx.chunks.filter((c) => c.audience === 'public') : idx.chunks;
     const limit = opts.limit ?? 5;
 
-    const lexical = this.bm25(idx, visible, query);
+    const lexical = this.bm25(idx, opts.scope === 'guest' ? 'public' : null, query);
     let dense: { chunk: IndexedChunk; score: number }[] = [];
     if (this.embedder.dims > 0 && visible.some((c) => c.embedding)) {
       try {
         const [q] = await this.embedder.embed([query], 'query');
-        if (q) {
+        if (q && this.vectorReady) {
+          dense = await this.denseInDb(idx, tenantId, q, opts.scope === 'guest' ? 'public' : null);
+        } else if (q) {
           dense = visible
             .filter((c) => c.embedding)
             .map((chunk) => ({ chunk, score: cosine(q, chunk.embedding!) }))
@@ -338,41 +461,95 @@ export class RagService {
       .slice(0, limit);
   }
 
+  /** AI: Top-30 by cosine similarity through the HNSW index; `<=>` is cosine distance in pgvector. */
+  private async denseInDb(
+    idx: TenantIndex,
+    tenantId: string,
+    q: number[],
+    audience: string | null,
+  ): Promise<{ chunk: IndexedChunk; score: number }[]> {
+    const lit = toVectorLiteral(q);
+    const res = await this.db.execute(
+      sql`SELECT id, 1 - (embedding_vec <=> ${lit}::vector) AS score
+          FROM rag_chunks
+          WHERE tenant_id = ${tenantId} AND embedding_vec IS NOT NULL
+            AND (${audience}::text IS NULL OR audience = ${audience}::text)
+          ORDER BY embedding_vec <=> ${lit}::vector
+          LIMIT 30`,
+    );
+    const rows = (res as unknown as { rows: Array<{ id: string; score: number | string }> }).rows;
+    const out: { chunk: IndexedChunk; score: number }[] = [];
+    for (const r of rows) {
+      const chunk = idx.byId.get(r.id);
+      if (chunk) out.push({ chunk, score: Number(r.score) });
+    }
+    return out;
+  }
+
+  /**
+   * AI: BM25 over the inverted index: for every query term (and up to 20 of its prefix expansions,
+   * found by binary search in the sorted term list) only the posting list is walked. Cost grows
+   * with the number of chunks that share a term with the query, not with the corpus size.
+   */
   private bm25(
     idx: TenantIndex,
-    docs: IndexedChunk[],
+    audience: string | null,
     query: string,
   ): { chunk: IndexedChunk; score: number }[] {
     const q = tokenize(query, { keepShort: true });
     if (!q.length) return [];
-    const terms = [...idx.df.keys()];
-    const expansions = q.map((t) => ({
-      exact: idx.df.has(t) ? t : null,
-      prefixes: t.length >= 3 ? terms.filter((x) => x !== t && x.startsWith(t)).slice(0, 20) : [],
-    }));
     const N = idx.chunks.length;
     const k1 = 1.4;
     const b = 0.75;
-    const out: { chunk: IndexedChunk; score: number }[] = [];
-    for (const d of docs) {
-      let score = 0;
-      for (const e of expansions) {
-        let best = 0;
-        const sc = (t: string, w: number) => {
-          const f = d.tf.get(t);
-          if (!f) return 0;
-          const df = idx.df.get(t) ?? 0;
-          const idf = Math.log(1 + (N - df + 0.5) / (df + 0.5));
-          return w * idf * ((f * (k1 + 1)) / (f + k1 * (1 - b + (b * d.len) / idx.avgLen)));
-        };
-        if (e.exact) best = sc(e.exact, 1);
-        for (const p of e.prefixes) best = Math.max(best, sc(p, 0.6));
-        score += best;
+    const scores = new Map<number, number>();
+    for (const term of q) {
+      const candidates: Array<[string, number]> = [];
+      if (idx.df.has(term)) candidates.push([term, 1]);
+      if (term.length >= 3)
+        for (const p of prefixMatches(idx.terms, term, 20)) candidates.push([p, 0.6]);
+      // AI: A chunk gets the best of "exact term" and "prefix variant" for this query term, once.
+      const best = new Map<number, number>();
+      for (const [t, w] of candidates) {
+        const df = idx.df.get(t) ?? 0;
+        const idf = Math.log(1 + (N - df + 0.5) / (df + 0.5));
+        for (const i of idx.postings.get(t) ?? []) {
+          const d = idx.chunks[i]!;
+          if (audience && d.audience !== audience) continue;
+          const f = d.tf.get(t)!;
+          const sc = w * idf * ((f * (k1 + 1)) / (f + k1 * (1 - b + (b * d.len) / idx.avgLen)));
+          if (sc > (best.get(i) ?? 0)) best.set(i, sc);
+        }
       }
-      if (score > 0) out.push({ chunk: d, score });
+      for (const [i, sc] of best) scores.set(i, (scores.get(i) ?? 0) + sc);
     }
-    return out.sort((x, y) => y.score - x.score).slice(0, 30);
+    return [...scores.entries()]
+      .map(([i, score]) => ({ chunk: idx.chunks[i]!, score }))
+      .sort((x, y) => y.score - x.score)
+      .slice(0, 30);
   }
+}
+
+/** AI: Terms starting with `prefix` (excluding the prefix itself) from a sorted list, at most `limit`. */
+function prefixMatches(sorted: string[], prefix: string, limit: number): string[] {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (sorted[mid]! < prefix) lo = mid + 1;
+    else hi = mid;
+  }
+  const out: string[] = [];
+  for (let i = lo; i < sorted.length && out.length < limit; i++) {
+    const t = sorted[i]!;
+    if (!t.startsWith(prefix)) break;
+    if (t !== prefix) out.push(t);
+  }
+  return out;
+}
+
+/** AI: pgvector text input: "[0.1,0.2,...]". Six decimals keep the literal short; cosine is unaffected. */
+function toVectorLiteral(v: number[]): string {
+  return `[${v.map((x) => x.toFixed(6)).join(',')}]`;
 }
 
 function sha1(s: string): string {

@@ -42,7 +42,7 @@ export function HistoryScreen(props: {
     const all = items ?? [];
     return {
       all: all.length,
-      resolved: all.filter((t) => t.resolved && !t.escalated).length,
+      resolved: all.filter((t) => t.state === 'closed' && !t.escalated).length,
       escalated: all.filter((t) => t.escalated || t.state === 'escalated').length,
     };
   }, [items]);
@@ -70,7 +70,7 @@ export function HistoryScreen(props: {
     filter === 'all'
       ? true
       : filter === 'resolved'
-        ? t.resolved && !t.escalated // AI: closed by the assistant; specialist cases live under "Переданные"
+        ? t.state === 'closed' && !t.escalated // AI: finished here; specialist cases live under "Переданные"
         : t.escalated || t.state === 'escalated',
   );
 
@@ -96,7 +96,10 @@ export function HistoryScreen(props: {
       <div className="list">
         {shown.map((t) => {
           const v = categoryVisual(t.categoryId);
-          const chip = STATE_CHIP[t.state];
+          const chip =
+            t.state === 'closed' && t.closedBy === 'user'
+              ? { label: 'Закрыто', cls: 'muted' }
+              : STATE_CHIP[t.state];
           return (
             <div
               key={t.id}

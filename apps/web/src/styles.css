@@ -894,6 +894,25 @@ select {
 .stars button.off {
   color: rgba(127, 127, 127, 0.35);
 }
+.stars.rated button {
+  cursor: default;
+}
+.stars .sub {
+  margin-left: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* AI: Under the chat while a specialist owns the ticket: status + a way out for the user. */
+.escalated-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
 
 .btn {
   border: none;

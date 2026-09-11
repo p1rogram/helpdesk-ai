@@ -58,7 +58,12 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext): Promis
   /** AI: RAG corpus status: how many chunks are indexed and how many carry a vector. */
   app.get('/api/admin/rag/:id', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
-    return { tenant: id, embeddings: ctx.rag.embeddingModel, ...(await ctx.rag.size(id)) };
+    return {
+      tenant: id,
+      embeddings: ctx.rag.embeddingModel,
+      dense: ctx.rag.denseBackend,
+      ...(await ctx.rag.size(id)),
+    };
   });
 
   /**

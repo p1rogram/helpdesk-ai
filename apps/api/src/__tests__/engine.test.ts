@@ -139,11 +139,96 @@ describe('DialogEngine', () => {
 
   it('escalates with a ticket card when the user asks for a human', async () => {
     const { user, ticket } = await fresh();
-    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Заблокирован аккаунт' });
-    const r = await collect(engine.handle(ticket, user, 'Позовите живого человека'));
+    llm.queue.push({
+      asksForHuman: true,
+      categoryId: 'account',
+      summary: 'Заблокирован аккаунт',
+      fields: { role: 'Студент' },
+    });
+    const r = await collect(engine.handle(ticket, user, 'Позовите живого человека, я студент'));
     expect(r.ticket.state).toBe('escalated');
     expect(r.text).toMatch(/Заявка №/);
     expect(r.ticket.externalId).toBeTruthy();
+  });
+
+  it('collects the required fields before handing over, without a second model call', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Заблокирован аккаунт' });
+    const r1 = await collect(engine.handle(ticket, user, 'Позовите живого человека'));
+    // AI: Not escalated yet: the specialist would have to ask this first thing.
+    expect(r1.ticket.state).toBe('clarifying');
+    expect(r1.text).toMatch(/Передам специалисту/);
+    expect(r1.quick.map((q) => q.label)).toContain('Студент');
+
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t2, user, 'Студент'));
+    expect(llm.queue.length).toBe(0);
+    expect(r2.ticket.state).toBe('escalated');
+    expect(r2.ticket.fields.role).toBe('Студент');
+    expect(r2.text).toMatch(/Заявка №/);
+    expect(r2.text).not.toMatch(/Не уточнено/);
+  });
+
+  it('hands over after the clarification limit even when the data is still missing', async () => {
+    const { user, ticket } = await fresh();
+    await tickets.update(ticket.id, { clarificationsAsked: 2 });
+    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Заблокирован аккаунт' });
+    const t = (await tickets.get(ticket.id, user.id))!;
+    const r = await collect(engine.handle(t, user, 'Позовите живого человека'));
+    expect(r.ticket.state).toBe('escalated');
+    expect(r.text).toMatch(/Не уточнено: Кто обращается/);
+  });
+
+  it('lets the user withdraw a request that is with a specialist - after a confirmation', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({
+      asksForHuman: true,
+      categoryId: 'account',
+      summary: 'Заблокирован аккаунт',
+      fields: { role: 'Студент' },
+    });
+    await collect(engine.handle(ticket, user, 'Позовите специалиста'));
+
+    // AI: "No longer relevant" is not closed on a guess - the assistant asks.
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t2, user, 'уже не актуально, разобрался'));
+    expect(r2.ticket.state).toBe('escalated');
+    expect(r2.quick.map((q) => q.value)).toEqual([CMD.close, CMD.keep]);
+    expect(llm.queue.length).toBe(0);
+
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    const r3 = await collect(engine.handle(t3, user, CMD.close));
+    expect(r3.ticket.state).toBe('closed');
+    expect(r3.ticket.closedBy).toBe('user');
+    expect(r3.ticket.resolved).toBe(false); // withdrawn is not "solved" in the statistics
+    expect(r3.ticket.escalated).toBe(true); // history still lists it under "Переданные"
+    expect(r3.text).toMatch(/специалист уведомлён/);
+    expect(published.some((e) => e.type === 'ticket.closed' && e.ticketId === ticket.id)).toBe(
+      true,
+    );
+  });
+
+  it('closes from the card button the same way as from the chat', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({ fields: { location: 'Из корпуса' } });
+    await collect(engine.handle(ticket, user, 'VPN не работает'));
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r = await engine.closeByUser(t2, user);
+    expect(r.ticket.state).toBe('closed');
+    expect(r.ticket.closedBy).toBe('user');
+    expect(r.message.role).toBe('assistant');
+    const msgs = await tickets.listMessages(ticket.id, 50);
+    expect(msgs[msgs.length - 2]!.content).toBe('Закрыть обращение');
+  });
+
+  it('treats a short campus-life question as a real request (catalog, model down)', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push(new LlmUnavailableError('down'));
+    const r = await collect(engine.handle(ticket, user, 'есть столовая?'));
+    expect(r.ticket.categoryId).toBe('general');
+    expect(r.ticket.state).toBe('solving');
+    expect(r.ticket.articleId).toBe('general-food');
+    expect(r.text).toMatch(/кафе|столов/i);
   });
 
   it('offers category buttons on low confidence instead of guessing', async () => {
@@ -247,7 +332,12 @@ describe('DialogEngine', () => {
 
   it('stays silent while an operator owns the ticket, and only acknowledges', async () => {
     const { user, ticket } = await fresh();
-    llm.queue.push({ asksForHuman: true, categoryId: 'account', summary: 'Проблема с доступом' });
+    llm.queue.push({
+      asksForHuman: true,
+      categoryId: 'account',
+      summary: 'Проблема с доступом',
+      fields: { role: 'Студент' },
+    });
     const r = await collect(engine.handle(ticket, user, 'Позовите специалиста'));
     expect(r.ticket.state).toBe('escalated');
     expect(r.ticket.handledBy).toBe('operator');

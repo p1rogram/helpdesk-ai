@@ -149,6 +149,35 @@ export function ChatScreen(props: {
     }
   };
 
+  // AI: "Закрыть обращение" from the bar under the chat: same effect as the chat command, one
+  // round-trip, no streaming. Asks first - the specialist gets a notification.
+  const closeTicket = async () => {
+    if (!ticket || busy) return;
+    if (!(await platform.confirm('Закрыть обращение? Специалист получит уведомление.'))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api.closeTicket(ticket.id);
+      setMessages((m) => [
+        ...m,
+        {
+          id: `tmp-${Date.now()}`,
+          role: 'user',
+          content: 'Закрыть обращение',
+          createdAt: new Date().toISOString(),
+        },
+        res.message,
+      ]);
+      setTicket(res.ticket);
+      props.onTicketUpdate?.();
+      platform.haptic('success');
+    } catch {
+      setError('Не удалось закрыть обращение. Попробуйте ещё раз.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const last = messages[messages.length - 1];
   const quick: QuickReply[] =
     !busy && last?.role === 'assistant' && last.quickReplies ? last.quickReplies : [];
@@ -188,15 +217,29 @@ export function ChatScreen(props: {
         <div ref={bottomRef} />
       </div>
       {error && <div className="error">{error}</div>}
-      {ticket?.state === 'closed' && ticket.rating === null && (
+      {ticket?.state === 'closed' && ticket.closedBy !== 'user' && (
         <RatingStars
+          value={ticket.rating}
           onRate={async (r) => {
-            const res = await api.rate(ticket.id, r);
-            setTicket(res.ticket);
-            props.onTicketUpdate?.();
-            platform.haptic('success');
+            try {
+              const res = await api.rate(ticket.id, r);
+              setMessages((m) => [...m, res.message]);
+              setTicket(res.ticket);
+              props.onTicketUpdate?.();
+              platform.haptic('success');
+            } catch {
+              setError('Не удалось сохранить оценку. Попробуйте ещё раз.');
+            }
           }}
         />
+      )}
+      {ticket?.state === 'escalated' && (
+        <div className="escalated-bar">
+          <span>Обращение у специалиста</span>
+          <button className="pill-btn" disabled={busy} onClick={() => void closeTicket()}>
+            Закрыть обращение
+          </button>
+        </div>
       )}
       <QuickReplies items={quick} onPick={(q) => send(q.value, q.label)} />
       <Composer
@@ -224,6 +267,9 @@ function StateChip({ ticket }: { ticket: TicketCard }) {
     closed: ['Решено', 'ok'],
     escalated: ['У специалиста', 'danger'],
   };
-  const [label, cls] = map[ticket.state];
+  const [label, cls] =
+    ticket.state === 'closed' && ticket.closedBy === 'user'
+      ? ['Закрыто', 'muted']
+      : map[ticket.state];
   return <span className={`chip ${cls}`}>{label}</span>;
 }

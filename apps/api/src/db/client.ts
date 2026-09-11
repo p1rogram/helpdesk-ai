@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import pg from 'pg';
 import { PGlite } from '@electric-sql/pglite';
+import { vector } from '@electric-sql/pglite/vector';
 import * as schema from './schema.js';
 
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -24,7 +25,8 @@ export async function connectDb(opts: { url?: string; pgliteDir: string }): Prom
     const db = drizzlePg(pool, { schema }) as unknown as Db;
     return { db, kind: 'postgres', close: () => pool.end() };
   }
-  const client = new PGlite(opts.pgliteDir);
+  // AI: pgvector is bundled with PGlite, so dev and prod run the same vector SQL.
+  const client = new PGlite(opts.pgliteDir, { extensions: { vector } });
   const db = drizzlePglite(client, { schema }) as unknown as Db;
   return { db, kind: 'pglite', close: () => client.close() };
 }
@@ -45,6 +47,8 @@ export async function ensureSchema(db: Db): Promise<void> {
     'pending_escalation TEXT',
     "handled_by TEXT NOT NULL DEFAULT 'ai'",
     'escalation_blocked BOOLEAN NOT NULL DEFAULT false',
+    'closed_by TEXT',
+    'busy_until TIMESTAMPTZ',
   ]) {
     await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
   }

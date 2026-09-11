@@ -20,6 +20,8 @@ export interface HelpdeskConnector {
     card: TicketCard,
     context: { userDisplayName: string; transcript: string },
   ): Promise<ExternalRequest>;
+  /** AI: The user withdrew the request; optional - a helpdesk without this keeps it open. */
+  closeRequest?(externalId: string, comment: string): Promise<void>;
 }
 
 /** AI: Dev / demo: no external system - the internal short id is shown instead. */
@@ -69,7 +71,7 @@ export class NaumenHelpdesk implements HelpdeskConnector {
       `Категория помощника: ${card.categoryName ?? '—'} (уверенность ${card.confidence !== null ? Math.round(card.confidence * 100) + '%' : '—'})`,
       Object.keys(card.fields).length
         ? `Уточнения: ${Object.entries(card.fields)
-            .map(([k, v]) => `${k} — ${v}`)
+            .map(([k, v]) => `${card.fieldLabels[k] ?? k} — ${v}`)
             .join('; ')}`
         : '',
       card.articleTitle ? `Предложенная статья: ${card.articleTitle}` : '',
@@ -104,5 +106,32 @@ export class NaumenHelpdesk implements HelpdeskConnector {
         ? `${this.o.baseUrl.replace(/\/$/, '')}/portal/serviceCall.html?uuid=${encodeURIComponent(data.UUID)}`
         : undefined,
     };
+  }
+
+  /**
+   * AI: The user withdrew the request from the chat: find the serviceCall by its number and move it
+   * to the closed state with the user's reason as the resolution. Attribute names (state,
+   * resolutionRTF) follow the same caveat as createRequest - confirm with the administrator.
+   */
+  async closeRequest(externalId: string, comment: string): Promise<void> {
+    const base = this.o.baseUrl.replace(/\/$/, '');
+    const key = encodeURIComponent(this.o.accessKey);
+    const find = await this.fetchImpl(
+      `${base}/sd/services/rest/find/serviceCall/${encodeURIComponent(JSON.stringify({ number: externalId }))}?accessKey=${key}`,
+      { signal: AbortSignal.timeout(15_000) },
+    );
+    if (!find.ok) throw new Error(`naumen: find HTTP ${find.status}`);
+    const [found] = (await find.json()) as Array<{ UUID?: string }>;
+    if (!found?.UUID) throw new Error(`naumen: request ${externalId} not found`);
+    const res = await this.fetchImpl(
+      `${base}/sd/services/rest/edit/${found.UUID}?accessKey=${key}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ state: 'closed', resolutionRTF: comment }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (!res.ok) throw new Error(`naumen: edit HTTP ${res.status}`);
   }
 }

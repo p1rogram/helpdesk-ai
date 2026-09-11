@@ -33,6 +33,22 @@ describe('deterministic field extraction', () => {
     });
   });
 
+  it('fills an option field when exactly one option is named in the text', () => {
+    const fields: ClarifyingField[] = [
+      {
+        id: 'location',
+        question: '?',
+        required: true,
+        options: ['Из корпуса', 'Из общежития', 'Из дома / удалённо'],
+      },
+    ];
+    expect(extractFields(fields, 'не работает VPN из дома').fields).toEqual({
+      location: 'Из дома / удалённо',
+    });
+    // two options mentioned - ambiguous, ask
+    expect(extractFields(fields, 'в общежитии работает, из дома нет').fields).toEqual({});
+  });
+
   it('survives a broken pattern in the catalog', () => {
     const bad: ClarifyingField[] = [
       { id: 'x', question: '?', required: true, extract: { pattern: '([' } },
