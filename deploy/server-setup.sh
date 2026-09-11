@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # AI: One-time server bootstrap (Ubuntu 22.04/24.04, run as root or with sudo):
-#   curl -fsSL https://raw.githubusercontent.com/p1rogram/helpdesk-ai/master/deploy/server-setup.sh | bash -s -- <domain>
+#   curl -fsSL https://raw.githubusercontent.com/p1rogram/helpdesk-ai/master/deploy/server-setup.sh | sudo bash -s -- <domain>
 # Installs Docker, clones the repo into /opt/helpdesk-ai, prepares .env and opens the firewall.
 set -euo pipefail
 DOMAIN="${1:?usage: server-setup.sh <domain>}"
 APP_DIR=/opt/helpdesk-ai
 REPO=https://github.com/p1rogram/helpdesk-ai.git
+
+# AI: Needs root (apt, /opt, ufw). When run via `sudo`, the invoking user gets docker access:
+# the CI/CD pipeline logs in as that user and runs docker compose.
+if [ "$(id -u)" -ne 0 ]; then
+  echo "run with sudo:  curl -fsSL <url> | sudo bash -s -- <domain>" >&2
+  exit 1
+fi
+DEPLOY_USER="${SUDO_USER:-}"
 
 if ! command -v docker >/dev/null; then
   curl -fsSL https://get.docker.com | sh
@@ -16,6 +24,11 @@ if [ ! -d "$APP_DIR/.git" ]; then
   git clone "$REPO" "$APP_DIR"
 fi
 cd "$APP_DIR"
+if [ -n "$DEPLOY_USER" ] && [ "$DEPLOY_USER" != "root" ]; then
+  usermod -aG docker "$DEPLOY_USER"
+  chown -R "$DEPLOY_USER":"$DEPLOY_USER" "$APP_DIR"
+  echo ">>> $DEPLOY_USER added to the docker group (takes effect on next login)."
+fi
 
 if [ ! -f .env ]; then
   cp .env.example .env

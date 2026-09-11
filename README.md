@@ -212,8 +212,8 @@ npm run dev:web               # http://localhost:5173
 **Сервер:** образы на сервере не собираются, их публикует CI/CD. Порядок первого запуска:
 
 ```bash
-# на сервере, под root
-curl -fsSL https://raw.githubusercontent.com/p1rogram/helpdesk-ai/master/deploy/server-setup.sh | bash -s -- DOMAIN
+# на сервере
+curl -fsSL https://raw.githubusercontent.com/p1rogram/helpdesk-ai/master/deploy/server-setup.sh | sudo bash -s -- DOMAIN
 nano /opt/helpdesk-ai/.env      # ANTHROPIC_API_KEY, LLM_BASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, ADMIN_USERS
 ```
 
