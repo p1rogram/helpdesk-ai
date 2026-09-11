@@ -85,6 +85,11 @@ jobs:
             git fetch --all --prune
             git reset --hard origin/master
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # AI: Pin the deployed tag in .env too, so a manual `docker compose up -d` on the server
+            # keeps using the same images as the last deploy instead of a stale :latest.
+            sed -i '/^IMAGE_PREFIX=/d;/^IMAGE_TAG=/d' .env
+            echo 'IMAGE_PREFIX=${{ env.IMAGE_PREFIX }}' >> .env
+            echo 'IMAGE_TAG=${{ github.sha }}' >> .env
             export IMAGE_PREFIX=${{ env.IMAGE_PREFIX }} IMAGE_TAG=${{ github.sha }}
             docker compose pull api worker web
             docker compose up -d --remove-orphans
