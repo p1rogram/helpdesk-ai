@@ -77,7 +77,11 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             set -e
-            cd ${{ secrets.APP_DIR }}
+            APP_DIR='${{ secrets.APP_DIR }}'
+            if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR/.git" ]; then
+              echo "APP_DIR secret is empty or '$APP_DIR' is not a git clone - run deploy/server-setup.sh first"; exit 1
+            fi
+            cd "$APP_DIR"
             git fetch --all --prune
             git reset --hard origin/master
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
