@@ -1,5 +1,7 @@
-# AI: Auto-HTTPS (Let's Encrypt) for DOMAIN. Mini Apps require HTTPS.
-{$DOMAIN} {
+# AI: SITE_ADDRESS is either the domain (Caddy gets a Let's Encrypt certificate itself) or ":80"
+# when an external nginx terminates TLS and proxies to this container. Mini Apps require HTTPS
+# on the outside either way.
+{$SITE_ADDRESS} {
 	encode zstd gzip
 
 	# AI: Security headers for the SPA. frame-ancestors lets Telegram embed the Mini App.

@@ -217,6 +217,10 @@ curl -fsSL https://raw.githubusercontent.com/p1rogram/helpdesk-ai/master/deploy/
 nano /opt/helpdesk-ai/.env      # ANTHROPIC_API_KEY, LLM_BASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, ADMIN_USERS
 ```
 
+Если на сервере уже есть nginx, в `.env` раскомментировать `WEB_HTTP_BIND`, `WEB_HTTPS_BIND`,
+`SITE_ADDRESS` (web слушает только `127.0.0.1:8081`) и отдать администратору nginx
+[deploy/nginx.conf](deploy/nginx.conf) — TLS и порты 80/443 остаются за ним.
+
 Затем в GitHub: секреты `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD` (или `SSH_KEY`), `APP_DIR=/opt/helpdesk-ai`
 и push в `master` (или Actions → Deploy → Run workflow). Дальше всё делает пайплайн: сборка образов,
 публикация в GHCR, `docker compose pull && up -d` на сервере, ожидание `/health`.

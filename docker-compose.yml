@@ -96,9 +96,13 @@ services:
   web:
     image: ${IMAGE_PREFIX:-ghcr.io/p1rogram/helpdesk-ai}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    ports: ['80:80', '443:443']
+    # AI: Standalone: 80/443 on all interfaces, Caddy does HTTPS. Behind an existing nginx: set
+    # WEB_HTTP_BIND=127.0.0.1:8081 (and SITE_ADDRESS=:80) - nginx terminates TLS, see deploy/nginx.conf.
+    ports:
+      - '${WEB_HTTP_BIND:-80}:80'
+      - '${WEB_HTTPS_BIND:-443}:443'
     environment:
-      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      SITE_ADDRESS: ${SITE_ADDRESS:-${DOMAIN:?set DOMAIN in .env}}
     volumes:
       - caddydata:/data
       - caddyconfig:/config
