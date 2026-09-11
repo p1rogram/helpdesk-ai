@@ -1,0 +1,95 @@
+(node:14928) [FSTDEP023] FastifyDeprecation: disableRequestLogging option is deprecated. Use the logController option with disableRequestLogging or isLogDisabled override instead. The disableRequestLogging top-level option will be removed in `fastify@6`.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[04:36:50.238] [32mINFO[39m (14928): [36mdatabase: pglite[39m
+[04:36:50.239] [32mINFO[39m (14928): [36mevent bus: in-memory[39m
+[04:36:50.239] [32mINFO[39m (14928): [36mdev notifier: in-process Telegram notifications enabled (EVENT_BUS=memory)[39m
+[04:36:50.343] [32mINFO[39m (14928): [36mcatalog seeded: it-support (7 categories, 20 articles)[39m
+[04:36:50.409] [32mINFO[39m (14928): [36mcatalog seeded: tpu (11 categories, 55 articles)[39m
+[04:36:50.410] [32mINFO[39m (14928): [36mllm: claude-opus-5 (effort=low) via https://shprotoness-ai.jq9gfk.workers.dev[39m
+[04:36:50.410] [32mINFO[39m (14928): [36mhelpdesk connector: none[39m
+[04:36:50.410] [32mINFO[39m (14928): [36mauth platforms: telegram, web[39m
+[04:36:50.410] [33mWARN[39m (14928): [36mOPERATOR_OPEN_ACCESS=true - the operator console is open to every user (demo mode)[39m
+[04:36:50.410] [32mINFO[39m (14928): [36mcorporate auth: none (socket ready)[39m
+[04:36:50.463] [32mINFO[39m (14928): [36mServer listening at http://127.0.0.1:8080[39m
+[04:36:50.463] [32mINFO[39m (14928): [36mServer listening at http://192.168.1.188:8080[39m
+[04:36:58.749] [32mINFO[39m (14928): [36mincoming request[39m
+    [35mreqId[39m: "req-1"
+    [35mreq[39m: {
+      "method": "POST",
+      "url": "/api/auth/dev",
+      "id": "req-1"
+    }
+[04:36:58.766] [32mINFO[39m (14928): [36mrequest completed[39m
+    [35mreqId[39m: "req-1"
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 17.44510000000082
+[04:37:00.818] [32mINFO[39m (14928): [36mincoming request[39m
+    [35mreqId[39m: "req-2"
+    [35mreq[39m: {
+      "method": "POST",
+      "url": "/api/tickets?new=1",
+      "id": "req-2"
+    }
+[04:37:00.830] [32mINFO[39m (14928): [36mrequest completed[39m
+    [35mreqId[39m: "req-2"
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 11.742599999999584
+[04:37:02.851] [32mINFO[39m (14928): [36mincoming request[39m
+    [35mreqId[39m: "req-3"
+    [35mreq[39m: {
+      "method": "POST",
+      "url": "/api/tickets/46d05d55-f505-4a27-8d60-ce49df58ef68/messages",
+      "id": "req-3"
+    }
+[04:37:15.718] [34mDEBUG[39m (14928): [36mllm usage[39m
+    [35moperation[39m: "analyze"
+    [35mmodel[39m: "claude-opus-5"
+    [35minputTokens[39m: 616
+    [35moutputTokens[39m: 660
+    [35mcacheReadTokens[39m: 0
+    [35mcacheWriteTokens[39m: 7414
+    [35mlatencyMs[39m: 12857
+[04:37:15.736] [32mINFO[39m (14928): [36mrequest completed[39m
+    [35mreqId[39m: "req-3"
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 12884.215
+[04:37:17.771] [32mINFO[39m (14928): [36mincoming request[39m
+    [35mreqId[39m: "req-4"
+    [35mreq[39m: {
+      "method": "POST",
+      "url": "/api/tickets?new=1",
+      "id": "req-4"
+    }
+[04:37:17.779] [32mINFO[39m (14928): [36mrequest completed[39m
+    [35mreqId[39m: "req-4"
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 8.0583000000006
+[04:37:19.825] [32mINFO[39m (14928): [36mincoming request[39m
+    [35mreqId[39m: "req-5"
+    [35mreq[39m: {
+      "method": "POST",
+      "url": "/api/tickets/90f55f09-fd9d-4905-9d17-b0f8dccb1c92/messages",
+      "id": "req-5"
+    }
+[04:37:36.020] [34mDEBUG[39m (14928): [36mllm usage[39m
+    [35moperation[39m: "analyze"
+    [35mmodel[39m: "claude-opus-5"
+    [35minputTokens[39m: 617
+    [35moutputTokens[39m: 1024
+    [35mcacheReadTokens[39m: 7414
+    [35mcacheWriteTokens[39m: 0
+    [35mlatencyMs[39m: 16188
+[04:37:36.031] [32mINFO[39m (14928): [36mrequest completed[39m
+    [35mreqId[39m: "req-5"
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 16205.3704
