@@ -93,7 +93,8 @@ jobs:
             export IMAGE_PREFIX=${{ env.IMAGE_PREFIX }} IMAGE_TAG=${{ github.sha }}
             docker compose pull api worker web
             docker compose up -d --remove-orphans
-            docker image prune -f
+            # AI: Drop every image no container uses - each deploy brings ~1.5 GB of new layers.
+            docker image prune -af
             for i in $(seq 1 30); do
               curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && exit 0 || sleep 2
             done
