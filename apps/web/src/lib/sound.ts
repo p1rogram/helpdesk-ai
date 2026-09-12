@@ -18,7 +18,9 @@ const SFX_SOURCES = ['/sounds/click.mp3', '/sounds/click.wav'];
 const SEND_SOURCES = ['/sounds/send.mp3', '/sounds/click.wav'];
 const RECEIVE_SOURCES = ['/sounds/receive.mp3', '/sounds/click.wav'];
 const MUSIC_SOURCES = ['/sounds/bg.mp3', '/sounds/bg.ogg'];
-const MUSIC_VOLUME = 0.2;
+/** AI: Еле слышно: фон, а не музыка. Включается плавно, чтобы не выскакивать. */
+const MUSIC_VOLUME = 0.06;
+const MUSIC_FADE_MS = 2500;
 
 export function getSoundSettings(): SoundSettings {
   try {
@@ -102,6 +104,16 @@ export function playTap(): void {
   }
 }
 
+function fadeTo(a: HTMLAudioElement, target: number): void {
+  const start = performance.now();
+  const step = (t: number) => {
+    const p = Math.min(1, (t - start) / MUSIC_FADE_MS);
+    a.volume = target * p;
+    if (p < 1 && !a.paused) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 function play(a: HTMLAudioElement): void {
   try {
     a.currentTime = 0;
@@ -130,9 +142,14 @@ export function applySoundSettings(s: SoundSettings): void {
     receiveElement().load();
   }
   if (s.music) {
-    void musicElement()
-      .play()
-      .catch(() => undefined);
+    const m = musicElement();
+    if (m.paused) {
+      m.volume = 0;
+      void m
+        .play()
+        .then(() => fadeTo(m, MUSIC_VOLUME))
+        .catch(() => undefined);
+    }
   } else if (music) {
     music.pause();
   }
@@ -148,7 +165,13 @@ export function installSoundHooks(): () => void {
     const el = e.target as HTMLElement | null;
     if (!el?.closest('button, [role="button"], a.btn')) return;
     playTap();
-    if (current.music && music?.paused) void music.play().catch(() => undefined);
+    if (current.music && music?.paused) {
+      music.volume = 0;
+      void music
+        .play()
+        .then(() => fadeTo(music!, MUSIC_VOLUME))
+        .catch(() => undefined);
+    }
   };
   document.addEventListener('click', onClick, true);
   return () => document.removeEventListener('click', onClick, true);
