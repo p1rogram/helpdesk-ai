@@ -14,8 +14,9 @@ export interface SoundSettings {
 const KEY = 'helpdesk.sound';
 /** AI: Побеждает первый существующий источник: mp3 команды, иначе встроенная wav-заглушка. */
 const SFX_SOURCES = ['/sounds/click.mp3', '/sounds/click.wav'];
-/** AI: Отправка и получение сообщения - один и тот же короткий звук. */
-const MESSAGE_SOURCES = ['/sounds/message.mp3', '/sounds/click.wav'];
+/** AI: Отправка и получение сообщения - два разных звука. */
+const SEND_SOURCES = ['/sounds/send.mp3', '/sounds/click.wav'];
+const RECEIVE_SOURCES = ['/sounds/receive.mp3', '/sounds/click.wav'];
 const MUSIC_SOURCES = ['/sounds/bg.mp3', '/sounds/bg.ogg'];
 const MUSIC_VOLUME = 0.2;
 
@@ -40,7 +41,8 @@ export function setSoundSettings(s: SoundSettings): void {
 }
 
 let sfx: HTMLAudioElement | null = null;
-let msg: HTMLAudioElement | null = null;
+let sendEl: HTMLAudioElement | null = null;
+let receiveEl: HTMLAudioElement | null = null;
 let music: HTMLAudioElement | null = null;
 let current: SoundSettings = { sfx: false, music: false };
 
@@ -63,12 +65,20 @@ function sfxElement(): HTMLAudioElement {
   return sfx;
 }
 
-function messageElement(): HTMLAudioElement {
-  if (!msg) {
-    msg = audioWithSources(MESSAGE_SOURCES);
-    msg.volume = 0.7;
+function sendElement(): HTMLAudioElement {
+  if (!sendEl) {
+    sendEl = audioWithSources(SEND_SOURCES);
+    sendEl.volume = 0.7;
   }
-  return msg;
+  return sendEl;
+}
+
+function receiveElement(): HTMLAudioElement {
+  if (!receiveEl) {
+    receiveEl = audioWithSources(RECEIVE_SOURCES);
+    receiveEl.volume = 0.7;
+  }
+  return receiveEl;
 }
 
 function musicElement(): HTMLAudioElement {
@@ -92,11 +102,8 @@ export function playTap(): void {
   }
 }
 
-/** AI: Звук сообщения: своё отправлено или пришёл ответ (помощника или специалиста). */
-export function playMessage(): void {
-  if (!current.sfx) return;
+function play(a: HTMLAudioElement): void {
   try {
-    const a = messageElement();
     a.currentTime = 0;
     void a.play().catch(() => undefined);
   } catch {
@@ -104,12 +111,23 @@ export function playMessage(): void {
   }
 }
 
+/** AI: Своё сообщение отправлено. */
+export function playSend(): void {
+  if (current.sfx) play(sendElement());
+}
+
+/** AI: Пришёл ответ - помощника или специалиста. */
+export function playReceive(): void {
+  if (current.sfx) play(receiveElement());
+}
+
 /** AI: Музыка запускается здесь (нужен жест); пауза происходит сразу при выключении. */
 export function applySoundSettings(s: SoundSettings): void {
   current = s;
   if (s.sfx) {
     sfxElement().load();
-    messageElement().load();
+    sendElement().load();
+    receiveElement().load();
   }
   if (s.music) {
     void musicElement()
