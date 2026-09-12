@@ -294,7 +294,8 @@
           "options": ["Да, срочно", "Нет, плановая проблема"],
           "required": false
         }
-      ]
+      ],
+      "escalation": "helpdesk"
     },
     {
       "id": "access",

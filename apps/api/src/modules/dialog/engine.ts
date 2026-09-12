@@ -114,6 +114,11 @@ export class DialogEngine {
         yield* this.reply(ticket, catalog, T.withOperator(), QR_ESCALATED);
         return;
       }
+      if (ticket.escalatedTo === 'helpdesk' && !looksLikeWithdrawal(text)) {
+        // AI: Заявка в сервис-деске: здесь её никто не читает, честно направляем на портал.
+        yield* this.reply(ticket, catalog, T.withHelpdesk(), QR_ESCALATED);
+        return;
+      }
       const touched = await this.d.tickets.update(ticket.id, { updatedAt: new Date() });
       await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
         ...eventBase(ticket.id, user.id),
@@ -329,6 +334,8 @@ export class DialogEngine {
       pendingField: null,
       priority: bumpPriority(ticket.priority, tone),
       summary,
+      // AI: Комплексность запоминаем «липко»: раз модель её увидела - заявка пойдёт человеку.
+      complex: ticket.complex || analysis.complex === true,
     });
     this.d.log.info(
       {
@@ -1092,6 +1099,10 @@ export class DialogEngine {
       yield* this.askMissing(ticket, catalog, missing, { beforeEscalation: reason });
       return;
     }
+    // AI: Маршрут заявки: бытовые категории (общежития, корпуса) - в сервис-деск help.tpu.ru;
+    // всё остальное и любая комплексная проблема - живому специалисту в консоль.
+    const target: 'helpdesk' | 'operator' =
+      !ticket.complex && category?.escalation === 'helpdesk' ? 'helpdesk' : 'operator';
     yield { type: 'status', text: 'Создаю заявку…' };
     // AI: Сначала создаём заявку во внешнем helpdesk, чтобы на карточке был настоящий номер.
     let external: { externalId: string; url?: string } | null = null;
@@ -1114,7 +1125,8 @@ export class DialogEngine {
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'escalated',
       escalated: true,
-      handledBy: 'operator',
+      escalatedTo: target,
+      handledBy: target === 'operator' ? 'operator' : 'ai',
       escalationReason: reason,
       pendingEscalation: null,
       pendingFields: [],
@@ -1130,6 +1142,8 @@ export class DialogEngine {
       {
         ticketId: ticket.id,
         reason,
+        target,
+        complex: ticket.complex,
         externalId: ticket.externalId,
         helpdesk: this.d.helpdesk.kind,
       },
@@ -1147,7 +1161,10 @@ export class DialogEngine {
       ticketId: ticket.id,
       platform: user.platform as 'telegram' | 'vk' | 'max' | 'web',
       platformUserId: user.platformUserId,
-      text: `Заявка №${card.externalId ?? ticket.id.slice(0, 8).toUpperCase()} создана и передана специалисту. Ответ придёт в этот чат.`,
+      text:
+        target === 'helpdesk'
+          ? `Заявка №${card.externalId ?? ticket.id.slice(0, 8).toUpperCase()} отправлена в службу поддержки ТПУ (help.tpu.ru).`
+          : `Заявка №${card.externalId ?? ticket.id.slice(0, 8).toUpperCase()} создана и передана специалисту. Ответ придёт в этот чат.`,
     });
     yield { type: 'meta', ticket: card };
     yield* this.reply(

@@ -60,6 +60,7 @@ export class CatalogRepository {
         name: c.name,
         description: c.description,
         priority: c.priority as Category['priority'],
+        escalation: (c.escalation ?? 'operator') as Category['escalation'],
         clarify: c.clarify,
       })),
       articles: arts.map((a) => ({
@@ -117,6 +118,7 @@ export class CatalogRepository {
           name: c.name,
           description: c.description,
           priority: c.priority,
+          escalation: c.escalation,
           clarify: c.clarify,
           sortOrder: i,
         })),

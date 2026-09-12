@@ -102,7 +102,9 @@ export function HistoryScreen(props: {
           const chip =
             t.state === 'closed' && t.closedBy === 'user'
               ? { label: 'Закрыто', cls: 'muted' }
-              : STATE_CHIP[t.state];
+              : t.state === 'escalated' && t.escalatedTo === 'helpdesk'
+                ? { label: 'Заявка в help.tpu.ru', cls: 'danger' }
+                : STATE_CHIP[t.state];
           return (
             <div
               key={t.id}

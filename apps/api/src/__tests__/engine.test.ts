@@ -426,6 +426,48 @@ describe('DialogEngine', () => {
     expect(r3.ticket.state).toBe('solving');
   });
 
+  it('routes a household problem to help.tpu.ru and a complex one to a live operator', async () => {
+    // AI: Dorm appliance: the campus category sends requests to the service desk, not the console.
+    const { user, ticket } = await fresh();
+    await tickets.update(ticket.id, { clarificationsAsked: 2 });
+    llm.queue.push({
+      categoryId: 'campus',
+      summary: 'Сломался холодильник',
+      fields: { building: 'общежитие №12', room: 'комната 305' },
+    });
+    const t1 = (await tickets.get(ticket.id, user.id))!;
+    await collect(engine.handle(t1, user, 'в общаге 12 в комнате 305 сломался холодильник'));
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r = await collect(engine.handle(t2, user, CMD.human));
+    expect(r.ticket.state).toBe('escalated');
+    expect(r.ticket.escalatedTo).toBe('helpdesk');
+    expect(r.text).toMatch(/help\.tpu\.ru/);
+    const queue = await tickets.listForOperator('tpu');
+    expect(queue.some((q) => q.ticket.id === ticket.id)).toBe(false);
+
+    // AI: A message afterwards is not silently forwarded - the request lives on the portal.
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    const r3 = await collect(engine.handle(t3, user, 'а ещё дверца отвалилась'));
+    expect(r3.text).toMatch(/help\.tpu\.ru/);
+
+    // AI: Same category, but the model flagged the case as complex: a live specialist takes it.
+    const c = await fresh();
+    await tickets.update(c.ticket.id, { clarificationsAsked: 2 });
+    llm.queue.push({
+      categoryId: 'campus',
+      summary: 'Конфликт с соседями и комендантом',
+      complex: true,
+      fields: { building: 'общежитие №12', room: 'комната 305' },
+    });
+    const ct1 = (await tickets.get(c.ticket.id, c.user.id))!;
+    await collect(engine.handle(ct1, c.user, 'сосед угрожает, комендант не реагирует, общага 12 комната 305'));
+    const ct2 = (await tickets.get(c.ticket.id, c.user.id))!;
+    const cr = await collect(engine.handle(ct2, c.user, CMD.human));
+    expect(cr.ticket.escalatedTo).toBe('operator');
+    const queue2 = await tickets.listForOperator('tpu');
+    expect(queue2.some((q) => q.ticket.id === c.ticket.id)).toBe(true);
+  });
+
   it('treats a short campus-life question as a real request (catalog, model down)', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push(new LlmUnavailableError('down'));

@@ -244,7 +244,11 @@ export function ChatScreen(props: {
       )}
       {ticket?.state === 'escalated' && (
         <div className="escalated-bar">
-          <span>Обращение у специалиста</span>
+          <span>
+            {ticket.escalatedTo === 'helpdesk'
+              ? 'Заявка в службе поддержки'
+              : 'Обращение у специалиста'}
+          </span>
           <button className="pill-btn" disabled={busy} onClick={() => void closeTicket()}>
             Закрыть обращение
           </button>
@@ -257,7 +261,9 @@ export function ChatScreen(props: {
           closed
             ? 'Обращение закрыто'
             : ticket?.state === 'escalated'
-              ? 'Написать специалисту…'
+              ? ticket.escalatedTo === 'helpdesk'
+                ? 'Заявка на help.tpu.ru…'
+                : 'Написать специалисту…'
               : 'Опишите проблему…'
         }
         onSend={(t) => send(t)}
@@ -279,6 +285,8 @@ function StateChip({ ticket }: { ticket: TicketCard }) {
   const [label, cls] =
     ticket.state === 'closed' && ticket.closedBy === 'user'
       ? ['Закрыто', 'muted']
-      : map[ticket.state];
+      : ticket.state === 'escalated' && ticket.escalatedTo === 'helpdesk'
+        ? ['Заявка в help.tpu.ru', 'danger']
+        : map[ticket.state];
   return <span className={`chip ${cls}`}>{label}</span>;
 }

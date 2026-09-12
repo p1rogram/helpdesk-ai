@@ -53,6 +53,8 @@ export async function ensureSchema(db: Db): Promise<void> {
     'busy_until TIMESTAMPTZ',
     "pending_problems JSONB NOT NULL DEFAULT '[]'",
     "pending_fields JSONB NOT NULL DEFAULT '[]'",
+    'escalated_to TEXT',
+    'complex BOOLEAN NOT NULL DEFAULT false',
   ]) {
     await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
   }
@@ -62,6 +64,11 @@ export async function ensureSchema(db: Db): Promise<void> {
     ),
   );
   await db.execute(sql.raw('ALTER TABLE tenants ADD COLUMN IF NOT EXISTS seed_hash TEXT'));
+  await db.execute(
+    sql.raw(
+      "ALTER TABLE categories ADD COLUMN IF NOT EXISTS escalation TEXT NOT NULL DEFAULT 'operator'",
+    ),
+  );
 }
 
 const DDL: string[] = [

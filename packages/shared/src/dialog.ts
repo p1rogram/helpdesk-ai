@@ -55,6 +55,11 @@ export const AnalysisSchema = z.object({
    * каждая коротко, 2-3 штуки. Пусто или одна, когда проблема одна.
    */
   problems: z.array(z.string()).optional(),
+  /**
+   * AI: Проблема комплексная: затрагивает несколько систем или людей, требует разбирательства или
+   * прав доступа и не решается инструкцией. Такое уходит живому специалисту, а не в сервис-деск.
+   */
+  complex: z.boolean().optional(),
 });
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
@@ -87,6 +92,8 @@ export const TicketCardSchema = z.object({
   pendingFields: z.array(z.string()),
   /** AI: Проблемы из того же сообщения, до которых ещё не дошли (по одной на обращение). */
   pendingProblems: z.array(z.string()),
+  /** AI: Куда ушла заявка: живому специалисту в консоль или во внешний сервис-деск. */
+  escalatedTo: z.enum(['operator', 'helpdesk']).nullable(),
   /** AI: Кто завершил тикет: помощник (решено), специалист или пользователь (отозвано). */
   closedBy: z.enum(['assistant', 'operator', 'user']).nullable(),
   /** AI: Кто сейчас владеет диалогом. Пока 'operator', помощник молчит. */

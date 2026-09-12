@@ -50,6 +50,8 @@ export const categories = pgTable(
     name: text('name').notNull(),
     description: text('description').notNull(),
     priority: text('priority').notNull().default('normal'),
+    /** AI: 'helpdesk' | 'operator' - куда уходит заявка по этой категории. */
+    escalation: text('escalation').notNull().default('operator'),
     clarify: jsonb('clarify').$type<ClarifyingField[]>().notNull().default([]),
     sortOrder: integer('sort_order').notNull().default(0),
   },
@@ -147,6 +149,10 @@ export const tickets = pgTable(
     resolved: boolean('resolved').notNull().default(false),
     escalated: boolean('escalated').notNull().default(false),
     escalationReason: text('escalation_reason'),
+    /** AI: 'operator' | 'helpdesk' - кому ушла заявка. */
+    escalatedTo: text('escalated_to'),
+    /** AI: Оценка модели: проблема комплексная - к живому специалисту, не в сервис-деск. */
+    complex: boolean('complex').notNull().default(false),
     /** AI: 'ai' | 'operator' - пока 'operator', помощник в этом тикете не отвечает. */
     handledBy: text('handled_by').notNull().default('ai'),
     /** AI: Оператор вернул тикет помощнику и запретил повторную передачу. */

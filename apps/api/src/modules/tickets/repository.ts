@@ -127,6 +127,8 @@ export class TicketRepository {
         and(
           eq(tickets.tenantId, tenantId),
           eq(tickets.escalated, true),
+          // AI: Заявки, ушедшие в сервис-деск, живут там; в консоли только то, что ждёт человека здесь.
+          eq(tickets.escalatedTo, 'operator'),
           inArray(tickets.state, ['escalated', 'closed']),
         ),
       )
@@ -282,6 +284,7 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     closedBy: t.closedBy as TicketCard['closedBy'],
     pendingProblems: t.pendingProblems ?? [],
     pendingFields: t.pendingFields ?? [],
+    escalatedTo: t.escalatedTo as TicketCard['escalatedTo'],
     handledBy: t.handledBy as 'ai' | 'operator',
     escalationBlocked: t.escalationBlocked,
     externalId: t.externalId,

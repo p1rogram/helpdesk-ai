@@ -77,6 +77,12 @@ export const CategorySchema = z.object({
   clarify: z.array(ClarifyingFieldSchema).default([]),
   /** AI: Приоритет по умолчанию для тикетов этой категории. */
   priority: z.enum(['low', 'normal', 'high']).default('normal'),
+  /**
+   * AI: Куда уходит заявка, когда помощник не справился: 'helpdesk' - во внешний сервис-деск
+   * (help.tpu.ru; бытовые вопросы общежитий и корпусов), 'operator' - живому специалисту в
+   * консоль. Комплексная проблема (по оценке модели) идёт к оператору независимо от категории.
+   */
+  escalation: z.enum(['helpdesk', 'operator']).default('operator'),
 });
 
 export const CatalogSchema = z.object({
