@@ -408,7 +408,7 @@ describe('DialogEngine', () => {
     expect(r1.text).toMatch(/уточните:/);
     expect(r1.text).toMatch(/студент или сотрудник/i);
     expect(r1.text).toMatch(/какому ресурсу/i);
-    expect(r1.quick.map((q) => q.label)).toEqual(['Студент', 'Сотрудник']); // buttons for the option field
+    expect(r1.quick).toEqual([]); // several questions - answered in text, no buttons
 
     // AI: One answer covers one question; the raw text is not written into the other field.
     const t2 = (await tickets.get(ticket.id, user.id))!;

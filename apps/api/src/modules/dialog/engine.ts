@@ -504,8 +504,8 @@ export class DialogEngine {
   /**
    * AI: Все недостающие поля - одним сообщением, а не по одному: человек отвечает как ему удобно
    * (хоть на всё сразу, хоть частями). Движок помнит, какие вопросы открыты (`pendingFields`),
-   * и на следующем круге спрашивает только то, чего всё ещё нет. Кнопки - у первого открытого
-   * поля с вариантами. Круг = одно сообщение, лимит кругов - MAX_CLARIFICATIONS.
+   * и на следующем круге спрашивает только то, чего всё ещё нет. Кнопки появляются, только когда
+   * открыт один вопрос с вариантами. Круг = одно сообщение, лимит кругов - MAX_CLARIFICATIONS.
    */
   private async *askMissing(
     ticket: TicketRow,
@@ -514,7 +514,8 @@ export class DialogEngine {
     opts: { lead?: string; beforeEscalation?: EscalationReason } = {},
   ): AsyncGenerator<ChatStreamEvent> {
     const again = ticket.state === 'clarifying' && ticket.pendingFields.length > 0;
-    const withOptions = missing.find((f) => f.options?.length);
+    // AI: Кнопки только когда открыт один вопрос: на список из нескольких отвечают текстом.
+    const withOptions = missing.length === 1 ? missing[0] : undefined;
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'clarifying',
       pendingField: missing[0]!.id,
