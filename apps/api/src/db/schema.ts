@@ -138,6 +138,8 @@ export const tickets = pgTable(
     clarificationsAsked: integer('clarifications_asked').notNull().default(0),
     /** AI: Поле уточнения, о котором был последний вопрос (ответ ложится в этот ключ). */
     pendingField: text('pending_field'),
+    /** AI: Все поля, которые спросили одним сообщением и ещё ждут ответа (ids). */
+    pendingFields: jsonb('pending_fields').$type<string[]>().notNull().default([]),
     /** AI: Текущая статья, показанная пользователю. */
     articleId: text('article_id'),
     /** AI: Статьи, которые уже пробовали и отвергли («не помогло»). */

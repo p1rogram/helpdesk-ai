@@ -89,6 +89,19 @@ export const T = {
   clarify: (question: string) => question,
 
   /**
+   * AI: Всё, чего не хватает, - одним сообщением: человек отвечает как удобно, хоть на всё сразу.
+   * Один вопрос - просто вопрос, без списка.
+   */
+  clarifyList: (questions: string[], lead = 'Чтобы подобрать решение, уточните:') =>
+    questions.length === 1 ? questions[0]! : [lead, ...questions.map((q) => `• ${q}`)].join('\n'),
+
+  /** AI: Второй круг: только то, на что ответа ещё нет; уже сказанное не переспрашиваем. */
+  clarifyRemaining: (questions: string[]) =>
+    questions.length === 1
+      ? `Осталось уточнить: ${lowerFirst(questions[0]!)}`
+      : ['Осталось уточнить:', ...questions.map((q) => `• ${q}`)].join('\n'),
+
+  /**
    * AI: Один вопрос перед передачей, чтобы специалист получил тикет, с которым можно сразу
    * работать.
    */
@@ -128,8 +141,13 @@ export const T = {
   tooManyHumanCalls: (limit: number) =>
     `Сегодня вы уже ${limit} ${plural(limit, 'раз', 'раза', 'раз')} звали специалиста - больше не получится до завтра. Давайте разберёмся здесь: расскажите подробнее, и я подберу решение по базе знаний.`,
 
-  clarifyBeforeEscalation: (question: string) =>
-    `Передам специалисту. Чтобы он сразу приступил, уточните: ${lowerFirst(question)}`,
+  clarifyBeforeEscalation: (questions: string[]) =>
+    questions.length === 1
+      ? `Передам специалисту. Чтобы он сразу приступил, уточните: ${lowerFirst(questions[0]!)}`
+      : [
+          'Передам специалисту. Чтобы он сразу приступил, уточните:',
+          ...questions.map((q) => `• ${q}`),
+        ].join('\n'),
 
   clarifyButtons: (options?: string[]): QuickReply[] | undefined =>
     options?.map((o) => ({ label: o, value: o })),

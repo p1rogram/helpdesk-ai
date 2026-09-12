@@ -281,6 +281,7 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     rating: t.rating,
     closedBy: t.closedBy as TicketCard['closedBy'],
     pendingProblems: t.pendingProblems ?? [],
+    pendingFields: t.pendingFields ?? [],
     handledBy: t.handledBy as 'ai' | 'operator',
     escalationBlocked: t.escalationBlocked,
     externalId: t.externalId,

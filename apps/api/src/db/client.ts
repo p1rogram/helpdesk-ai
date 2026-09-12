@@ -52,6 +52,7 @@ export async function ensureSchema(db: Db): Promise<void> {
     'closed_by TEXT',
     'busy_until TIMESTAMPTZ',
     "pending_problems JSONB NOT NULL DEFAULT '[]'",
+    "pending_fields JSONB NOT NULL DEFAULT '[]'",
   ]) {
     await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
   }

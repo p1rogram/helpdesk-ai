@@ -83,6 +83,8 @@ export const TicketCardSchema = z.object({
   resolved: z.boolean(),
   escalated: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
+  /** AI: Вопросы, заданные одним сообщением и ещё ждущие ответа (ids полей). */
+  pendingFields: z.array(z.string()),
   /** AI: Проблемы из того же сообщения, до которых ещё не дошли (по одной на обращение). */
   pendingProblems: z.array(z.string()),
   /** AI: Кто завершил тикет: помощник (решено), специалист или пользователь (отозвано). */

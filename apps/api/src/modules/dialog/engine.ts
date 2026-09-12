@@ -8,6 +8,7 @@ import type {
   Tone,
 } from '@helpdesk/shared';
 import { TOPICS } from '@helpdesk/shared';
+import type { ClarifyingField } from '@helpdesk/shared';
 import type { TicketRow, UserRow } from '../../db/schema.js';
 import { eventBase, type EventBus } from '../events/index.js';
 import type { KnowledgeService, LoadedCatalog } from '../knowledge/index.js';
@@ -224,13 +225,18 @@ export class DialogEngine {
 
     // ---------- ответ кнопкой на уточняющий вопрос: модель не нужна ----------
     if (ticket.state === 'clarifying' && ticket.pendingField && ticket.categoryId) {
+      const open = new Set(
+        ticket.pendingFields.length ? ticket.pendingFields : [ticket.pendingField],
+      );
       const field = catalog.categoryById
         .get(ticket.categoryId)
-        ?.clarify.find((f) => f.id === ticket.pendingField);
+        ?.clarify.find(
+          (f) => open.has(f.id) && f.options?.some((o) => o.toLowerCase() === text.toLowerCase()),
+        );
       const option = field?.options?.find((o) => o.toLowerCase() === text.toLowerCase());
-      if (option) {
+      if (field && option) {
         ticket = await this.d.tickets.update(ticket.id, {
-          fields: { ...ticket.fields, [field!.id]: option },
+          fields: { ...ticket.fields, [field.id]: option },
           pendingField: null,
         });
         yield* this.advance(ticket, user, catalog, text);
@@ -299,8 +305,15 @@ export class DialogEngine {
       ...ticket.fields,
       ...validateFields(knownCategory?.clarify ?? [], cleanFields(analysis.fields)).fields,
     };
-    if (ticket.state === 'clarifying' && ticket.pendingField && !fields[ticket.pendingField]) {
-      // AI: Пользователь ответил на наш вопрос свободным текстом - сохраняем ответ как есть.
+    if (
+      ticket.state === 'clarifying' &&
+      ticket.pendingField &&
+      !fields[ticket.pendingField] &&
+      ticket.pendingFields.length <= 1 &&
+      !Object.keys(cleanFields(analysis.fields)).length
+    ) {
+      // AI: Открыт один вопрос, и пользователь ответил свободным текстом - сохраняем ответ как есть.
+      // Когда вопросов несколько, сырой текст никуда не пишем: поля приходят из извлечения.
       fields[ticket.pendingField] = text.slice(0, 200);
     }
     // AI: Суть обращения: никогда из болтовни; уточняется, пока проблема ещё понимается, и
@@ -482,23 +495,50 @@ export class DialogEngine {
       (f) => isRequired(f, ticket.fields) && !ticket.fields[f.id],
     );
     if (missing.length && ticket.clarificationsAsked < this.d.config.maxClarifications) {
-      const field = missing[0]!;
-      ticket = await this.d.tickets.update(ticket.id, {
-        state: 'clarifying',
-        pendingField: field.id,
-        clarificationsAsked: ticket.clarificationsAsked + 1,
-      });
-      yield { type: 'meta', ticket: toCard(ticket, catalog) };
-      this.d.log.info({ ticketId: ticket.id, field: field.id }, 'clarification asked');
-      yield* this.reply(
-        ticket,
-        catalog,
-        (lead ? lead + '\n\n' : '') + T.clarify(field.question),
-        T.clarifyButtons(field.options),
-      );
+      yield* this.askMissing(ticket, catalog, missing, { lead });
       return;
     }
     yield* this.solve(ticket, user, catalog, lastText, llmDown, lead);
+  }
+
+  /**
+   * AI: Все недостающие поля - одним сообщением, а не по одному: человек отвечает как ему удобно
+   * (хоть на всё сразу, хоть частями). Движок помнит, какие вопросы открыты (`pendingFields`),
+   * и на следующем круге спрашивает только то, чего всё ещё нет. Кнопки - у первого открытого
+   * поля с вариантами. Круг = одно сообщение, лимит кругов - MAX_CLARIFICATIONS.
+   */
+  private async *askMissing(
+    ticket: TicketRow,
+    catalog: LoadedCatalog,
+    missing: ClarifyingField[],
+    opts: { lead?: string; beforeEscalation?: EscalationReason } = {},
+  ): AsyncGenerator<ChatStreamEvent> {
+    const again = ticket.state === 'clarifying' && ticket.pendingFields.length > 0;
+    const withOptions = missing.find((f) => f.options?.length);
+    ticket = await this.d.tickets.update(ticket.id, {
+      state: 'clarifying',
+      pendingField: missing[0]!.id,
+      pendingFields: missing.map((f) => f.id),
+      clarificationsAsked: ticket.clarificationsAsked + 1,
+      ...(opts.beforeEscalation ? { pendingEscalation: opts.beforeEscalation } : {}),
+    });
+    yield { type: 'meta', ticket: toCard(ticket, catalog) };
+    this.d.log.info(
+      {
+        ticketId: ticket.id,
+        fields: missing.map((f) => f.id),
+        again,
+        reason: opts.beforeEscalation,
+      },
+      opts.beforeEscalation ? 'clarification asked before escalation' : 'clarification asked',
+    );
+    const questions = missing.map((f) => f.question);
+    const text = again
+      ? T.clarifyRemaining(questions)
+      : opts.beforeEscalation
+        ? T.clarifyBeforeEscalation(questions)
+        : (opts.lead ? opts.lead + '\n\n' : '') + T.clarifyList(questions);
+    yield* this.reply(ticket, catalog, text, T.clarifyButtons(withOptions?.options));
   }
 
   private async *solve(
@@ -538,6 +578,7 @@ export class DialogEngine {
       state: 'solving',
       articleId: article.id,
       pendingField: null,
+      pendingFields: [],
     });
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
     this.d.log.info(
@@ -676,6 +717,7 @@ export class DialogEngine {
       state: 'solving',
       articleId: null,
       pendingField: null,
+      pendingFields: [],
     });
     yield { type: 'meta', ticket: toCard(ticket, catalog) };
     await this.d.events.publish(TOPICS.ticketEvents, ticket.id, {
@@ -1046,24 +1088,7 @@ export class DialogEngine {
       (f) => isRequired(f, ticket.fields) && !ticket.fields[f.id],
     );
     if (missing.length && ticket.clarificationsAsked < this.d.config.maxClarifications) {
-      const field = missing[0]!;
-      ticket = await this.d.tickets.update(ticket.id, {
-        state: 'clarifying',
-        pendingField: field.id,
-        pendingEscalation: reason,
-        clarificationsAsked: ticket.clarificationsAsked + 1,
-      });
-      yield { type: 'meta', ticket: toCard(ticket, catalog) };
-      this.d.log.info(
-        { ticketId: ticket.id, field: field.id, reason },
-        'clarification asked before escalation',
-      );
-      yield* this.reply(
-        ticket,
-        catalog,
-        T.clarifyBeforeEscalation(field.question),
-        T.clarifyButtons(field.options),
-      );
+      yield* this.askMissing(ticket, catalog, missing, { beforeEscalation: reason });
       return;
     }
     yield { type: 'status', text: 'Создаю заявку…' };
@@ -1091,6 +1116,7 @@ export class DialogEngine {
       handledBy: 'operator',
       escalationReason: reason,
       pendingEscalation: null,
+      pendingFields: [],
       externalId: external?.externalId ?? null,
       externalUrl: external?.url ?? null,
       closedAt: new Date(),

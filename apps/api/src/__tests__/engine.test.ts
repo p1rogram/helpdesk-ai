@@ -399,6 +399,33 @@ describe('DialogEngine', () => {
     expect(r.text).toMatch(/кафе|столов/i);
   });
 
+  it('asks for everything it needs in one message, then only for what is still missing', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({ categoryId: 'access', confidence: 0.9, summary: 'Нужен доступ', fields: {} });
+    const r1 = await collect(engine.handle(ticket, user, 'мне нужен доступ'));
+    expect(r1.ticket.state).toBe('clarifying');
+    expect(r1.ticket.pendingFields).toEqual(['role', 'resource']);
+    expect(r1.text).toMatch(/уточните:/);
+    expect(r1.text).toMatch(/студент или сотрудник/i);
+    expect(r1.text).toMatch(/какому ресурсу/i);
+    expect(r1.quick.map((q) => q.label)).toEqual(['Студент', 'Сотрудник']); // buttons for the option field
+
+    // AI: One answer covers one question; the raw text is not written into the other field.
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    llm.queue.push({ categoryId: 'access', confidence: 0.9, summary: 'Нужен доступ', fields: {} });
+    const r2 = await collect(engine.handle(t2, user, 'я студент'));
+    expect(r2.ticket.fields).toEqual({ role: 'Студент' });
+    expect(r2.ticket.pendingFields).toEqual(['resource']);
+    expect(r2.text).toMatch(/^Осталось уточнить: к какому ресурсу/);
+
+    // AI: The last open question takes a free-form answer as is.
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    llm.queue.push({ categoryId: 'access', confidence: 0.9, summary: 'Нужен доступ', fields: {} });
+    const r3 = await collect(engine.handle(t3, user, 'пропуск в 8 корпус'));
+    expect(r3.ticket.fields.resource).toBe('пропуск в 8 корпус');
+    expect(r3.ticket.state).toBe('solving');
+  });
+
   it('treats a short campus-life question as a real request (catalog, model down)', async () => {
     const { user, ticket } = await fresh();
     llm.queue.push(new LlmUnavailableError('down'));
