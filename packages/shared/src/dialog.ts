@@ -60,6 +60,11 @@ export const AnalysisSchema = z.object({
    * прав доступа и не решается инструкцией. Такое уходит живому специалисту, а не в сервис-деск.
    */
   complex: z.boolean().optional(),
+  /**
+   * AI: Справочный вопрос («где столовая», «какая повышенная стипендия», «как получить справку») -
+   * человеку нужна информация, а не починка. Специалист поддержки такое не решает.
+   */
+  informational: z.boolean().optional(),
 });
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
@@ -92,6 +97,8 @@ export const TicketCardSchema = z.object({
   pendingFields: z.array(z.string()),
   /** AI: Проблемы из того же сообщения, до которых ещё не дошли (по одной на обращение). */
   pendingProblems: z.array(z.string()),
+  /** AI: 'problem' - что-то сломано / нужно сделать; 'question' - нужно узнать. */
+  kind: z.enum(['problem', 'question']),
   /** AI: Куда ушла заявка: живому специалисту в консоль или во внешний сервис-деск. */
   escalatedTo: z.enum(['operator', 'helpdesk']).nullable(),
   /** AI: Кто завершил тикет: помощник (решено), специалист или пользователь (отозвано). */

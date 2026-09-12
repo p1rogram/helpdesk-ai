@@ -153,6 +153,10 @@ export const tickets = pgTable(
     escalatedTo: text('escalated_to'),
     /** AI: Оценка модели: проблема комплексная - к живому специалисту, не в сервис-деск. */
     complex: boolean('complex').notNull().default(false),
+    /** AI: 'problem' | 'question' - справочным вопросам специалист не предлагается. */
+    kind: text('kind').notNull().default('problem'),
+    /** AI: По справочному вопросу человека уже просили один раз - второй раз передаём. */
+    humanInsisted: boolean('human_insisted').notNull().default(false),
     /** AI: 'ai' | 'operator' - пока 'operator', помощник в этом тикете не отвечает. */
     handledBy: text('handled_by').notNull().default('ai'),
     /** AI: Оператор вернул тикет помощнику и запретил повторную передачу. */

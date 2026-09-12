@@ -55,6 +55,8 @@ export async function ensureSchema(db: Db): Promise<void> {
     "pending_fields JSONB NOT NULL DEFAULT '[]'",
     'escalated_to TEXT',
     'complex BOOLEAN NOT NULL DEFAULT false',
+    "kind TEXT NOT NULL DEFAULT 'problem'",
+    'human_insisted BOOLEAN NOT NULL DEFAULT false',
   ]) {
     await db.execute(sql.raw(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ${col}`));
   }

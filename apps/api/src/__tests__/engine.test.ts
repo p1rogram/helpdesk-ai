@@ -460,12 +460,55 @@ describe('DialogEngine', () => {
       fields: { building: 'общежитие №12', room: 'комната 305' },
     });
     const ct1 = (await tickets.get(c.ticket.id, c.user.id))!;
-    await collect(engine.handle(ct1, c.user, 'сосед угрожает, комендант не реагирует, общага 12 комната 305'));
+    await collect(
+      engine.handle(ct1, c.user, 'сосед угрожает, комендант не реагирует, общага 12 комната 305'),
+    );
     const ct2 = (await tickets.get(c.ticket.id, c.user.id))!;
     const cr = await collect(engine.handle(ct2, c.user, CMD.human));
     expect(cr.ticket.escalatedTo).toBe('operator');
     const queue2 = await tickets.listForOperator('tpu');
     expect(queue2.some((q) => q.ticket.id === c.ticket.id)).toBe(true);
+  });
+
+  it('never pushes a specialist on a reference question, but hands over on insistence', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({
+      categoryId: 'general',
+      confidence: 0.85,
+      summary: 'Где столовая',
+      informational: true,
+    });
+    const r1 = await collect(engine.handle(ticket, user, 'где у вас столовая?'));
+    expect(r1.ticket.kind).toBe('question');
+    expect(r1.ticket.state).toBe('solving');
+    // AI: Only "helped / not helped" - there is nothing for a specialist to fix.
+    expect(r1.quick.map((q) => q.value)).toEqual([CMD.helped, CMD.notHelped]);
+
+    const t2 = (await tickets.get(ticket.id, user.id))!;
+    const r2 = await collect(engine.handle(t2, user, CMD.human));
+    expect(r2.ticket.escalated).toBe(false);
+    expect(r2.text).toMatch(/справочный вопрос/);
+
+    // AI: Asked again - the user is not trapped, the request goes to a live operator.
+    const t3 = (await tickets.get(ticket.id, user.id))!;
+    const r3 = await collect(engine.handle(t3, user, CMD.human));
+    expect(r3.ticket.state).toBe('escalated');
+  });
+
+  it('answers a reference question with contacts when the base has nothing, not with a request', async () => {
+    const { user, ticket } = await fresh();
+    llm.queue.push({
+      categoryId: 'general',
+      confidence: 0.8,
+      summary: 'Сколько платят за донорство крови',
+      informational: true,
+    });
+    const r = await collect(engine.handle(ticket, user, 'сколько платят донорам крови в тпу'));
+    if (r.ticket.state !== 'solving') {
+      expect(r.ticket.state).toBe('intake');
+      expect(r.text).toMatch(/заявка специалисту тут не поможет/);
+      expect(r.quick.map((q) => q.value)).not.toContain(CMD.escalate);
+    }
   });
 
   it('treats a short campus-life question as a real request (catalog, model down)', async () => {

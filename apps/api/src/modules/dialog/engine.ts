@@ -336,6 +336,8 @@ export class DialogEngine {
       summary,
       // AI: Комплексность запоминаем «липко»: раз модель её увидела - заявка пойдёт человеку.
       complex: ticket.complex || analysis.complex === true,
+      // AI: Вопрос или проблема - по последней оценке модели (уточнение может всё изменить).
+      kind: analysis.informational === true ? 'question' : 'problem',
     });
     this.d.log.info(
       {
@@ -665,7 +667,9 @@ export class DialogEngine {
     }
     const tail = '\n\n' + T.afterSolution();
     yield { type: 'delta', text: tail };
-    yield* this.finish(ticket, catalog, text + tail, QR_AFTER_SOLUTION, { articleId: article.id });
+    yield* this.finish(ticket, catalog, text + tail, this.afterSolutionButtons(ticket), {
+      articleId: article.id,
+    });
   }
 
   /** AI: Гибридный поиск по скачанной документации в пределах того, что видна этой сессии. */
@@ -735,7 +739,7 @@ export class DialogEngine {
     });
     const tail = '\n\n' + T.afterSolution();
     yield { type: 'delta', text: tail };
-    yield* this.finish(ticket, catalog, streamed.trim() + tail, QR_AFTER_SOLUTION, {
+    yield* this.finish(ticket, catalog, streamed.trim() + tail, this.afterSolutionButtons(ticket), {
       rag: passages.slice(0, 3).map((p) => ({ url: p.url, title: p.title })),
     });
     return true;
@@ -899,6 +903,11 @@ export class DialogEngine {
     ]);
   }
 
+  /** AI: После ответа на справочный вопрос кнопки «Нужен специалист» нет - её нечем оправдать. */
+  private afterSolutionButtons(ticket: TicketRow): QuickReply[] {
+    return ticket.kind === 'question' ? QR_HELPED_ONLY : QR_AFTER_SOLUTION;
+  }
+
   private remainingTail(ticket: TicketRow): string {
     const [next] = ticket.pendingProblems;
     return next ? T.remainingProblem(next, ticket.pendingProblems.length) : '';
@@ -962,6 +971,17 @@ export class DialogEngine {
       );
       return;
     }
+    if (ticket.kind === 'question' && reason !== 'article_requires_specialist') {
+      // AI: По справочному вопросу заявка бессмысленна: подсказываем, где узнать, и остаёмся в диалоге.
+      this.d.log.info({ ticketId: ticket.id, reason }, 'question without answer: no escalation');
+      yield* this.reply(
+        ticket,
+        catalog,
+        T.questionNotFound(),
+        ticket.articleId ? QR_HELPED_ONLY : undefined,
+      );
+      return;
+    }
     ticket = await this.d.tickets.update(ticket.id, {
       state: 'offer_escalation',
       pendingEscalation: reason,
@@ -1011,6 +1031,19 @@ export class DialogEngine {
         catalog,
         T.escalationBlocked(),
         ticket.articleId ? QR_HELPED_ONLY : QR_NEW_ONLY,
+      );
+      return;
+    }
+    if (ticket.kind === 'question' && !ticket.humanInsisted) {
+      // AI: «Нужен специалист» на справочный вопрос: объясняем, что заявка не поможет, и
+      // подсказываем, где узнать. Повторная просьба - передаём: человека не держим.
+      ticket = await this.d.tickets.update(ticket.id, { humanInsisted: true });
+      this.d.log.info({ ticketId: ticket.id }, 'human requested for a question: redirected');
+      yield* this.reply(
+        ticket,
+        catalog,
+        T.questionNoSpecialist(),
+        ticket.articleId ? QR_HELPED_ONLY : undefined,
       );
       return;
     }
