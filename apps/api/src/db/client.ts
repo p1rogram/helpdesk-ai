@@ -171,6 +171,12 @@ const DDL: string[] = [
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`,
   `CREATE INDEX IF NOT EXISTS rag_chunks_tenant ON rag_chunks(tenant_id)`,
+  `CREATE TABLE IF NOT EXISTS answer_cache (
+      key TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      sources JSONB NOT NULL DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`,
   `CREATE TABLE IF NOT EXISTS daily_user_counters (
       user_id UUID NOT NULL REFERENCES users(id),
       day TEXT NOT NULL,

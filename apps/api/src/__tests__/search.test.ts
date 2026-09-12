@@ -31,6 +31,18 @@ describe('KnowledgeIndex (TPU catalog)', () => {
     expect(top2?.article.id).toBe('access-lost-pass');
   });
 
+  it('understands slang, latin/cyrillic spellings and one-letter typos', () => {
+    // AI: «вайфай» / «wi-fi» / «wifi» - один терм; «впн» - vpn; «общага» - общежитие.
+    expect(index.search('не работает вайфай в общаге', { limit: 1 })[0]?.article.id).toBe(
+      index.search('не работает wi-fi в общежитии', { limit: 1 })[0]?.article.id,
+    );
+    expect(index.search('впн не подключается', { limit: 1 })[0]?.article.id).toMatch(/vpn/);
+    // AI: Опечатка в одном символе не меняет результат.
+    expect(index.search('стипндия когда придет', { limit: 1 })[0]?.article.id).toBe(
+      index.search('стипендия когда придет', { limit: 1 })[0]?.article.id,
+    );
+  });
+
   it('respects category filter and exclusions', () => {
     const hits = index.search('vpn не подключается', {
       categoryId: 'network',

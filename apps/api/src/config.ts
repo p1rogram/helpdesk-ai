@@ -35,6 +35,8 @@ const EnvSchema = z.object({
    */
   LLM_BASE_URL: z.string().url().default('https://api.anthropic.com'),
   LLM_MODEL: z.string().default('claude-opus-5'),
+  /** AI: Отдельная (быстрая) модель для вызова «понять»; пусто = та же, что LLM_MODEL. */
+  LLM_ANALYZE_MODEL: z.string().optional(),
   LLM_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
   /**
    * AI: Таймаут одного запроса; одна повторная попытка. Худший случай до детерминированного

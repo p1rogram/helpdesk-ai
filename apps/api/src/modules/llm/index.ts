@@ -36,6 +36,11 @@ export interface LlmOptions {
   apiKey?: string;
   baseURL: string;
   model: string;
+  /**
+   * AI: Анкету (категория, поля, флаги) может заполнять модель побыстрее и подешевле, чем та, что
+   * формулирует ответ: вызов №1 - на пути каждого сообщения, его задержка заметнее всего.
+   */
+  analyzeModel?: string;
   effort: 'low' | 'medium' | 'high';
   timeoutMs: number;
   onUsage?: (usage: LlmUsage) => void;
@@ -100,6 +105,7 @@ export class LlmService {
         {
           maxTokens: 1024,
           json: true,
+          model: this.opts.analyzeModel,
         },
       );
       this.report('analyze', res.usage, started);
@@ -182,7 +188,8 @@ export class LlmService {
   ) {
     const u: LlmUsage = {
       operation,
-      model: this.opts.model,
+      model:
+        operation === 'analyze' ? (this.opts.analyzeModel ?? this.opts.model) : this.opts.model,
       ...usage,
       latencyMs: Date.now() - started,
     };

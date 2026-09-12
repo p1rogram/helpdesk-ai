@@ -115,6 +115,7 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     apiKey: config.LLM_API_KEY ?? config.ANTHROPIC_API_KEY,
     baseURL: config.LLM_BASE_URL,
     model: config.LLM_MODEL,
+    analyzeModel: config.LLM_ANALYZE_MODEL,
     effort: config.LLM_EFFORT,
     timeoutMs: config.LLM_TIMEOUT_MS,
     log: { warn: (o, m) => log.warn(o as object, m), debug: (o, m) => log.debug(o as object, m) },

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { ragChunks } from '../../db/schema.js';
-import { tokenize } from '../knowledge/search.js';
+import { tokenize, tokenizeQuery } from '../knowledge/search.js';
 import { chunkText, stripBoilerplate } from './chunker.js';
 import { cosine, type Embedder } from './embedder.js';
 import { redactNames } from './redact.js';
@@ -512,7 +512,11 @@ export class RagService {
     audience: string | null,
     query: string,
   ): { chunk: IndexedChunk; score: number }[] {
-    const q = tokenize(query, { keepShort: true });
+    // AI: Опечатки: терм, которого нет в индексе, заменяется ближайшим известным (одна правка).
+    const q = tokenizeQuery(
+      query,
+      (st) => idx.df.has(st) || (st.length >= 3 && prefixMatches(idx.terms, st, 1).length > 0),
+    );
     if (!q.length) return [];
     const N = idx.chunks.length;
     const k1 = 1.4;

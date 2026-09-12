@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { ChatMessage, QuickReply, TicketCard, TicketState, Tone } from '@helpdesk/shared';
 import type { Db } from '../../db/client.js';
 import {
+  answerCache,
   dailyUserCounters,
   messages,
   tickets,
@@ -209,6 +210,34 @@ export class TicketRepository {
       .where(eq(tickets.id, id))
       .returning();
     return row!;
+  }
+
+  // ---------- кэш справочных ответов ----------
+
+  async cacheGet(
+    key: string,
+  ): Promise<{ text: string; sources: Array<{ url: string; title: string }> } | null> {
+    const [row] = await this.db.select().from(answerCache).where(eq(answerCache.key, key)).limit(1);
+    if (!row) return null;
+    if (Date.now() - row.createdAt.getTime() > 24 * 3600 * 1000) {
+      await this.db.delete(answerCache).where(eq(answerCache.key, key));
+      return null;
+    }
+    return { text: row.text, sources: row.sources };
+  }
+
+  async cacheSet(
+    key: string,
+    text: string,
+    sources: Array<{ url: string; title: string }>,
+  ): Promise<void> {
+    await this.db
+      .insert(answerCache)
+      .values({ key, text, sources })
+      .onConflictDoUpdate({
+        target: answerCache.key,
+        set: { text, sources, createdAt: new Date() },
+      });
   }
 
   // ---------- дневные лимиты ----------

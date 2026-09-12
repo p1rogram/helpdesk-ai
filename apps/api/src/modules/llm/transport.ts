@@ -32,7 +32,7 @@ export interface LlmTransport {
   complete(
     system: string,
     user: string,
-    opts: { maxTokens: number; json?: boolean },
+    opts: { maxTokens: number; json?: boolean; model?: string },
   ): Promise<Completion>;
   /** AI: Поток текста; итог (usage, refusal) - в возвращаемом значении генератора. */
   stream(
@@ -72,13 +72,13 @@ export class AnthropicTransport implements LlmTransport {
   async complete(
     system: string,
     user: string,
-    opts: { maxTokens: number; json?: boolean },
+    opts: { maxTokens: number; json?: boolean; model?: string },
   ): Promise<Completion> {
     // AI: Структурированный вывод запрашивается через output_config (его обеспечивает Anthropic
     // API) И промпт просит голый JSON; результат разбирается терпимо, чтобы шлюзы/прокси,
     // игнорирующие json_schema, всё равно давали валидный объект.
     const res = await this.client.messages.create({
-      model: this.o.model,
+      model: opts.model ?? this.o.model,
       max_tokens: opts.maxTokens,
       // AI: Стабильный префикс -> попадание в prompt cache на каждом запросе этого тенанта /
       // версии каталога.
@@ -193,7 +193,7 @@ export class OpenAiCompatibleTransport implements LlmTransport {
   async complete(
     system: string,
     user: string,
-    opts: { maxTokens: number; json?: boolean },
+    opts: { maxTokens: number; json?: boolean; model?: string },
   ): Promise<Completion> {
     // AI: response_format json_object понимают vLLM / Ollama / llama.cpp; кто не понимает -
     // промпт всё равно просит голый JSON, а разбор терпимый.
@@ -202,6 +202,7 @@ export class OpenAiCompatibleTransport implements LlmTransport {
       headers: this.headers(),
       body: this.body(system, user, opts.maxTokens, {
         stream: false,
+        ...(opts.model ? { model: opts.model } : {}),
         ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
       }),
       signal: AbortSignal.timeout(this.o.timeoutMs),

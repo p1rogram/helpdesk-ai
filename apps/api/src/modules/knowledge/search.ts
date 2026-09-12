@@ -195,18 +195,113 @@ const STOP = new Set([
   'него',
 ]);
 
+/**
+ * AI: Синонимы и разговорные формы сводятся к одному терму до стемминга, чтобы «вайфай», «wi-fi»
+ * и «wifi» искали одно и то же. Латинские и русские написания одного продукта - сюда же.
+ */
+const SYNONYMS: Record<string, string> = {
+  вайфай: 'wifi',
+  вай: 'wifi',
+  фай: 'wifi',
+  wi: 'wifi',
+  fi: 'wifi',
+  впн: 'vpn',
+  мудл: 'moodle',
+  мудлe: 'moodle',
+  общага: 'общежитие',
+  общаге: 'общежитие',
+  общаги: 'общежитие',
+  общагу: 'общежитие',
+  общ: 'общежитие',
+  лк: 'кабинет',
+  личка: 'кабинет',
+  инет: 'интернет',
+  инета: 'интернет',
+  инету: 'интернет',
+  комп: 'компьютер',
+  компа: 'компьютер',
+  ноут: 'ноутбук',
+  ноута: 'ноутбук',
+  нб: 'ноутбук',
+  препод: 'преподаватель',
+  препода: 'преподаватель',
+  стипуха: 'стипендия',
+  стипухи: 'стипендия',
+  стипа: 'стипендия',
+  универ: 'университет',
+  универа: 'университет',
+  пасс: 'пароль',
+  пароля: 'пароль',
+  логина: 'логин',
+  сдо: 'moodle',
+  тпу: 'тпу',
+};
+
 export function tokenize(text: string, opts: { keepShort?: boolean } = {}): string[] {
   return text
     .toLowerCase()
     .replace(/ё/g, 'е')
     .split(/[^a-zа-я0-9]+/)
     .filter((t) => (opts.keepShort ? t.length > 0 : t.length > 1) && !STOP.has(t))
+    .map((t) => SYNONYMS[t] ?? t)
     .map(stem);
+}
+
+/**
+ * AI: Опечатка в одном символе («стипндия», «общежитее»): перебираем все варианты слова с одной
+ * правкой (удаление, перестановка, замена, вставка) и берём первый, чей стем есть в индексе.
+ * Только для слов от 5 символов - короткие слишком легко перепутать. ~600 проверок по хэшу.
+ */
+export function closestTerm(raw: string, known: (stem: string) => boolean): string | null {
+  if (raw.length < 5) return null;
+  const abc = 'абвгдежзийклмнопрстуфхцчшщъыьэюяabcdefghijklmnopqrstuvwxyz';
+  const seen = new Set<string>();
+  const check = (v: string): string | null => {
+    if (v === raw || seen.has(v)) return null;
+    seen.add(v);
+    const st = stem(v);
+    return known(st) ? st : null;
+  };
+  for (let i = 0; i < raw.length; i++) {
+    const hit = check(raw.slice(0, i) + raw.slice(i + 1));
+    if (hit) return hit;
+  }
+  for (let i = 0; i < raw.length - 1; i++) {
+    const hit = check(raw.slice(0, i) + raw[i + 1] + raw[i] + raw.slice(i + 2));
+    if (hit) return hit;
+  }
+  for (let i = 0; i < raw.length; i++) {
+    for (const c of abc) {
+      const hit = check(raw.slice(0, i) + c + raw.slice(i + 1));
+      if (hit) return hit;
+    }
+  }
+  for (let i = 0; i <= raw.length; i++) {
+    for (const c of abc) {
+      const hit = check(raw.slice(0, i) + c + raw.slice(i));
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+/** AI: Токены запроса с исправлением опечаток: стем есть в индексе - берём его, нет - ищем правку. */
+export function tokenizeQuery(text: string, known: (stem: string) => boolean): string[] {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .split(/[^a-zа-я0-9]+/)
+    .filter((t) => t.length > 0 && !STOP.has(t))
+    .map((t) => SYNONYMS[t] ?? t)
+    .map((t) => {
+      const st = stem(t);
+      return known(st) ? st : (closestTerm(t, known) ?? st);
+    });
 }
 
 /** AI: Префиксный стеммер: достаточно, чтобы «подключение» ~ «подключения» ~ «подключить». */
 function stem(t: string): string {
-  if (/^[a-z0-9]+$/.test(t)) return t; // latin tokens (vpn, moodle, wifi) untouched
+  if (/^[a-z0-9]+$/.test(t)) return t; // латинские токены (vpn, moodle, wifi) не трогаем
   return t.length > 6 ? t.slice(0, 6) : t.length > 4 ? t.slice(0, 4) : t;
 }
 
@@ -246,7 +341,11 @@ export class KnowledgeIndex {
     query: string,
     opts: { categoryId?: string; limit?: number; exclude?: Set<string> } = {},
   ): ScoredArticle[] {
-    const q = tokenize(query, { keepShort: true });
+    // AI: Терм «известен», если есть точно или как префикс (автодополнение «vp» -> vpn) - тогда
+    // исправление опечаток не вмешивается.
+    const known = (st: string) =>
+      this.df.has(st) || (st.length >= 2 && [...this.df.keys()].some((k) => k.startsWith(st)));
+    const q = tokenizeQuery(query, known);
     if (!q.length) return [];
     // AI: Поведение автодополнения: токен запроса совпадает с термом индекса точно или как его
     // префикс («v» -> vpn/vap, «vp» -> vpn, «прин» -> принтер). Префиксные попадания весят меньше

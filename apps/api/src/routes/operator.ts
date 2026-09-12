@@ -159,7 +159,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
       return reply.code(404).send({ error: 'not_found' });
     if (ticket.state === 'closed') return reply.code(409).send({ error: 'already_closed' });
     const user = (await ctx.tickets.getUser(ticket.userId))!;
-    const closingText = `Специалист закрыл заявку как решённую. Если проблема повторится — создайте новое обращение.`;
+    const closingText = `Специалист закрыл заявку как решённую. Если не сложно, оцените, как всё прошло — это помогает делать поддержку лучше. Если проблема повторится — создайте новое обращение.`;
     await ctx.tickets.addMessage(ticket.id, 'assistant', closingText, {
       operator: req.user.name,
       quickReplies: QR_CLOSED,

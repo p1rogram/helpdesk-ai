@@ -458,6 +458,9 @@ export class DialogEngine {
       return;
     }
 
+    // AI: Живой прогресс: человек видит, что его поняли, ещё до того, как найден ответ.
+    const cat = ticket.categoryId ? catalog.categoryById.get(ticket.categoryId) : undefined;
+    if (cat) yield { type: 'status', text: `Понял: ${cat.name} → ищу решение…` };
     yield* this.advance(ticket, user, catalog, text, llmDown);
   }
 
@@ -694,6 +697,23 @@ export class DialogEngine {
    * недоступна) даёт вызывающему коду перейти к предложению передачи. Ничего не показывается, если
    * не подтверждено источником.
    */
+  /**
+   * AI: Справочные вопросы повторяются («где столовая», «когда стипендия»): ответ по документации
+   * для одинакового вопроса при той же версии каталога отдаём из кэша - без модели, мгновенно.
+   * Ключ учитывает тенант и область видимости (гость / полная), срок жизни - сутки.
+   */
+  private cacheKey(ticket: TicketRow, catalog: LoadedCatalog, text: string): string | null {
+    if (ticket.kind !== 'question' || Object.keys(ticket.fields).length) return null;
+    const norm = text
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .replace(/[^a-zа-я0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (norm.length < 6 || norm.length > 200) return null;
+    return `${ticket.tenantId}|${catalog.scope}|${catalog.version}|${norm}`;
+  }
+
   private async *ragAnswer(
     ticket: TicketRow,
     user: UserRow,
@@ -702,6 +722,24 @@ export class DialogEngine {
   ): AsyncGenerator<ChatStreamEvent, boolean> {
     if (!this.d.rag || !this.d.llm.enabled) return false;
     const query = [ticket.summary ?? '', lastText, ...Object.values(ticket.fields)].join(' ');
+    const key = this.cacheKey(ticket, catalog, lastText);
+    const cached = key ? await this.d.tickets.cacheGet(key) : null;
+    if (cached) {
+      this.d.log.info({ ticketId: ticket.id }, 'solution: documentation (cached)');
+      ticket = await this.d.tickets.update(ticket.id, {
+        state: 'solving',
+        articleId: null,
+        pendingField: null,
+        pendingFields: [],
+      });
+      yield { type: 'meta', ticket: toCard(ticket, catalog) };
+      yield { type: 'delta', text: cached.text };
+      yield* this.finish(ticket, catalog, cached.text, this.afterSolutionButtons(ticket), {
+        rag: cached.sources,
+        cached: true,
+      });
+      return true;
+    }
     const passages = await this.retrieve(ticket, catalog, query, 5);
     if (!passages.length) return false;
 
@@ -739,8 +777,10 @@ export class DialogEngine {
     });
     const tail = '\n\n' + T.afterSolution();
     yield { type: 'delta', text: tail };
+    const sources = passages.slice(0, 3).map((p) => ({ url: p.url, title: p.title }));
+    if (key) await this.d.tickets.cacheSet(key, streamed.trim() + tail, sources);
     yield* this.finish(ticket, catalog, streamed.trim() + tail, this.afterSolutionButtons(ticket), {
-      rag: passages.slice(0, 3).map((p) => ({ url: p.url, title: p.title })),
+      rag: sources,
     });
     return true;
   }

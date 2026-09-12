@@ -199,6 +199,14 @@ export const messages = pgTable(
   (t) => [index('messages_ticket_created').on(t.ticketId, t.createdAt)],
 );
 
+/** AI: Кэш ответов на повторяющиеся справочные вопросы (по документации), сутки. */
+export const answerCache = pgTable('answer_cache', {
+  key: text('key').primaryKey(),
+  text: text('text').notNull(),
+  sources: jsonb('sources').$type<Array<{ url: string; title: string }>>().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** AI: Дневные счётчики пользователя: заявки специалисту и просьбы позвать человека. */
 export const dailyUserCounters = pgTable(
   'daily_user_counters',
