@@ -5,7 +5,8 @@ import rateLimit from '@fastify/rate-limit';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AppConfig } from '../config.js';
 import type { SessionClaims } from '../modules/auth/index.js';
-import type { Db } from '../db/client.js';
+import cookie from '@fastify/cookie';
+import type { WindowCounters } from '../modules/usage/counters.js';
 import { DbRateLimitStore } from './rate-limit-store.js';
 
 declare module '@fastify/jwt' {
@@ -39,7 +40,7 @@ declare module 'fastify' {
 export async function registerSecurity(
   app: FastifyInstance,
   cfg: AppConfig,
-  shared?: { db: Db },
+  shared?: { counters: WindowCounters },
 ): Promise<void> {
   await app.register(helmet, {
     contentSecurityPolicy: false,
@@ -58,17 +59,12 @@ export async function registerSecurity(
   });
 
   await app.register(jwt, { secret: cfg.JWT_SECRET, sign: { expiresIn: cfg.JWT_TTL } });
+  // AI: Cookie устройства для гостей (см. routes/auth.ts); подписывается тем же секретом.
+  await app.register(cookie, { secret: cfg.JWT_SECRET });
 
   // AI: Общее хранилище счётчиков подключается только на Postgres: у PGlite один процесс, память
   // и так общая, а лишний запрос на каждый вызов в dev не нужен.
-  let store: DbRateLimitStore | undefined;
-  if (shared) {
-    const db = shared.db;
-    store = new DbRateLimitStore(db, 60_000);
-    const sweep = setInterval(() => void store!.sweep().catch(() => {}), 5 * 60_000);
-    sweep.unref();
-    app.addHook('onClose', async () => clearInterval(sweep));
-  }
+  const store = shared ? new DbRateLimitStore(shared.counters, 60_000) : undefined;
 
   await app.register(rateLimit, {
     max: cfg.RATE_LIMIT_PER_MINUTE,

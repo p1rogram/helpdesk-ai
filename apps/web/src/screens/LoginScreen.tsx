@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { loadTurnstile } from '../lib/turnstile';
 import type { ApiClient } from '../lib/api';
 import type { PlatformAdapter } from '../lib/platform';
 
@@ -33,6 +34,9 @@ export function LoginScreen(props: {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
+  const [turnstileKey, setTurnstileKey] = useState<string | undefined>();
+  const [captcha, setCaptcha] = useState<string | undefined>();
+  const captchaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api
@@ -41,6 +45,7 @@ export function LoginScreen(props: {
         setProviders(p.providers);
         setSsoLabel(p.ssoLabel);
         setDomains(p.emailDomains);
+        setTurnstileKey(p.turnstileSiteKey);
         // AI: Единственный не-SSO провайдер открывается сразу.
         const enabled = MODES.filter((k) => p.providers[k]);
         const only =
@@ -53,6 +58,32 @@ export function LoginScreen(props: {
         setProviders({ guest: true, demo: false, sso: false, ldap: false, email: false }),
       );
   }, [api]);
+
+  // AI: Гостевой вход с Turnstile: виджет рисуется в форме гостя, кнопка ждёт токен.
+  useEffect(() => {
+    if (mode !== 'guest' || !turnstileKey || !captchaRef.current) return;
+    const el = captchaRef.current;
+    let id: string | undefined;
+    let cancelled = false;
+    loadTurnstile()
+      .then(() => {
+        if (cancelled || !window.turnstile) return;
+        id = window.turnstile.render(el, {
+          sitekey: turnstileKey,
+          appearance: 'interaction-only',
+          theme: 'auto',
+          callback: (t) => setCaptcha(t),
+          'expired-callback': () => setCaptcha(undefined),
+          'error-callback': () => setCaptcha(undefined),
+        });
+      })
+      .catch(() => setError('Не удалось загрузить проверку. Обновите страницу.'));
+    return () => {
+      cancelled = true;
+      if (id) window.turnstile?.remove(id);
+      setCaptcha(undefined);
+    };
+  }, [mode, turnstileKey]);
 
   if (props.platform.kind !== 'web') {
     return (
@@ -222,15 +253,20 @@ export function LoginScreen(props: {
               ? 'Гостю доступны публичные темы: поступление, контакты, адреса, режим работы, заселение.'
               : 'Полный доступ ко всем темам поддержки. В демо-режиме личность не проверяется, на проде здесь вход по учётной записи ТПУ.'}
           </div>
-          <input placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)} />
+          {/* AI: Гостю имя не нужно - чат не сохраняется, личность гостя - устройство. */}
+          {mode === 'student' && (
+            <input placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)} />
+          )}
+          {mode === 'guest' && turnstileKey && <div ref={captchaRef} className="captcha" />}
           <button
-            disabled={busy}
+            disabled={busy || (mode === 'guest' && Boolean(turnstileKey) && !captcha)}
             onClick={() =>
               run(async () => {
                 await api.loginDev(
                   name || (mode === 'guest' ? 'Гость' : 'Студент'),
                   props.tenant,
                   mode === 'guest' ? 'guest' : 'full',
+                  mode === 'guest' ? captcha : undefined,
                 );
                 props.onLoggedIn();
               }, 'Вход отключён на сервере.')

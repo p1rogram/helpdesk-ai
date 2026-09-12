@@ -28,6 +28,7 @@ export async function corporateAuthRoutes(app: FastifyInstance, ctx: AppContext)
       email: Boolean(corporate.email),
     },
     ssoLabel: ctx.config.SSO_LABEL,
+    turnstileSiteKey: ctx.config.TURNSTILE_SECRET ? ctx.config.TURNSTILE_SITE_KEY : undefined,
     emailDomains: ctx.config.EMAIL_AUTH_DOMAINS ? ctx.config.EMAIL_AUTH_DOMAINS.split(',') : [],
   }));
 

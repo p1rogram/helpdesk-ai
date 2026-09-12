@@ -32,7 +32,7 @@ export async function buildApp(
   await registerSecurity(
     app,
     config,
-    ctx.dbHandle.kind === 'postgres' ? { db: ctx.dbHandle.db } : undefined,
+    ctx.dbHandle.kind === 'postgres' ? { counters: ctx.counters } : undefined,
   );
 
   app.setErrorHandler((err: Error & { statusCode?: number; code?: string }, req, reply) => {

@@ -69,6 +69,8 @@ export class ApiClient {
       };
       ssoLabel: string;
       emailDomains: string[];
+      /** AI: Ключ Cloudflare Turnstile для гостевого входа; нет - проверка выключена. */
+      turnstileSiteKey?: string;
     }>('/api/auth/providers');
   }
 
@@ -117,10 +119,12 @@ export class ApiClient {
     name: string,
     tenant?: string,
     scope: 'guest' | 'full' = 'full',
+    turnstileToken?: string,
   ): Promise<AuthResponse> {
     const r = await this.post<AuthResponse>(`/api/auth/dev${tenant ? `?tenant=${tenant}` : ''}`, {
       name,
       scope,
+      ...(turnstileToken ? { turnstileToken } : {}),
     });
     this.token = r.token;
     this.remember();
@@ -363,4 +367,10 @@ export interface OperatorStats {
   today: OperatorStatsPeriod;
   week: OperatorStatsPeriod;
   openQueue: number;
+  budget: {
+    stage: 'ok' | 'guests_off' | 'all_off';
+    tokensToday: number;
+    dailyTokenBudget: number;
+    usedShare: number | null;
+  };
 }

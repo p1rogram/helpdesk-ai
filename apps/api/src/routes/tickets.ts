@@ -108,6 +108,7 @@ export async function ticketRoutes(app: FastifyInstance, ctx: AppContext): Promi
         user,
         body.data.text,
         req.user.scope ?? 'full',
+        req.user.scope === 'guest' ? { device: req.user.device, ip: req.ip } : undefined,
       ))
         send(ev);
     } catch (err) {

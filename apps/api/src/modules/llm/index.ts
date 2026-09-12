@@ -34,6 +34,8 @@ export interface LlmOptions {
   /** AI: anthropic (облако / агрегатор) или openai (локальный сервер модели). */
   provider?: LlmProvider;
   apiKey?: string;
+  /** AI: Принудительно без модели (см. withoutModel). */
+  disabled?: boolean;
   baseURL: string;
   model: string;
   /**
@@ -75,7 +77,8 @@ export class LlmService {
   constructor(private readonly opts: LlmOptions) {
     this.provider = opts.provider ?? 'anthropic';
     // AI: Облаку нужен ключ; локальному серверу - нет (адрес достаточно).
-    this.enabled = this.provider === 'openai' ? Boolean(opts.baseURL) : Boolean(opts.apiKey);
+    this.enabled =
+      !opts.disabled && (this.provider === 'openai' ? Boolean(opts.baseURL) : Boolean(opts.apiKey));
     this.transport = this.enabled
       ? createTransport(this.provider, {
           apiKey: opts.apiKey,
@@ -85,6 +88,11 @@ export class LlmService {
           timeoutMs: opts.timeoutMs,
         })
       : null;
+  }
+
+  /** AI: Тот же сервис, но модель выключена: для запросов сверх бюджета. */
+  withoutModel(): LlmService {
+    return new LlmService({ ...this.opts, disabled: true });
   }
 
   async analyze(

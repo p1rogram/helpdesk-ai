@@ -104,6 +104,8 @@ export interface SessionClaims {
   tenant: string;
   /** AI: 'guest' видит только публичную часть базы знаний. */
   scope?: Scope;
+  /** AI: Id cookie устройства гостя - ключ бюджета модели. */
+  device?: string;
   /**
    * AI: Роли приложения, выведенные из групп организации (корпоративный вход) - например
    * 'operator'.

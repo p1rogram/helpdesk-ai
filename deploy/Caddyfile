@@ -1,15 +1,52 @@
 # AI: SITE_ADDRESS - либо домен (Caddy сам получает сертификат Let's Encrypt), либо ":80", когда
 # внешний nginx терминирует TLS и проксирует в этот контейнер. Mini Apps в любом случае требуют
 # HTTPS снаружи.
+{
+	servers {
+		# AI: За внешним nginx / Cloudflare настоящий IP - в X-Forwarded-For; {client_ip} его учитывает.
+		trusted_proxies static private_ranges
+	}
+}
+
 {$SITE_ADDRESS} {
 	encode zstd gzip
+
+	# AI: Периметр: грубые лимиты на IP до приложения. Точные лимиты (на пользователя, бюджет
+	# модели) - в API; здесь только отсечение флуда. Окна скользящие, ответ 429.
+	rate_limit {
+		zone chat {
+			match {
+				method POST
+				path /api/tickets/*/messages
+			}
+			key {client_ip}
+			events 40
+			window 1m
+		}
+		zone auth {
+			match {
+				path /api/auth/*
+			}
+			key {client_ip}
+			events 30
+			window 1m
+		}
+		zone api {
+			match {
+				path /api/*
+			}
+			key {client_ip}
+			events 600
+			window 1m
+		}
+	}
 
 	# AI: Заголовки безопасности для SPA. frame-ancestors позволяет Telegram встраивать Mini App.
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
-		Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors https://web.telegram.org https://*.telegram.org 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-src https://challenges.cloudflare.com; frame-ancestors https://web.telegram.org https://*.telegram.org 'self'"
 		-Server
 	}
 

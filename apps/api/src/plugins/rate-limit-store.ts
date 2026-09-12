@@ -1,5 +1,5 @@
-import { sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
+import { WindowCounters } from '../modules/usage/counters.js';
 
 type IncrCallback = (error: Error | null, result?: { current: number; ttl: number }) => void;
 
@@ -13,39 +13,20 @@ type IncrCallback = (error: Error | null, result?: { current: number; ttl: numbe
  * истёкшее окно начинается заново с count = 1, живое - увеличивается на 1.
  */
 export class DbRateLimitStore {
-  private readonly prefix: string;
+  private readonly counters: WindowCounters;
 
   constructor(
-    private readonly db: Db,
+    db: Db | WindowCounters,
     private readonly timeWindowMs: number,
-    prefix = '',
+    private readonly prefix = '',
   ) {
-    this.prefix = prefix;
+    this.counters = db instanceof WindowCounters ? db : new WindowCounters(db);
   }
 
   incr(key: string, cb: IncrCallback): void {
-    const fullKey = `${this.prefix}${key}`;
-    const windowMs = this.timeWindowMs;
-    this.db
-      .execute(
-        sql`INSERT INTO rate_limits (key, count, expires_at)
-            VALUES (${fullKey}, 1, now() + (${windowMs}::text || ' milliseconds')::interval)
-            ON CONFLICT (key) DO UPDATE SET
-              count = CASE WHEN rate_limits.expires_at <= now() THEN 1 ELSE rate_limits.count + 1 END,
-              expires_at = CASE WHEN rate_limits.expires_at <= now()
-                THEN now() + (${windowMs}::text || ' milliseconds')::interval
-                ELSE rate_limits.expires_at END
-            RETURNING count, (EXTRACT(EPOCH FROM (expires_at - now())) * 1000)::bigint AS ttl`,
-      )
-      .then((res) => {
-        const row = (
-          res as unknown as { rows: Array<{ count: number | string; ttl: number | string }> }
-        ).rows[0];
-        cb(null, {
-          current: Number(row?.count ?? 1),
-          ttl: Math.max(0, Number(row?.ttl ?? windowMs)),
-        });
-      })
+    this.counters
+      .bump(`${this.prefix}${key}`, this.timeWindowMs)
+      .then((r) => cb(null, { current: r.count, ttl: r.ttl }))
       .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))));
   }
 
@@ -55,14 +36,11 @@ export class DbRateLimitStore {
       ?.rateLimit;
     const windowMs = parseWindow(cfg?.timeWindow, this.timeWindowMs);
     const key = `${routeOptions.method ?? ''} ${routeOptions.prefix ?? ''}${routeOptions.path ?? ''}:`;
-    return new DbRateLimitStore(this.db, windowMs, key);
+    return new DbRateLimitStore(this.counters, windowMs, key);
   }
 
-  /** AI: Чистка истёкших окон; вызывается раз в несколько минут из плагина. */
-  async sweep(): Promise<void> {
-    await this.db.execute(
-      sql`DELETE FROM rate_limits WHERE expires_at < now() - interval '1 hour'`,
-    );
+  sweep(): Promise<void> {
+    return this.counters.sweep();
   }
 }
 

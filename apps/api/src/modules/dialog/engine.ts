@@ -13,6 +13,7 @@ import type { TicketRow, UserRow } from '../../db/schema.js';
 import { eventBase, type EventBus } from '../events/index.js';
 import type { KnowledgeService, LoadedCatalog } from '../knowledge/index.js';
 import { LlmUnavailableError, type LlmService } from '../llm/index.js';
+import type { GuestKey, LlmBudget } from '../usage/budget.js';
 import type { Passage, RagService } from '../rag/index.js';
 import { extractFields, isRequired, optionMentioned, validateFields } from './extract.js';
 import { inspectMessage, strongerTone } from '../safety/index.js';
@@ -51,6 +52,8 @@ export interface EngineDeps {
    */
   rag: RagService | null;
   llm: LlmService;
+  /** AI: Бюджет модели (гости, суточный потолок); null - без ограничений. */
+  budget: LlmBudget | null;
   tickets: TicketRepository;
   events: EventBus;
   helpdesk: HelpdeskConnector;
@@ -75,10 +78,20 @@ export class DialogEngine {
     user: Actor,
     rawText: string,
     scope: Scope = 'full',
+    guest?: GuestKey,
   ): AsyncGenerator<ChatStreamEvent> {
+    // AI: Бюджет исчерпан (гость выбрал свой лимит или общий суточный потолок достигнут) - тот же
+    // движок, но без модели: ответы по базе знаний, никаких ошибок пользователю.
+    if (this.d.budget && this.d.llm.enabled && !(await this.d.budget.allows(scope, guest))) {
+      const limited = new DialogEngine({ ...this.d, llm: this.d.llm.withoutModel(), budget: null });
+      yield* limited.handle(ticket, user, rawText, scope);
+      return;
+    }
     const catalog = await this.d.knowledge.catalog(ticket.tenantId, scope);
     const text = rawText.trim();
     const isCmd = text.startsWith('__');
+    if (!isCmd && scope === 'guest' && this.d.budget && this.d.llm.enabled)
+      await this.d.budget.noteGuestCall(guest);
 
     await this.d.tickets.addMessage(
       ticket.id,

@@ -99,6 +99,8 @@ const EnvSchema = z.object({
   OPERATOR_GROUPS: z.string().default(''),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 chars'),
   JWT_TTL: z.string().default('12h'),
+  /** AI: Гостевая сессия короче: украденный или расшаренный токен живёт недолго. */
+  GUEST_JWT_TTL: z.string().default('1h'),
   WEB_APP_URL: z.string().url().optional(),
   /**
    * AI: Входы на сайте. Гостевой вход анонимный (только публичные темы, без заявок и оператора) и
@@ -179,6 +181,16 @@ const EnvSchema = z.object({
    * AI: Дневные лимиты на пользователя (операторов не касаются): сколько заявок специалисту можно
    * создать и сколько раз позвать человека. Сверх лимита помощник продолжает решать по базе знаний.
    */
+  // AI: Бюджет модели для гостей (на cookie устройства и на IP) и общий суточный потолок токенов.
+  GUEST_LLM_PER_HOUR: z.coerce.number().int().min(0).default(10),
+  GUEST_LLM_PER_DAY: z.coerce.number().int().min(0).default(30),
+  GUEST_IP_LLM_PER_HOUR: z.coerce.number().int().min(0).default(60),
+  LLM_DAILY_TOKEN_BUDGET: z.coerce.number().int().min(0).default(0),
+  /** AI: Гостевые чаты не хранятся: удаляются через столько минут без активности. */
+  GUEST_CHAT_TTL_MINUTES: z.coerce.number().int().positive().default(60),
+  /** AI: Cloudflare Turnstile на гостевом входе; пусто - проверка выключена. */
+  TURNSTILE_SITE_KEY: z.string().optional(),
+  TURNSTILE_SECRET: z.string().optional(),
   DAILY_REQUEST_LIMIT: z.coerce.number().int().min(0).default(4),
   DAILY_HUMAN_LIMIT: z.coerce.number().int().min(0).default(3),
   CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.6),

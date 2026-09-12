@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, notLike, or, sql } from 'drizzle-orm';
 import type { ChatMessage, QuickReply, TicketCard, TicketState, Tone } from '@helpdesk/shared';
 import type { Db } from '../../db/client.js';
 import {
@@ -131,6 +131,8 @@ export class TicketRepository {
       .where(
         and(
           eq(tickets.tenantId, tenantId),
+          // AI: Гостевые чаты эфемерны и специалистам не показываются.
+          notLike(users.platformUserId, 'guest:%'),
           or(
             and(eq(tickets.state, 'escalated'), eq(tickets.escalatedTo, 'operator')),
             eq(tickets.state, 'closed'),
@@ -208,9 +210,11 @@ export class TicketRepository {
           closedAt: tickets.closedAt,
         })
         .from(tickets)
+        .innerJoin(users, eq(users.id, tickets.userId))
         .where(
           and(
             eq(tickets.tenantId, tenantId),
+            notLike(users.platformUserId, 'guest:%'),
             or(gte(tickets.createdAt, from), gte(tickets.closedAt, from)),
           ),
         );
@@ -321,6 +325,33 @@ export class TicketRepository {
         target: answerCache.key,
         set: { text, sources, createdAt: new Date() },
       });
+  }
+
+  // ---------- гости ----------
+
+  /**
+   * AI: Гостевые чаты не хранятся: всё, что старше `ttlMs` без активности, удаляется вместе с
+   * сообщениями; гостевые пользователи без обращений - тоже. Вызывается по таймеру из контекста.
+   */
+  async purgeGuests(ttlMs: number): Promise<{ tickets: number; users: number }> {
+    const cutoff = new Date(Date.now() - ttlMs);
+    const stale = await this.db
+      .select({ id: tickets.id })
+      .from(tickets)
+      .innerJoin(users, eq(users.id, tickets.userId))
+      .where(and(sql`${users.platformUserId} LIKE 'guest:%'`, lt(tickets.updatedAt, cutoff)));
+    const ids = stale.map((r) => r.id);
+    if (ids.length) {
+      await this.db.delete(messages).where(inArray(messages.ticketId, ids));
+      await this.db.delete(tickets).where(inArray(tickets.id, ids));
+    }
+    const orphans = (await this.db.execute(
+      sql`DELETE FROM users WHERE platform_user_id LIKE 'guest:%'
+          AND NOT EXISTS (SELECT 1 FROM tickets WHERE tickets.user_id = users.id)
+          AND created_at < ${cutoff}
+          RETURNING id`,
+    )) as unknown as { rows: unknown[] };
+    return { tickets: ids.length, users: orphans.rows.length };
   }
 
   // ---------- дневные лимиты ----------

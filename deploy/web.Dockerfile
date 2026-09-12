@@ -12,6 +12,11 @@ COPY packages/shared packages/shared
 COPY apps/web apps/web
 RUN npm run build -w @helpdesk/shared && npm run build -w @helpdesk/web
 
+# AI: Caddy с модулем rate-limit: флуд на /api отсекается до Node (см. Caddyfile).
+FROM caddy:2-builder AS caddy-build
+RUN xcaddy build --with github.com/mholt/caddy-ratelimit
+
 FROM caddy:2-alpine
+COPY --from=caddy-build /usr/bin/caddy /usr/bin/caddy
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/apps/web/dist /srv/web

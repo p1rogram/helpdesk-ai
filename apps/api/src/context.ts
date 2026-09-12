@@ -20,6 +20,8 @@ import { NaumenHelpdesk, NoopHelpdesk, type HelpdeskConnector } from './modules/
 import { EmailCodeProvider, LdapProvider, OidcProvider } from './modules/auth/corporate.js';
 import { OperatorHub } from './modules/operator/hub.js';
 import { LocalEmbedder, NullEmbedder, RagService } from './modules/rag/index.js';
+import { WindowCounters } from './modules/usage/counters.js';
+import { LlmBudget } from './modules/usage/budget.js';
 import type { FastifyInstance } from 'fastify';
 
 /** AI: Корень композиции: каждая зависимость создаётся здесь один раз и передаётся явно. */
@@ -33,6 +35,8 @@ export interface AppContext {
   llm: LlmService;
   tickets: TicketRepository;
   engine: DialogEngine;
+  counters: WindowCounters;
+  budget: LlmBudget;
   verifiers: Map<string, PlatformVerifier>;
   helpdesk: HelpdeskConnector;
   operatorHub: OperatorHub;
@@ -110,6 +114,19 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   }
   log.info(`rag: ${config.RAG_ENABLED ? `enabled, embeddings=${embedder.model}` : 'disabled'}`);
 
+  // AI: Общие счётчики (rate-limit, бюджет гостей, суточные токены) - в таблице rate_limits.
+  const counters = new WindowCounters(dbHandle.db);
+  const budget = new LlmBudget(
+    counters,
+    {
+      guestPerHour: config.GUEST_LLM_PER_HOUR,
+      guestPerDay: config.GUEST_LLM_PER_DAY,
+      guestIpPerHour: config.GUEST_IP_LLM_PER_HOUR,
+      dailyTokenBudget: config.LLM_DAILY_TOKEN_BUDGET,
+    },
+    { warn: (o, m) => log.warn(o as object, m) },
+  );
+
   const llm = new LlmService({
     provider: config.LLM_PROVIDER,
     apiKey: config.LLM_API_KEY ?? config.ANTHROPIC_API_KEY,
@@ -120,6 +137,9 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     timeoutMs: config.LLM_TIMEOUT_MS,
     log: { warn: (o, m) => log.warn(o as object, m), debug: (o, m) => log.debug(o as object, m) },
     onUsage: (u) => {
+      void budget
+        .noteTokens(u.inputTokens + u.outputTokens)
+        .catch((err) => log.warn(err, 'failed to account llm tokens'));
       void events
         .publish(TOPICS.llmUsage, 'usage', {
           eventId: randomUUID(),
@@ -135,6 +155,20 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   );
 
   const tickets = new TicketRepository(dbHandle.db);
+
+  // AI: Гостевые чаты и истёкшие окна счётчиков чистятся по таймеру; гостевой чат живёт
+  // GUEST_CHAT_TTL_MINUTES без активности и не попадает ни в историю, ни к специалистам.
+  const purge = async () => {
+    const r = await tickets.purgeGuests(config.GUEST_CHAT_TTL_MINUTES * 60_000);
+    if (r.tickets || r.users) log.info(`guest purge: ${r.tickets} chats, ${r.users} users`);
+    await counters.sweep();
+  };
+  void purge().catch((err) => log.warn(err, 'guest purge failed'));
+  const purgeTimer = setInterval(
+    () => void purge().catch((err) => log.warn(err, 'guest purge failed')),
+    5 * 60_000,
+  );
+  purgeTimer.unref();
 
   // AI: Живой канал для консолей операторов, питается от шины событий (работает и между репликами
   // API через Kafka).
@@ -166,6 +200,7 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     knowledge,
     rag: config.RAG_ENABLED ? rag : null,
     llm,
+    budget,
     tickets,
     events,
     helpdesk,
@@ -255,12 +290,15 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
     llm,
     tickets,
     engine,
+    counters,
+    budget,
     verifiers,
     helpdesk,
     operatorHub,
     corporate,
     app: null as unknown as FastifyInstance,
     async close() {
+      clearInterval(purgeTimer);
       await events.close();
       await dbHandle.close();
     },

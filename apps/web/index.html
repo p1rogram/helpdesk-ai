@@ -7,7 +7,7 @@
     <!-- CSP: только наш origin + Telegram SDK. Без inline-скриптов, без внешних картинок. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:"
+      content="default-src 'self'; script-src 'self' https://telegram.org https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-src https://challenges.cloudflare.com"
     />
     <title>Помощник поддержки</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>

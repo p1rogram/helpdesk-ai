@@ -1464,3 +1464,11 @@ select {
   flex: none;
   font-size: 12px;
 }
+.op-stats > div.warn {
+  border-color: var(--danger, #c0392b);
+}
+.login .captcha {
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+}

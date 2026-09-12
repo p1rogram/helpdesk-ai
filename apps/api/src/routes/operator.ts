@@ -39,7 +39,12 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   /** AI: Сводка: сегодня / 7 дней, кто закрыл, средняя оценка, длина очереди. */
-  app.get('/api/operator/stats', async (req) => ctx.tickets.operatorStats(req.user.tenant));
+  app.get('/api/operator/stats', async (req) => ({
+    ...(await ctx.tickets.operatorStats(req.user.tenant)),
+    // AI: Расход модели за сутки и ступень потолка - чтобы специалисты видели, почему помощник
+    // «стал проще».
+    budget: await ctx.budget.snapshot(),
+  }));
 
   /** AI: Взять обращение себе: остальные видят, что оно в работе у коллеги. */
   app.post('/api/operator/tickets/:id/assign', async (req, reply) => {

@@ -434,6 +434,18 @@ function StatsStrip({ stats }: { stats: OperatorStats }) {
           средняя оценка · {w.avg} за 7 дней ({w.ratingCount})
         </small>
       </div>
+      {stats.budget.dailyTokenBudget > 0 && (
+        <div className={stats.budget.stage !== 'ok' ? 'warn' : ''}>
+          <b>{Math.round((stats.budget.usedShare ?? 0) * 100)} %</b>
+          <small>
+            {stats.budget.stage === 'all_off'
+              ? 'бюджет модели исчерпан: все ответы по базе знаний'
+              : stats.budget.stage === 'guests_off'
+                ? 'бюджет модели: гости без модели'
+                : `бюджет модели за сутки · ${Math.round(stats.budget.tokensToday / 1000)}k токенов`}
+          </small>
+        </div>
+      )}
     </div>
   );
 }
