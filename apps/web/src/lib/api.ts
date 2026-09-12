@@ -145,10 +145,11 @@ export class ApiClient {
           user: { displayName: string; platform: string };
           lastMessageAt: string | null;
           unanswered: boolean;
-          /** AI: 0 - в работе, 1 - ждёт первого ответа, 2 - закрыто. */
-          group: 0 | 1 | 2;
+          /** AI: 0 мои, 1 ждут, 2 у коллег, 3 закрыты специалистами, 4 завершены без специалиста. */
+          group: 0 | 1 | 2 | 3 | 4;
         }
       >;
+      me: string;
     }>('/api/operator/tickets');
   }
 
@@ -200,6 +201,18 @@ export class ApiClient {
       }
     };
     void run();
+  }
+
+  operatorStats() {
+    return this.get<OperatorStats>('/api/operator/stats');
+  }
+
+  operatorAssign(id: string) {
+    return this.post<{ ticket: TicketCard }>(`/api/operator/tickets/${id}/assign`, {});
+  }
+
+  operatorNotes(id: string, text: string) {
+    return this.post<{ ok: true }>(`/api/operator/tickets/${id}/notes`, { text });
   }
 
   operatorTicket(id: string) {
@@ -334,4 +347,20 @@ async function safeText(r: Response): Promise<string> {
   } catch {
     return '';
   }
+}
+
+export interface OperatorStatsPeriod {
+  created: number;
+  resolvedByAssistant: number;
+  closedByOperator: number;
+  sentToHelpdesk: number;
+  withdrawn: number;
+  escalated: number;
+  ratingSum: number;
+  ratingCount: number;
+}
+export interface OperatorStats {
+  today: OperatorStatsPeriod;
+  week: OperatorStatsPeriod;
+  openQueue: number;
 }

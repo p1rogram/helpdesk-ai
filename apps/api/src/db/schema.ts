@@ -153,6 +153,14 @@ export const tickets = pgTable(
     escalatedTo: text('escalated_to'),
     /** AI: Оценка модели: проблема комплексная - к живому специалисту, не в сервис-деск. */
     complex: boolean('complex').notNull().default(false),
+    /** AI: Специалист, взявший обращение себе (имя и id), и его рабочие заметки. */
+    assignedTo: text('assigned_to'),
+    assignedToId: text('assigned_to_id'),
+    operatorNotes: text('operator_notes'),
+    /** AI: Когда специалист последний раз открывал переписку - пользователь видит «прочитано». */
+    operatorReadAt: timestamp('operator_read_at', { withTimezone: true }),
+    /** AI: Имя специалиста, закрывшего обращение (closed_by = 'operator'). */
+    closedByName: text('closed_by_name'),
     /** AI: 'problem' | 'question' - справочным вопросам специалист не предлагается. */
     kind: text('kind').notNull().default('problem'),
     /** AI: По справочному вопросу человека уже просили один раз - второй раз передаём. */

@@ -24,7 +24,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
    * (самое долгое ожидание первым), 2 - закрытые.
    */
   app.get('/api/operator/tickets', async (req) => {
-    const rows = await ctx.tickets.listForOperator(req.user.tenant, 100);
+    const rows = await ctx.tickets.listForOperator(req.user.tenant, req.user.sub, 150);
     const catalog = await ctx.knowledge.catalog(req.user.tenant);
     return {
       tickets: rows.map((r) => ({
@@ -34,7 +34,39 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
         unanswered: r.unanswered,
         group: r.group,
       })),
+      me: req.user.name,
     };
+  });
+
+  /** AI: Сводка: сегодня / 7 дней, кто закрыл, средняя оценка, длина очереди. */
+  app.get('/api/operator/stats', async (req) => ctx.tickets.operatorStats(req.user.tenant));
+
+  /** AI: Взять обращение себе: остальные видят, что оно в работе у коллеги. */
+  app.post('/api/operator/tickets/:id/assign', async (req, reply) => {
+    const { id } = IdParam.parse(req.params);
+    const ticket = await ctx.tickets.getAny(id);
+    if (!ticket || ticket.tenantId !== req.user.tenant)
+      return reply.code(404).send({ error: 'not_found' });
+    if (ticket.state !== 'escalated') return reply.code(409).send({ error: 'not_escalated' });
+    const updated = await ctx.tickets.update(ticket.id, {
+      assignedTo: req.user.name,
+      assignedToId: req.user.sub,
+    });
+    ctx.operatorHub.notify(ticket.tenantId, ticket.id);
+    const catalog = await ctx.knowledge.catalog(ticket.tenantId);
+    return { ticket: toCard(updated, catalog) };
+  });
+
+  /** AI: Рабочие заметки специалиста - пользователю не видны. */
+  app.post('/api/operator/tickets/:id/notes', async (req, reply) => {
+    const { id } = IdParam.parse(req.params);
+    const body = z.object({ text: z.string().max(4000) }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: 'bad_request' });
+    const ticket = await ctx.tickets.getAny(id);
+    if (!ticket || ticket.tenantId !== req.user.tenant)
+      return reply.code(404).send({ error: 'not_found' });
+    await ctx.tickets.update(ticket.id, { operatorNotes: body.data.text });
+    return { ok: true };
   });
 
   /**
@@ -110,16 +142,28 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
 
   app.get('/api/operator/tickets/:id', async (req, reply) => {
     const { id } = IdParam.parse(req.params);
-    const ticket = await ctx.tickets.getAny(id);
+    let ticket = await ctx.tickets.getAny(id);
     if (!ticket || ticket.tenantId !== req.user.tenant)
       return reply.code(404).send({ error: 'not_found' });
+    // AI: Открытая переписка = «специалист прочитал»; пользователь видит это под чатом.
+    if (ticket.state === 'escalated' && ticket.escalatedTo === 'operator')
+      ticket = await ctx.tickets.update(ticket.id, { operatorReadAt: new Date() });
     const catalog = await ctx.knowledge.catalog(ticket.tenantId);
     const user = await ctx.tickets.getUser(ticket.userId);
     const msgs = await ctx.tickets.listMessages(ticket.id, 300);
+    // AI: Что помощник уже предлагал и что не помогло - специалисту не нужно перечитывать чат.
+    const tried = [
+      ...new Set([...ticket.triedArticles, ...(ticket.articleId ? [ticket.articleId] : [])]),
+    ]
+      .map((a) => catalog.articleById.get(a)?.title)
+      .filter((t): t is string => Boolean(t));
     return {
       ticket: toCard(ticket, catalog),
       user: user ? { displayName: user.displayName, platform: user.platform } : null,
       messages: msgs.map(toChatMessage),
+      tried,
+      notes: ticket.operatorNotes ?? '',
+      escalationReason: ticket.escalationReason,
     };
   });
 
@@ -138,7 +182,11 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
       operator: req.user.name,
       quickReplies: QR_ESCALATED,
     });
-    await ctx.tickets.update(ticket.id, { state: 'escalated', handledBy: 'operator' });
+    await ctx.tickets.update(ticket.id, {
+      state: 'escalated',
+      handledBy: 'operator',
+      ...(ticket.assignedToId ? {} : { assignedTo: req.user.name, assignedToId: req.user.sub }),
+    });
     ctx.operatorHub.notify(ticket.tenantId, ticket.id);
     await ctx.events.publish(TOPICS.notifications, ticket.id, {
       eventId: eventBase(ticket.id, user.id).eventId,
@@ -168,6 +216,7 @@ export async function operatorRoutes(app: FastifyInstance, ctx: AppContext): Pro
       state: 'closed',
       resolved: true,
       closedBy: 'operator',
+      closedByName: req.user.name,
       closedAt: new Date(),
     });
     ctx.operatorHub.notify(ticket.tenantId, ticket.id);

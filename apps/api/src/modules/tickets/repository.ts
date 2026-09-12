@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { ChatMessage, QuickReply, TicketCard, TicketState, Tone } from '@helpdesk/shared';
 import type { Db } from '../../db/client.js';
 import {
@@ -103,21 +103,25 @@ export class TicketRepository {
   }
 
   /**
-   * AI: Рабочий список оператора: всё, что дошло до специалиста. Сгруппировано для консоли:
-   *   0 - в работе: оператор уже ответил (его диалоги идут первыми)
-   *   1 - ждут: передано, но ответа оператора ещё нет (самые давние первыми - порядок SLA)
-   *   2 - закрыто: завершённые, новые первыми
+   * AI: Рабочий список оператора. Сгруппировано для консоли:
+   *   0 - мои: взял себе или уже отвечал (сначала те, где новое сообщение)
+   *   1 - ждут: у специалиста, никто не взял и не ответил (самые давние первыми - порядок SLA)
+   *   2 - у коллег: взяты другим специалистом
+   *   3 - закрыты специалистами
+   *   4 - завершены без специалиста: помощником, через сервис-деск или отозваны пользователем
+   * Заявки, живущие в сервис-деске (escalatedTo = helpdesk), в очередь не попадают, пока открыты.
    */
   async listForOperator(
     tenantId: string,
-    limit = 100,
+    me: string,
+    limit = 150,
   ): Promise<
     Array<{
       ticket: TicketRow;
       user: UserRow;
       lastMessageAt: Date | null;
       unanswered: boolean;
-      group: 0 | 1 | 2;
+      group: 0 | 1 | 2 | 3 | 4;
     }>
   > {
     const rows = await this.db
@@ -127,10 +131,10 @@ export class TicketRepository {
       .where(
         and(
           eq(tickets.tenantId, tenantId),
-          eq(tickets.escalated, true),
-          // AI: Заявки, ушедшие в сервис-деск, живут там; в консоли только то, что ждёт человека здесь.
-          eq(tickets.escalatedTo, 'operator'),
-          inArray(tickets.state, ['escalated', 'closed']),
+          or(
+            and(eq(tickets.state, 'escalated'), eq(tickets.escalatedTo, 'operator')),
+            eq(tickets.state, 'closed'),
+          ),
         ),
       )
       .orderBy(desc(tickets.updatedAt))
@@ -141,39 +145,118 @@ export class TicketRepository {
       user: UserRow;
       lastMessageAt: Date | null;
       unanswered: boolean;
-      group: 0 | 1 | 2;
+      group: 0 | 1 | 2 | 3 | 4;
     }> = [];
     for (const r of rows) {
-      const recent = await this.db
-        .select({ role: messages.role, createdAt: messages.createdAt, meta: messages.meta })
-        .from(messages)
-        .where(eq(messages.ticketId, r.ticket.id))
-        .orderBy(desc(messages.createdAt))
-        .limit(50);
-      const operatorReplied = recent.some((m) =>
-        Boolean((m.meta as { operator?: string }).operator),
-      );
-      const last = recent[0];
-      const unanswered = !operatorReplied || !last || last.role === 'user';
-      const group: 0 | 1 | 2 = r.ticket.state === 'closed' ? 2 : operatorReplied ? 0 : 1;
-      out.push({
-        ticket: r.ticket,
-        user: r.user,
-        lastMessageAt: last?.createdAt ?? null,
-        unanswered,
-        group,
-      });
+      const closed = r.ticket.state === 'closed';
+      let lastMessageAt: Date | null = r.ticket.updatedAt;
+      let unanswered = false;
+      let group: 0 | 1 | 2 | 3 | 4;
+      if (closed) {
+        group = r.ticket.closedBy === 'operator' ? 3 : 4;
+      } else {
+        const recent = await this.db
+          .select({ role: messages.role, createdAt: messages.createdAt, meta: messages.meta })
+          .from(messages)
+          .where(eq(messages.ticketId, r.ticket.id))
+          .orderBy(desc(messages.createdAt))
+          .limit(50);
+        const operatorReplied = recent.some((m) =>
+          Boolean((m.meta as { operator?: string }).operator),
+        );
+        const last = recent[0];
+        lastMessageAt = last?.createdAt ?? null;
+        unanswered = !operatorReplied || !last || last.role === 'user';
+        const mine = r.ticket.assignedToId === me;
+        group = mine ? 0 : r.ticket.assignedToId ? 2 : operatorReplied ? 2 : 1;
+      }
+      out.push({ ticket: r.ticket, user: r.user, lastMessageAt, unanswered, group });
     }
 
     const time = (d: Date | null | undefined) => (d ? d.getTime() : 0);
     return out.sort((a, b) => {
       if (a.group !== b.group) return a.group - b.group;
-      // AI: В работе и закрытые: свежая активность первой. Ждущие: самое долгое ожидание первым.
       if (a.group === 1) return time(a.ticket.updatedAt) - time(b.ticket.updatedAt);
+      if (a.group === 0 && a.unanswered !== b.unanswered) return a.unanswered ? -1 : 1;
       return (
         time(b.lastMessageAt ?? b.ticket.updatedAt) - time(a.lastMessageAt ?? a.ticket.updatedAt)
       );
     });
+  }
+
+  /** AI: Сводка для панели оператора: сегодня и за 7 дней. */
+  async operatorStats(tenantId: string): Promise<{
+    today: OperatorStats;
+    week: OperatorStats;
+    openQueue: number;
+  }> {
+    const since = (days: number) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - days);
+      return d;
+    };
+    const calc = async (from: Date): Promise<OperatorStats> => {
+      const rows = await this.db
+        .select({
+          state: tickets.state,
+          closedBy: tickets.closedBy,
+          escalated: tickets.escalated,
+          escalatedTo: tickets.escalatedTo,
+          rating: tickets.rating,
+          createdAt: tickets.createdAt,
+          closedAt: tickets.closedAt,
+        })
+        .from(tickets)
+        .where(
+          and(
+            eq(tickets.tenantId, tenantId),
+            or(gte(tickets.createdAt, from), gte(tickets.closedAt, from)),
+          ),
+        );
+      const st: OperatorStats = {
+        created: 0,
+        resolvedByAssistant: 0,
+        closedByOperator: 0,
+        sentToHelpdesk: 0,
+        withdrawn: 0,
+        escalated: 0,
+        ratingSum: 0,
+        ratingCount: 0,
+      };
+      for (const r of rows) {
+        if (r.createdAt >= from) st.created++;
+        if (r.escalated && r.closedAt && r.closedAt >= from) {
+          if (r.escalatedTo === 'helpdesk') st.sentToHelpdesk++;
+          else st.escalated++;
+        }
+        if (r.state === 'closed' && r.closedAt && r.closedAt >= from) {
+          if (r.closedBy === 'assistant') st.resolvedByAssistant++;
+          else if (r.closedBy === 'operator') st.closedByOperator++;
+          else if (r.closedBy === 'user') st.withdrawn++;
+        }
+        if (r.rating && r.closedAt && r.closedAt >= from) {
+          st.ratingSum += r.rating;
+          st.ratingCount++;
+        }
+      }
+      return st;
+    };
+    const [today, week, open] = await Promise.all([
+      calc(since(0)),
+      calc(since(6)),
+      this.db
+        .select({ id: tickets.id })
+        .from(tickets)
+        .where(
+          and(
+            eq(tickets.tenantId, tenantId),
+            eq(tickets.state, 'escalated'),
+            eq(tickets.escalatedTo, 'operator'),
+          ),
+        ),
+    ]);
+    return { today, week, openQueue: open.length };
   }
 
   async listForUser(userId: string, limit = 20): Promise<TicketRow[]> {
@@ -311,6 +394,9 @@ export function toCard(t: TicketRow, catalog: LoadedCatalog): TicketCard {
     escalated: t.escalated,
     rating: t.rating,
     closedBy: t.closedBy as TicketCard['closedBy'],
+    closedByName: t.closedByName ?? null,
+    assignedTo: t.assignedTo ?? null,
+    specialistReadAt: t.operatorReadAt?.toISOString() ?? null,
     pendingProblems: t.pendingProblems ?? [],
     pendingFields: t.pendingFields ?? [],
     escalatedTo: t.escalatedTo as TicketCard['escalatedTo'],
@@ -338,4 +424,15 @@ export function toChatMessage(m: MessageRow): ChatMessage {
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+export interface OperatorStats {
+  created: number;
+  resolvedByAssistant: number;
+  closedByOperator: number;
+  sentToHelpdesk: number;
+  withdrawn: number;
+  escalated: number;
+  ratingSum: number;
+  ratingCount: number;
 }

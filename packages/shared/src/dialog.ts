@@ -103,6 +103,12 @@ export const TicketCardSchema = z.object({
   escalatedTo: z.enum(['operator', 'helpdesk']).nullable(),
   /** AI: Кто завершил тикет: помощник (решено), специалист или пользователь (отозвано). */
   closedBy: z.enum(['assistant', 'operator', 'user']).nullable(),
+  /** AI: Имя специалиста, если закрыл он. */
+  closedByName: z.string().nullable(),
+  /** AI: Специалист, взявший обращение в работу. */
+  assignedTo: z.string().nullable(),
+  /** AI: Когда специалист последний раз читал переписку (для «прочитано» у пользователя). */
+  specialistReadAt: z.string().nullable(),
   /** AI: Кто сейчас владеет диалогом. Пока 'operator', помощник молчит. */
   handledBy: z.enum(['ai', 'operator']),
   /** AI: Оператор вернул этот тикет помощнику и запретил дальнейшую передачу. */

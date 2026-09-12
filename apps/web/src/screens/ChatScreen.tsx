@@ -247,7 +247,13 @@ export function ChatScreen(props: {
           <span>
             {ticket.escalatedTo === 'helpdesk'
               ? 'Заявка в службе поддержки'
-              : 'Обращение у специалиста'}
+              : ticket.assignedTo
+                ? `У специалиста: ${ticket.assignedTo}`
+                : 'Обращение у специалиста'}
+            {/* AI: «Прочитано»: специалист открывал переписку после последнего сообщения. */}
+            {readMark(ticket, messages) && (
+              <span className="read-mark"> · {readMark(ticket, messages)}</span>
+            )}
           </span>
           <button className="pill-btn" disabled={busy} onClick={() => void closeTicket()}>
             Закрыть обращение
@@ -270,6 +276,14 @@ export function ChatScreen(props: {
       />
     </>
   );
+}
+
+function readMark(ticket: TicketCard, messages: ChatMessage[]): string | null {
+  if (!ticket.specialistReadAt || ticket.escalatedTo !== 'operator') return null;
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+  if (lastUser && lastUser.createdAt > ticket.specialistReadAt) return null;
+  const d = new Date(ticket.specialistReadAt);
+  return `прочитано ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function StateChip({ ticket }: { ticket: TicketCard }) {
