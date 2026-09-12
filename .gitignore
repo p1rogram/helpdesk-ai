@@ -20,5 +20,3 @@ data/models/
 .vscode/
 .DS_Store
 
-# local dev launch config (Claude Code)
-.claude/
