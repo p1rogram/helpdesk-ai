@@ -19,7 +19,7 @@ const SEND_SOURCES = ['/sounds/send.mp3', '/sounds/click.wav'];
 const RECEIVE_SOURCES = ['/sounds/receive.mp3', '/sounds/click.wav'];
 const MUSIC_SOURCES = ['/sounds/bg.mp3', '/sounds/bg.ogg'];
 /** AI: Еле слышно: фон, а не музыка. Включается плавно, чтобы не выскакивать. */
-const MUSIC_VOLUME = 0.06;
+const MUSIC_VOLUME = 0.03;
 const MUSIC_FADE_MS = 2500;
 
 export function getSoundSettings(): SoundSettings {
