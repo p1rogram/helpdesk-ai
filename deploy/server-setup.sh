@@ -41,6 +41,11 @@ if [ ! -f .env ]; then
   echo ">>>     nano $APP_DIR/.env"
 fi
 
+# AI: Ежедневный бэкап базы (03:00, хранение 7 дней) - deploy/backup.sh + cron.
+chmod +x "$APP_DIR"/deploy/backup.sh "$APP_DIR"/deploy/restore.sh
+install -m 0644 "$APP_DIR/deploy/backup.cron" /etc/cron.d/helpdesk-backup
+mkdir -p /var/backups/helpdesk
+
 ufw allow OpenSSH >/dev/null && ufw allow 80/tcp >/dev/null && ufw allow 443/tcp >/dev/null && ufw --force enable >/dev/null
 echo ">>> Done. Fill in .env, then add the GitHub secrets and push to master (or run the Deploy workflow):"
 echo ">>> CI/CD builds the images, publishes them to GHCR and starts the stack here."

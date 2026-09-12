@@ -22,10 +22,12 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "db:seed": "npm run db:seed -w @helpdesk/api",
-    "check:pd": "node scripts/check-personal-data.mjs"
+    "check:pd": "node scripts/check-personal-data.mjs",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
+    "@playwright/test": "^1.63.0",
     "cheerio": "^1.2.0",
     "eslint": "^9.30.0",
     "playwright": "^1.63.0",

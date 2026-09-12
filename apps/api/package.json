@@ -13,7 +13,8 @@
     "start": "node --env-file-if-exists=../../.env dist/index.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

@@ -1,0 +1,3 @@
+# AI: Ежедневный бэкап Postgres в 03:00 (по времени сервера), хранение 7 дней.
+# Устанавливается server-setup.sh в /etc/cron.d/helpdesk-backup; лог - /var/log/helpdesk-backup.log
+0 3 * * * root /opt/helpdesk-ai/deploy/backup.sh >> /var/log/helpdesk-backup.log 2>&1

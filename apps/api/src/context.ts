@@ -48,7 +48,7 @@ export interface AppContext {
 
 export async function buildContext(config: AppConfig, log: FastifyBaseLogger): Promise<AppContext> {
   const dbHandle = await connectDb({ url: config.DATABASE_URL, pgliteDir: config.PGLITE_DIR });
-  await ensureSchema(dbHandle.db);
+  await ensureSchema(dbHandle.db, { info: (m) => log.info(m) });
   log.info(`database: ${dbHandle.kind}`);
 
   const events = await createEventBus({

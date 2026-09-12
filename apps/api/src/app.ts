@@ -29,7 +29,11 @@ export async function buildApp(
 
   const ctx = await buildContext(config, app.log);
   ctx.app = app;
-  await registerSecurity(app, config);
+  await registerSecurity(
+    app,
+    config,
+    ctx.dbHandle.kind === 'postgres' ? { db: ctx.dbHandle.db } : undefined,
+  );
 
   app.setErrorHandler((err: Error & { statusCode?: number; code?: string }, req, reply) => {
     if (err instanceof ZodError)

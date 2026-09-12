@@ -5,6 +5,8 @@ import rateLimit from '@fastify/rate-limit';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AppConfig } from '../config.js';
 import type { SessionClaims } from '../modules/auth/index.js';
+import type { Db } from '../db/client.js';
+import { DbRateLimitStore } from './rate-limit-store.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -30,10 +32,15 @@ declare module 'fastify' {
  * AI: Защита периметра в одном месте:
  *  - helmet: заголовки безопасности (CSP задаёт собственный сервер веб-приложения; API отдаёт только JSON)
  *  - cors: белый список origin (origin Mini App + локальная разработка)
- *  - rate-limit: на аутентифицированного пользователя, иначе по IP - защищает бюджет модели
+ *  - rate-limit: на аутентифицированного пользователя, иначе по IP - защищает бюджет модели;
+ *    счётчики - в таблице rate_limits, общей для всех реплик API (в dev на PGlite - в памяти)
  *  - jwt: короткоживущие токены сессии после проверки подписи мессенджера
  */
-export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Promise<void> {
+export async function registerSecurity(
+  app: FastifyInstance,
+  cfg: AppConfig,
+  shared?: { db: Db },
+): Promise<void> {
   await app.register(helmet, {
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -52,9 +59,29 @@ export async function registerSecurity(app: FastifyInstance, cfg: AppConfig): Pr
 
   await app.register(jwt, { secret: cfg.JWT_SECRET, sign: { expiresIn: cfg.JWT_TTL } });
 
+  // AI: Общее хранилище счётчиков подключается только на Postgres: у PGlite один процесс, память
+  // и так общая, а лишний запрос на каждый вызов в dev не нужен.
+  let store: DbRateLimitStore | undefined;
+  if (shared) {
+    const db = shared.db;
+    store = new DbRateLimitStore(db, 60_000);
+    const sweep = setInterval(() => void store!.sweep().catch(() => {}), 5 * 60_000);
+    sweep.unref();
+    app.addHook('onClose', async () => clearInterval(sweep));
+  }
+
   await app.register(rateLimit, {
     max: cfg.RATE_LIMIT_PER_MINUTE,
     timeWindow: '1 minute',
+    ...(store
+      ? {
+          store: class {
+            constructor() {
+              return store!;
+            }
+          } as unknown as NonNullable<Parameters<typeof rateLimit>[1]>['store'],
+        }
+      : {}),
     keyGenerator: (req) => {
       // AI: Предпочитаем id пользователя из валидного токена; анонимный трафик ограничивается по
       // IP.
