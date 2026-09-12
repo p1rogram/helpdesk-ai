@@ -1,5 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import {
   AnalysisSchema,
   type Analysis,
@@ -18,6 +16,9 @@ import {
   solveUserPrompt,
 } from './prompts.js';
 import type { Passage } from '../rag/index.js';
+import { createTransport, type LlmProvider, type LlmTransport } from './transport.js';
+
+export type { LlmProvider } from './transport.js';
 
 export interface LlmUsage {
   operation: 'analyze' | 'solve' | 'answer';
@@ -30,6 +31,8 @@ export interface LlmUsage {
 }
 
 export interface LlmOptions {
+  /** AI: anthropic (облако / агрегатор) или openai (локальный сервер модели). */
+  provider?: LlmProvider;
   apiKey?: string;
   baseURL: string;
   model: string;
@@ -50,25 +53,31 @@ export class LlmUnavailableError extends Error {
 }
 
 /**
- * AI: Тонкий сервис над Anthropic SDK. Только три операции:
+ * AI: Тонкий сервис над транспортом к модели. Только три операции:
  *  - analyze(): структурированный вывод (категория, уверенность, поля, тон...) - без стрима
  *  - solve():   стрим markdown строго по ОДНОЙ статье базы знаний
  *  - answer():  стрим markdown по найденным фрагментам документации (RAG)
- * Ключ API живёт только здесь, на сервере. Ошибки превращаются в LlmUnavailableError, чтобы движок
- * мог откатиться к детерминированному поведению (шаги статьи дословно) и никогда не ронял чат.
+ * Какая модель за транспортом - облачный Claude или локальная на сервере университета - решает
+ * конфиг (LLM_PROVIDER); промпты и движок этого не знают. Ключ API живёт только здесь, на сервере.
+ * Ошибки превращаются в LlmUnavailableError, чтобы движок мог откатиться к детерминированному
+ * поведению (шаги статьи дословно) и никогда не ронял чат.
  */
 export class LlmService {
-  private readonly client: Anthropic | null;
+  private readonly transport: LlmTransport | null;
   readonly enabled: boolean;
+  readonly provider: LlmProvider;
 
   constructor(private readonly opts: LlmOptions) {
-    this.enabled = Boolean(opts.apiKey);
-    this.client = this.enabled
-      ? new Anthropic({
+    this.provider = opts.provider ?? 'anthropic';
+    // AI: Облаку нужен ключ; локальному серверу - нет (адрес достаточно).
+    this.enabled = this.provider === 'openai' ? Boolean(opts.baseURL) : Boolean(opts.apiKey);
+    this.transport = this.enabled
+      ? createTransport(this.provider, {
           apiKey: opts.apiKey,
           baseURL: opts.baseURL,
-          timeout: opts.timeoutMs,
-          maxRetries: 1,
+          model: opts.model,
+          effort: opts.effort,
+          timeoutMs: opts.timeoutMs,
         })
       : null;
   }
@@ -82,39 +91,23 @@ export class LlmService {
       fixedCategoryId?: string;
     },
   ): Promise<Analysis> {
-    if (!this.client) throw new LlmUnavailableError('LLM disabled (no API key)');
+    if (!this.transport) throw new LlmUnavailableError('LLM disabled (no API key / no server)');
     const started = Date.now();
     try {
-      // AI: Структурированный вывод запрашивается через output_config (его обеспечивает Anthropic
-      // API) И промпт просит голый JSON; результат разбирается терпимо, чтобы шлюзы/прокси,
-      // игнорирующие json_schema, всё равно давали валидный объект (ограждения кода и текст вокруг
-      // JSON отбрасываются).
-      const res = await this.client.messages.create({
-        model: this.opts.model,
-        max_tokens: 1024,
-        // AI: Стабильный префикс -> попадание в prompt cache на каждом запросе этого тенанта /
-        // версии каталога.
-        system: [
-          {
-            type: 'text',
-            text: analyzeSystemPrompt(catalog),
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        messages: [{ role: 'user', content: analyzeUserPrompt(input) }],
-        thinking: { type: 'adaptive' },
-        output_config: { effort: this.opts.effort, format: zodOutputFormat(AnalysisSchema) },
-      });
+      const res = await this.transport.complete(
+        analyzeSystemPrompt(catalog),
+        analyzeUserPrompt(input),
+        {
+          maxTokens: 1024,
+          json: true,
+        },
+      );
       this.report('analyze', res.usage, started);
-      if (res.stop_reason === 'refusal') throw new LlmUnavailableError('analyze: refusal');
-      const text = res.content
-        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-        .map((b) => b.text)
-        .join('\n');
-      const parsed = AnalysisSchema.safeParse(extractJson(text));
+      if (res.refusal) throw new LlmUnavailableError('analyze: refusal');
+      const parsed = AnalysisSchema.safeParse(extractJson(res.text));
       if (!parsed.success) {
         this.opts.log.warn(
-          { issues: parsed.error.issues.slice(0, 3), sample: text.slice(0, 200) },
+          { issues: parsed.error.issues.slice(0, 3), sample: res.text.slice(0, 200) },
           'analyze: invalid JSON from model',
         );
         throw new LlmUnavailableError('analyze: invalid structured output');
@@ -166,40 +159,31 @@ export class LlmService {
     system: string,
     user: string,
   ): AsyncGenerator<string, void, void> {
-    if (!this.client) throw new LlmUnavailableError('LLM disabled (no API key)');
+    if (!this.transport) throw new LlmUnavailableError('LLM disabled (no API key / no server)');
     const started = Date.now();
     try {
-      const stream = this.client.messages.stream({
-        model: this.opts.model,
-        max_tokens: 2048,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: user }],
-        thinking: { type: 'adaptive' },
-        output_config: { effort: this.opts.effort },
-      });
-      for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          yield event.delta.text;
-        }
-      }
-      const final = await stream.finalMessage();
+      const final = yield* this.transport.stream(system, user, { maxTokens: 2048 });
       this.report(op, final.usage, started);
-      if (final.stop_reason === 'refusal') {
-        throw new LlmUnavailableError(`${op}: refusal`);
-      }
+      if (final.refusal) throw new LlmUnavailableError(`${op}: refusal`);
     } catch (err) {
       throw this.wrap(err, op);
     }
   }
 
-  private report(operation: LlmUsage['operation'], usage: Anthropic.Usage, started: number) {
+  private report(
+    operation: LlmUsage['operation'],
+    usage: {
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens: number;
+      cacheWriteTokens: number;
+    },
+    started: number,
+  ) {
     const u: LlmUsage = {
       operation,
       model: this.opts.model,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      cacheReadTokens: usage.cache_read_input_tokens ?? 0,
-      cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+      ...usage,
       latencyMs: Date.now() - started,
     };
     this.opts.log.debug(u, 'llm usage');
@@ -208,22 +192,14 @@ export class LlmService {
 
   private wrap(err: unknown, op: string): Error {
     if (err instanceof LlmUnavailableError) return err;
-    if (err instanceof Anthropic.RateLimitError) {
-      this.opts.log.warn({ op }, 'llm rate limited');
-      return new LlmUnavailableError('rate limited', err);
-    }
-    if (err instanceof Anthropic.AuthenticationError) {
-      this.opts.log.warn({ op }, 'llm auth error - check ANTHROPIC_API_KEY');
-      return new LlmUnavailableError('auth error', err);
-    }
-    if (err instanceof Anthropic.APIError || err instanceof Anthropic.APIConnectionError) {
-      this.opts.log.warn(
-        { op, status: (err as { status?: number }).status, message: err.message },
-        'llm api error',
-      );
-      return new LlmUnavailableError(err.message, err);
-    }
-    this.opts.log.warn({ op, err }, 'llm unexpected error');
-    return new LlmUnavailableError('unexpected error', err);
+    const d = this.transport?.describeError(err) ?? {
+      kind: 'other' as const,
+      message: String(err),
+    };
+    this.opts.log.warn(
+      { op, provider: this.provider, kind: d.kind, message: d.message },
+      'llm error',
+    );
+    return new LlmUnavailableError(d.message, err);
   }
 }

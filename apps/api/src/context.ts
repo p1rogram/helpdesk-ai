@@ -111,7 +111,8 @@ export async function buildContext(config: AppConfig, log: FastifyBaseLogger): P
   log.info(`rag: ${config.RAG_ENABLED ? `enabled, embeddings=${embedder.model}` : 'disabled'}`);
 
   const llm = new LlmService({
-    apiKey: config.ANTHROPIC_API_KEY,
+    provider: config.LLM_PROVIDER,
+    apiKey: config.LLM_API_KEY ?? config.ANTHROPIC_API_KEY,
     baseURL: config.LLM_BASE_URL,
     model: config.LLM_MODEL,
     effort: config.LLM_EFFORT,

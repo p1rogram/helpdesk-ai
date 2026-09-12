@@ -20,6 +20,14 @@ const EnvSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
+  /**
+   * AI: Какая модель отвечает. anthropic - Claude через API (напрямую или через агрегатор с тем же
+   * форматом); openai - любой сервер с OpenAI-совместимым API: локальная модель на сервере
+   * университета (vLLM, Ollama, llama.cpp, LM Studio). Промпты и движок одинаковы для обоих.
+   */
+  LLM_PROVIDER: z.enum(['anthropic', 'openai']).default('anthropic'),
+  /** AI: Ключ доступа: для облака обязателен, для локального сервера обычно не нужен. */
+  LLM_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   /**
    * AI: По умолчанию прямой Anthropic API; при необходимости укажите адрес агрегатора/прокси
@@ -219,6 +227,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         .map((s) => s.trim())
         .filter(Boolean),
     ),
-    llmEnabled: Boolean(cfg.ANTHROPIC_API_KEY),
+    // AI: Облаку нужен ключ; локальному серверу достаточно адреса.
+    llmEnabled:
+      cfg.LLM_PROVIDER === 'openai' ? true : Boolean(cfg.LLM_API_KEY ?? cfg.ANTHROPIC_API_KEY),
   };
 }

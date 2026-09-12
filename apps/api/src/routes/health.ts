@@ -7,6 +7,8 @@ export async function healthRoutes(app: FastifyInstance, ctx: AppContext): Promi
     db: ctx.dbHandle.kind,
     events: ctx.config.EVENT_BUS,
     llm: ctx.llm.enabled,
+    /** AI: anthropic (облако) или openai (локальный сервер модели). */
+    llmProvider: ctx.llm.provider,
     /** AI: off | memory | pgvector - где выполняется векторная половина поиска. */
     rag: ctx.config.RAG_ENABLED ? ctx.rag.denseBackend : 'disabled',
     uptime: Math.round(process.uptime()),

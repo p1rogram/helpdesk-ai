@@ -81,6 +81,17 @@ offer_escalation ──(«Да, создать»)──▶ [clarifying: недо
    предложение специалиста.
 7. `done` с сообщением, кнопками и карточкой; события в Kafka.
 
+## Модель: облако или локальная
+
+`LlmService` работает через интерфейс `LlmTransport` (`modules/llm/transport.ts`) с двумя
+реализациями: `AnthropicTransport` (Messages API, structured output, prompt cache) и
+`OpenAiCompatibleTransport` (обычный `fetch` к `/v1/chat/completions`, `response_format json_object`,
+SSE-стрим с `stream_options.include_usage`). Переключение — `LLM_PROVIDER`, `LLM_BASE_URL`,
+`LLM_MODEL`, `LLM_API_KEY`; для локального сервера ключ не нужен. Промпты просят голый JSON, разбор
+терпимый (`json.ts`), схема Zod общая — поэтому смена модели не меняет ни движок, ни тесты.
+Ограничение локальных моделей: кэша промпта может не быть (`cacheReadTokens = 0`), качество анкеты
+зависит от модели — проверять eval-набором перед переключением.
+
 ## Знания
 
 Два слоя за одним движком:
