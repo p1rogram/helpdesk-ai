@@ -4,66 +4,51 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Сервер и эксплуатация · Java</title>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 :root{color-scheme:light;--bg:#f5f6f3;--surface:#ffffff;--surface-2:#eef0ec;--fg:#1b2027;--muted:#5c6570;--line:#dfe3dd;--line-strong:#c7cdc4;
---accent:#0f6e73;--accent-soft:rgba(15,110,115,.10);--accent-fg:#ffffff;--warn:#a1620a;--warn-soft:rgba(161,98,10,.12);--ok:#2f7d4f;--ok-soft:rgba(47,125,79,.12);--danger:#b3362a;--danger-soft:rgba(179,54,42,.10);
---java:#7a3e0c;--java-soft:rgba(122,62,12,.10);--kotlin:#5b3fa6;--kotlin-soft:rgba(91,63,166,.10);--ts:#1f5f9e;--ts-soft:rgba(31,95,158,.10);--compose:#2c7a3f;--compose-soft:rgba(44,122,63,.10);
+--accent:#0f6e73;--accent-soft:rgba(15,110,115,.10);--warn:#a1620a;--warn-soft:rgba(161,98,10,.12);--ok:#2f7d4f;--ok-soft:rgba(47,125,79,.12);--danger:#b3362a;--danger-soft:rgba(179,54,42,.10);
+--java:#7a3e0c;--java-soft:rgba(122,62,12,.10);--kotlin:#5b3fa6;--kotlin-soft:rgba(91,63,166,.10);
 --font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,'Courier New',monospace;--radius:10px}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
---accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
---java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
---accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
---java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
-.wrap{max-width:960px;margin:0 auto}
+.wrap{max-width:980px;margin:0 auto}
 header.doc{padding:40px 0 24px;border-bottom:1px solid var(--line);margin-bottom:28px}
 .eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
-h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance;font-weight:700}
-h2{font-size:21px;margin:40px 0 12px;padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
-h3{font-size:16px;margin:24px 0 8px}
-p{margin:0 0 12px;max-width:72ch}
-ul,ol{margin:0 0 12px;padding-left:22px;max-width:72ch}
-li{margin:3px 0}
-.lead{font-size:17px;color:var(--muted);max-width:70ch}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:21px;margin:44px 0 12px;padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
+h3{font-size:16px;margin:26px 0 8px}
+h4{font-size:14px;margin:16px 0 6px}
+p{margin:0 0 12px;max-width:74ch}.lead{font-size:17px;color:var(--muted);max-width:70ch}
+ul,ol{margin:0 0 12px;padding-left:22px;max-width:74ch}li{margin:3px 0}
 code,.path{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px;white-space:nowrap}
-pre{font-family:var(--mono);font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;overflow-x:auto;line-height:1.5}
+pre{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;overflow-x:auto;line-height:1.5;margin:8px 0 14px}
 pre code{background:none;padding:0;white-space:pre}
 .tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:12px 0 18px}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:600}
-tr:last-child td{border-bottom:0}
-td.n{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:600}tr:last-child td{border-bottom:0}
+td.n{font-family:var(--mono);text-align:right;color:var(--muted);white-space:nowrap}
 .tag{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
-.tag.java{background:var(--java-soft);color:var(--java)}.tag.kotlin{background:var(--kotlin-soft);color:var(--kotlin)}.tag.ts{background:var(--ts-soft);color:var(--ts)}.tag.compose{background:var(--compose-soft);color:var(--compose)}
-.tag.keep{background:var(--ok-soft);color:var(--ok)}.tag.new{background:var(--accent-soft);color:var(--accent)}.tag.drop{background:var(--danger-soft);color:var(--danger)}.tag.read{background:var(--surface-2);color:var(--muted)}
-.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0;max-width:72ch}
+.tag.keep{background:var(--ok-soft);color:var(--ok)}.tag.new{background:var(--accent-soft);color:var(--accent)}.tag.drop{background:var(--danger-soft);color:var(--danger)}.tag.read{background:var(--surface-2);color:var(--muted)}.tag.java{background:var(--java-soft);color:var(--java)}.tag.kotlin{background:var(--kotlin-soft);color:var(--kotlin)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0;max-width:74ch}
 .warn{border-left-color:var(--warn);background:var(--warn-soft)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 18px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
-.card h4{margin:0 0 6px;font-size:14px}
-.card p{font-size:13.5px;color:var(--muted);margin:0}
-.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
-.role{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--surface);text-decoration:none;color:inherit;display:block}
-.role:hover{border-color:var(--line-strong)}
-.role b{display:block;font-size:14px;margin-bottom:4px}
-.role small{color:var(--muted);font-size:12.5px;line-height:1.4;display:block}
-nav.toc{font-size:13.5px;color:var(--muted);margin:0 0 8px}
-nav.toc a{color:var(--accent);text-decoration:none;margin-right:14px}
-a{color:var(--accent)}
-.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;font-size:14px;margin:8px 0 16px}
-.kv dt{color:var(--muted)}.kv dd{margin:0}
-.step{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
-.step:last-child{border-bottom:0}
-.step .w{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px}
-.step b{display:block;margin-bottom:2px}
+nav.toc{font-size:13.5px;color:var(--muted);margin:0 0 8px}nav.toc a{color:var(--accent);text-decoration:none;margin-right:14px}a{color:var(--accent)}
+.stepbox{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:14px 0 22px;overflow:hidden}
+.stepbox .hd{display:flex;gap:12px;align-items:baseline;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.stepbox .hd .no{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+.stepbox .hd b{font-size:15px}.stepbox .hd small{color:var(--muted);margin-left:auto;white-space:nowrap}
+.stepbox .bd{padding:12px 16px}
+.stepbox .bd h5{margin:10px 0 4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.stepbox .bd h5:first-child{margin-top:0}
+.done{background:var(--ok-soft);border-left:3px solid var(--ok);padding:8px 12px;border-radius:0 8px 8px 0;font-size:13.5px;margin-top:10px}
+.plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:12px 0 6px}
+.plan a{border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;background:var(--surface);text-decoration:none;color:inherit;font-size:13.5px}
+.plan a b{display:block;font-size:12px;color:var(--accent);font-family:var(--mono);margin-bottom:2px}
 footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
-@media (max-width:520px){h1{font-size:24px}.kv{grid-template-columns:1fr}}
+@media (max-width:520px){h1{font-size:24px}}
 </style>
 </head>
 <body>
@@ -74,145 +59,475 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 <a href="06-android-compose.html">Android · Compose</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
 </nav>
 <header class="doc">
-<div class="eyebrow">Роль · Серверный · Java</div>
-<h1>Платформа, интеграции и эксплуатация</h1>
-<p class="lead">HTTP, вход, база данных, шина событий, боты, Naumen, деплой в закрытом контуре. Полный список файлов TypeScript-версии и во что они превращаются.</p>
+<div class="eyebrow">Роль · Серверный · Java · пошаговый план</div>
+<h1>Платформа, интеграции и эксплуатация — с нуля до выкатки</h1>
+<p class="lead">22 шага по порядку. У каждого: что сделать, какими файлами, как проверить, когда считать готовым. Стек — Spring Boot 3 на Java 21; если вуз скажет «Ktor» — меняется только слой HTTP, всё остальное остаётся.</p>
 </header>
 
-<h2>Роль одним абзацем</h2>
-<p>Ты делаешь всё, на чём стоит остальное: HTTP-сервер, вход пользователей, базу данных с миграциями, хранилище
-обращений, шину событий, интеграции с внешними системами (Kafka, боты, Naumen) и эксплуатацию в закрытом контуре
-вуза. Твой код — на <b>Java</b>, в отдельных Gradle-модулях <code>platform</code>, <code>integrations</code>,
-<code>api-app</code>, <code>worker-app</code>. Kotlin-модули (движок, ИИ) вызывают твои классы через интерфейсы;
-ты их не правишь, они — не твои.</p>
-<div class="note">Ты — единственный, кто ходит на сервер вуза. Остальные заканчивают работу зелёным CI и тегом версии; выкатка — твоя команда <code>update.sh v1.x</code> изнутри.</div>
+<h2 id="map">Карта шагов</h2>
+<div class="plan">
+<a href="#s0"><b>шаг 0</b>Рабочее место</a>
+<a href="#s1"><b>шаг 1</b>Gradle-проект и модули</a>
+<a href="#s2"><b>шаг 2</b>Postgres + Flyway</a>
+<a href="#s3"><b>шаг 3</b>Таблицы и репозиторий</a>
+<a href="#s4"><b>шаг 4</b>Конфиг из .env</a>
+<a href="#s5"><b>шаг 5</b>/health и /api/tenants</a>
+<a href="#s6"><b>шаг 6</b>Каталог из JSON</a>
+<a href="#s7"><b>шаг 7</b>JWT и /api/auth/dev</a>
+<a href="#s8"><b>шаг 8</b>Rate-limit и заголовки</a>
+<a href="#s9"><b>шаг 9</b>Обращения: CRUD</a>
+<a href="#s10"><b>шаг 10</b>SSE-поток сообщений</a>
+<a href="#s11"><b>шаг 11</b>Шина событий</a>
+<a href="#s12"><b>шаг 12</b>Консоль оператора</a>
+<a href="#s13"><b>шаг 13</b>База знаний и admin</a>
+<a href="#s14"><b>шаг 14</b>Подписи мессенджеров</a>
+<a href="#s15"><b>шаг 15</b>Корпоративный вход</a>
+<a href="#s16"><b>шаг 16</b>Kafka и worker</a>
+<a href="#s17"><b>шаг 17</b>Бот Telegram и пуши</a>
+<a href="#s18"><b>шаг 18</b>Naumen / help.tpu.ru</a>
+<a href="#s19"><b>шаг 19</b>Гости: cookie, TTL, чистка</a>
+<a href="#s20"><b>шаг 20</b>Docker и compose</a>
+<a href="#s21"><b>шаг 21</b>CI без SSH</a>
+<a href="#s22"><b>шаг 22</b>update.sh и офлайн-комплект</a>
+</div>
+<div class="note">Порядок не случайный: после шага 10 веб-фронт уже работает «в упрощённом режиме» и e2e-тест проходит первую половину; после шага 12 — весь. Всё, что дальше, — расширение, которое можно делать параллельно с остальными ролями.</div>
 
-<h2>Стек</h2>
-<div class="tbl"><table><thead><tr>
-<th>Задача</th>
-<th>Библиотека</th>
-<th>Замечание</th>
-</tr></thead><tbody>
-<tr><td>HTTP, SSE, плагины</td><td><b>Ktor Server 3.x</b> (Netty) — или Spring Boot 3, если ИТ-служба ТПУ на Spring</td><td>решить до старта; дальше — не менять</td></tr>
-<tr><td>JWT</td><td>auth0 <code>java-jwt</code></td><td>claims: sub, platform, puid, name, tenant, scope, device, roles</td></tr>
-<tr><td>Cookie устройства гостя</td><td>Ktor Sessions / ручной Set-Cookie с HMAC</td><td><code>hd_device</code>, httpOnly, SameSite=Lax, год</td></tr>
-<tr><td>БД</td><td>PostgreSQL 16 + pgvector; <b>Exposed</b> (DSL) + HikariCP</td><td>имена таблиц/колонок — из <code>schema.ts</code>, не менять</td></tr>
-<tr><td>Миграции</td><td><b>Flyway</b></td><td>SQL из <code>migrations.ts</code> дословно, по одному файлу на шаг</td></tr>
-<tr><td>Kafka</td><td><code>org.apache.kafka:kafka-clients</code></td><td>топики и ключи партиций — из <code>packages/shared/src/events.ts</code></td></tr>
-<tr><td>Telegram</td><td><b>TelegramBots</b> (rubenlagus) или kotlin-telegram-bot</td><td>base URL → Cloudflare-прокси (<code>TELEGRAM_API_ROOT</code>)</td></tr>
-<tr><td>LDAP</td><td>UnboundID LDAP SDK</td><td>bind + memberOf → роль operator</td></tr>
-<tr><td>OIDC (SSO)</td><td>Nimbus JOSE + JWT (authorization code + PKCE)</td><td>callback возвращает JWT сессии в hash URL</td></tr>
-<tr><td>Почта</td><td>Jakarta Mail</td><td>код на корпоративную почту, домены из конфига</td></tr>
-<tr><td>Тесты</td><td>JUnit 5 / Kotest, Testcontainers (postgres + pgvector)</td><td>PGlite в JVM нет — все тесты БД через контейнер</td></tr>
-<tr><td>Сборка образов</td><td>multistage: <code>gradle:8-jdk21</code> → <code>eclipse-temurin:21-jre</code></td><td>или jlink-образ ~120 МБ</td></tr>
+<h2 id="stack">Стек и зависимости</h2>
+<div class="tbl"><table><thead><tr><th>Задача</th><th>Зависимость (Gradle)</th><th>Зачем</th></tr></thead><tbody>
+<tr><td>HTTP, DI, конфиг</td><td><code>org.springframework.boot:spring-boot-starter-web</code></td><td>контроллеры, SseEmitter, JSON через Jackson</td></tr>
+<tr><td>Валидация тел запросов</td><td><code>spring-boot-starter-validation</code></td><td><code>@Valid</code>, <code>@Size(max=2000)</code> — замена Zod</td></tr>
+<tr><td>Безопасность</td><td><code>spring-boot-starter-security</code> + <code>com.auth0:java-jwt:4.4.0</code></td><td>фильтр JWT, роли</td></tr>
+<tr><td>БД</td><td><code>spring-boot-starter-jdbc</code> + <code>org.postgresql:postgresql</code> + <code>org.flywaydb:flyway-database-postgresql</code></td><td>JdbcClient (без JPA — запросы простые, SQL уже написан), миграции</td></tr>
+<tr><td>Kafka</td><td><code>org.springframework.kafka:spring-kafka</code></td><td>продюсер в API, консьюмеры в worker</td></tr>
+<tr><td>Telegram</td><td><code>org.telegram:telegrambots-longpolling:8.x</code> + <code>telegrambots-client</code></td><td>бот через Cloudflare-прокси</td></tr>
+<tr><td>LDAP</td><td><code>com.unboundid:unboundid-ldapsdk:7.0.1</code></td><td>bind + группы</td></tr>
+<tr><td>OIDC</td><td><code>spring-boot-starter-oauth2-client</code></td><td>SSO по authorization code</td></tr>
+<tr><td>Почта</td><td><code>spring-boot-starter-mail</code></td><td>код на корпоративную почту</td></tr>
+<tr><td>HTTP-клиент (Naumen, Turnstile, Telegram)</td><td><code>java.net.http.HttpClient</code> (JDK) или <code>RestClient</code> Spring 6.1</td><td>без лишних библиотек</td></tr>
+<tr><td>Тесты</td><td><code>spring-boot-starter-test</code>, <code>org.testcontainers:postgresql</code>, <code>org.testcontainers:kafka</code></td><td>настоящий Postgres с pgvector в Docker</td></tr>
+<tr><td>Логи</td><td>Logback (в стартере) + <code>net.logstash.logback:logstash-logback-encoder</code></td><td>JSON-логи как у pino</td></tr>
 </tbody></table></div>
+<p>Образ Postgres для тестов и dev — <code>pgvector/pgvector:pg16</code>, не голый <code>postgres</code>: расширение <code>vector</code> нужно модулю RAG.</p>
 
-<h2>Файлы: платформа</h2>
-<div class="tbl"><table><thead><tr>
-<th>Файл</th>
-<th>Строк</th>
-<th>Что внутри</th>
-<th>Что делать</th>
-</tr></thead><tbody>
-<tr><td><span class="path">apps/api/src/index.ts</span></td><td class="n">15</td><td>точка входа: конфиг → buildApp → listen, SIGTERM</td><td><span class="tag new">переписать</span> main() в api-app</td></tr>
-<tr><td><span class="path">apps/api/src/app.ts</span></td><td class="n">63</td><td>сборка Fastify: логгер без тел запросов, обработчик ошибок (Zod→400, rate-limit→429), регистрация маршрутов</td><td><span class="tag new">переписать</span> Ktor <code>Application.module()</code>, StatusPages</td></tr>
-<tr><td><span class="path">apps/api/src/config.ts</span></td><td class="n">248</td><td>все переменные окружения через Zod-схему с дефолтами; вычисляемые поля (corsOrigins, adminUsers, llmEnabled); запреты для production</td><td><span class="tag new">переписать</span> класс AppConfig из env + валидация при старте; список переменных — 1:1 из <code>.env.example</code></td></tr>
-<tr><td><span class="path">apps/api/src/context.ts</span></td><td class="n">306</td><td>корень композиции: БД, миграции, шина событий, каталог, RAG, LLM, репозиторий, бюджет, таймер чистки гостей, helpdesk, корпоративный вход, движок</td><td><span class="tag new">переписать</span> DI вручную или Koin; порядок инициализации сохранить</td></tr>
-<tr><td><span class="path">apps/api/src/plugins/security.ts</span></td><td class="n">134</td><td>helmet, CORS по белому списку, JWT, cookie, rate-limit (store в БД на Postgres), декораторы authenticate / requireOperator / requireAdmin</td><td><span class="tag new">переписать</span> Ktor: DefaultHeaders, CORS, Authentication(jwt), RateLimit с кастомным провайдером</td></tr>
-<tr><td><span class="path">apps/api/src/plugins/rate-limit-store.ts</span></td><td class="n">64</td><td>хранилище счётчиков rate-limit в таблице rate_limits (общее для реплик); parseWindow</td><td><span class="tag new">переписать</span> провайдер для Ktor RateLimit поверх WindowCounters</td></tr>
-<tr><td><span class="path">apps/api/src/modules/usage/counters.ts</span></td><td class="n">60</td><td>WindowCounters: UPSERT-счётчик со скользящим окном (bump/peek/peekMany/sweep) — им пользуются rate-limit и бюджет модели</td><td><span class="tag keep">переносится 1:1</span> один класс; SQL тот же</td></tr>
-<tr><td><span class="path">apps/api/src/db/schema.ts</span></td><td class="n">255</td><td>Drizzle-схема всех таблиц: tenants, categories, kb_articles, users, tickets (40+ колонок), messages, rag_chunks, answer_cache, daily_user_counters, daily_stats, rate_limits</td><td><span class="tag new">переписать</span> Exposed Tables; имена колонок не менять — миграции общие</td></tr>
-<tr><td><span class="path">apps/api/src/db/migrations.ts</span></td><td class="n">204</td><td>7 версионированных миграций (0001_base … 0007_rate_limits), идемпотентный SQL</td><td><span class="tag new">переписать</span> Flyway: <code>V0001__base.sql</code>… — SQL берётся дословно</td></tr>
-<tr><td><span class="path">apps/api/src/db/client.ts</span></td><td class="n">70</td><td>подключение (Postgres / PGlite), ensureSchema — применяет миграции, журнал schema_migrations</td><td><span class="tag new">переписать</span> HikariCP + Flyway.migrate() при старте; PGlite → Testcontainers</td></tr>
-<tr><td><span class="path">apps/api/src/db/migrate.ts</span></td><td class="n">17</td><td>CLI: применить миграции без запуска API</td><td><span class="tag new">переписать</span> Gradle-таск <code>flywayMigrate</code></td></tr>
-<tr><td><span class="path">apps/api/src/modules/tickets/repository.ts</span></td><td class="n">469</td><td>весь доступ к обращениям: create/get/latestOpen/pruneEmpty, listForOperator (5 групп очереди), operatorStats, update, tryLock/unlock (busy_until), сообщения, кэш ответов, дневные счётчики, purgeGuests, toCard</td><td><span class="tag new">переписать</span> TicketRepository на Exposed; сигнатуры методов сохранить — их зовёт движок</td></tr>
-<tr><td><span class="path">apps/api/src/modules/auth/index.ts</span></td><td class="n">114</td><td>SessionClaims (JWT), pseudonym() — псевдонимизация имени, devVerifier, интерфейс PlatformVerifier</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/modules/auth/telegram.ts</span></td><td class="n">75</td><td>проверка initData Mini App: HMAC-SHA256 с ключом WebAppData, срок auth_date</td><td><span class="tag keep">переносится 1:1</span> алгоритм 1:1</td></tr>
-<tr><td><span class="path">apps/api/src/modules/auth/vk.ts</span></td><td class="n">53</td><td>проверка подписи VK Mini App (sign по query-параметрам)</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">apps/api/src/modules/auth/max.ts</span></td><td class="n">54</td><td>проверка подписи MAX Mini App</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">apps/api/src/modules/auth/corporate.ts</span></td><td class="n">339</td><td>OidcProvider (SSO, PKCE), LdapProvider (bind + группы → роль operator), EmailCodeProvider (код на почту, домены)</td><td><span class="tag new">переписать</span> Nimbus JOSE, UnboundID, Jakarta Mail</td></tr>
-<tr><td><span class="path">apps/api/src/routes/auth.ts</span></td><td class="n">192</td><td>POST /api/auth/telegram|vk|max|dev; cookie устройства гостя (hd_device, HMAC), проверка Turnstile, гостевой TTL токена; GET /api/me</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/routes/corporate-auth.ts</span></td><td class="n">166</td><td>GET /api/auth/providers; SSO start/callback; LDAP login; email code send/verify</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/routes/health.ts</span></td><td class="n">30</td><td>GET /health (db, events, llm, rag, llmBudget); GET /api/tenants</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/routes/tickets.ts</span></td><td class="n">185</td><td>POST /api/tickets (переиспользует открытое), GET список/один, POST /:id/messages — <b>SSE-поток</b> из engine.handle с lock, /close, /rating</td><td><span class="tag new">переписать</span> Ktor SSE; логика внутри — вызов движка</td></tr>
-<tr><td><span class="path">apps/api/src/routes/kb.ts</span></td><td class="n">67</td><td>публичная база знаний: категории, статьи, поиск (scope гостя)</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/routes/admin.ts</span></td><td class="n">103</td><td>admin: пересев каталога, переиндексация RAG, статистика; только ADMIN_USERS</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/__tests__/db-infra.test.ts</span></td><td class="n">106</td><td>миграции применяются один раз; rate-limit store через настоящий плагин: 200,200,429</td><td><span class="tag new">переписать</span> Kotest + Testcontainers</td></tr>
-<tr><td><span class="path">apps/api/src/__tests__/telegram-auth.test.ts</span></td><td class="n">60</td><td>валидная/невалидная подпись, истёкший auth_date</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">apps/api/src/__tests__/vk-auth.test.ts</span></td><td class="n">40</td><td>подпись VK</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">apps/api/src/__tests__/corporate-auth.test.ts</span></td><td class="n">74</td><td>код на почту: выдача, срок, домены; роли из групп LDAP</td><td><span class="tag new">переписать</span></td></tr>
-</tbody></table></div>
-<h2>Файлы: интеграции и worker</h2>
-<div class="tbl"><table><thead><tr>
-<th>Файл</th>
-<th>Строк</th>
-<th>Что внутри</th>
-<th>Что делать</th>
-</tr></thead><tbody>
-<tr><td><span class="path">apps/api/src/modules/events/bus.ts</span></td><td class="n">32</td><td>интерфейс EventBus: publish(topic,key,event), subscribe(topic,group,handler); TicketEvent типы — в shared</td><td><span class="tag new">переписать</span> интерфейс в Kotlin (общий), реализации на Java</td></tr>
-<tr><td><span class="path">apps/api/src/modules/events/kafka.ts</span></td><td class="n">102</td><td>KafkaJS-реализация: создание топиков, продюсер, консьюмеры по группам</td><td><span class="tag new">переписать</span> kafka-clients / Spring Kafka</td></tr>
-<tr><td><span class="path">apps/api/src/modules/events/memory.ts</span></td><td class="n">35</td><td>in-memory шина для dev и тестов</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">apps/api/src/modules/events/index.ts</span></td><td class="n">29</td><td>createEventBus по EVENT_BUS=memory|kafka</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">apps/api/src/modules/events/dev-notifier.ts</span></td><td class="n">30</td><td>в dev без worker — пуш в Telegram прямо из API</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">apps/api/src/modules/operator/hub.ts</span></td><td class="n">65</td><td>SSE-хаб консоли оператора: подписка на события шины → живая очередь у всех реплик</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/routes/operator.ts</span></td><td class="n">244</td><td>очередь (/api/operator/tickets с группами), stats (+бюджет модели), GET тикета (отмечает «прочитано», отдаёт «что пробовал помощник»), assign, notes, reply (авто-назначение), close (closedByName), handback, SSE-стрим очереди</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/api/src/modules/helpdesk/index.ts</span></td><td class="n">142</td><td>HelpdeskConnector: NoopHelpdesk и NaumenHelpdesk (REST, сервис по категории)</td><td><span class="tag new">переписать</span> Java-класс; интерфейс общий</td></tr>
-<tr><td><span class="path">apps/worker/src/index.ts</span></td><td class="n">66</td><td>worker: подключение к Kafka, регистрация консьюмеров, health</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/worker/src/bot.ts</span></td><td class="n">75</td><td>grammY-бот: /start с кнопкой Mini App, ответы на текст — «откройте приложение»; TELEGRAM_API_ROOT — Cloudflare-прокси</td><td><span class="tag new">переписать</span> TelegramBots</td></tr>
-<tr><td><span class="path">apps/worker/src/consumers/notifier.ts</span></td><td class="n">29</td><td>пуш пользователю при ответе специалиста / закрытии</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">apps/worker/src/consumers/analytics.ts</span></td><td class="n">93</td><td>daily_stats: created/resolved/escalated/rating/tokens по дням и категориям</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">deploy/telegram-proxy.worker.js</span></td><td class="n">18</td><td>Cloudflare Worker — прокси api.telegram.org</td><td><span class="tag keep">переносится 1:1</span> JS, не трогать</td></tr>
-</tbody></table></div>
-<h2>Файлы: эксплуатация и CI</h2>
-<div class="tbl"><table><thead><tr>
-<th>Файл</th>
-<th>Строк</th>
-<th>Что внутри</th>
-<th>Что делать</th>
-</tr></thead><tbody>
-<tr><td><span class="path">docker-compose.yml</span></td><td class="n">132</td><td>postgres (pgvector), kafka (KRaft), kafka-ui, api, worker, web (Caddy); лимиты логов и памяти</td><td><span class="tag new">переписать</span> образы под JVM; healthcheck тот же</td></tr>
-<tr><td><span class="path">deploy/api.Dockerfile</span></td><td class="n">35</td><td>multistage сборка API + предзагрузка модели эмбеддингов</td><td><span class="tag new">переписать</span> gradle:jdk21 → temurin:21-jre (или jlink)</td></tr>
-<tr><td><span class="path">deploy/worker.Dockerfile</span></td><td class="n">28</td><td>сборка worker</td><td><span class="tag new">переписать</span></td></tr>
-<tr><td><span class="path">deploy/web.Dockerfile</span></td><td class="n">22</td><td>React-сборка + Caddy с модулем caddy-ratelimit</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">deploy/Caddyfile</span></td><td class="n">68</td><td>TLS, CSP, SSE-проксирование, rate-limit по IP (чат 40/мин, вход 30/мин, API 600/мин)</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">deploy/nginx.conf</span></td><td class="n">45</td><td>вариант за внешним nginx (TLS терминирует nginx)</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">deploy/server-setup.sh</span></td><td class="n">51</td><td>bootstrap сервера: Docker, клон, .env, firewall, cron бэкапа</td><td><span class="tag new">переписать</span> добавить офлайн-режим (образы с флешки)</td></tr>
-<tr><td><span class="path">deploy/backup.sh / restore.sh / backup.cron</span></td><td class="n">47</td><td>pg_dump в gzip, 7 дней, cron 03:00; восстановление с остановкой api/worker</td><td><span class="tag keep">переносится 1:1</span></td></tr>
-<tr><td><span class="path">deploy/prefetch-model.mjs</span></td><td class="n">10</td><td>скачивание модели эмбеддингов в образ</td><td><span class="tag drop">не нужно</span> если эмбеддинги на Spark; иначе — Java-аналог</td></tr>
-<tr><td><span class="path">.github/workflows/ci.yml</span></td><td class="n">73</td><td>lint, typecheck, unit-тесты, гейт ПД, e2e Playwright, сборка образов</td><td><span class="tag new">переписать</span> gradle build/test, ktlint/detekt, Testcontainers, e2e</td></tr>
-<tr><td><span class="path">.github/workflows/deploy.yml</span></td><td class="n">102</td><td>сборка образов в GHCR + SSH-деплой на сервер</td><td><span class="tag new">переписать</span> оставить только сборку и теги версий; SSH-шаг убрать — деплой ручной изнутри</td></tr>
-<tr><td><span class="path">.env.example</span></td><td class="n">129</td><td>все переменные с комментариями</td><td><span class="tag keep">переносится 1:1</span> имена переменных не менять</td></tr>
-<tr><td><span class="path">scripts/check-personal-data.mjs</span></td><td class="n">61</td><td>гейт: в data/ нет телефонов/почт/ФИО</td><td><span class="tag keep">переносится 1:1</span> любой язык, запускается в CI</td></tr>
-<tr><td><span class="path">e2e/playwright.config.ts, e2e/support-flow.spec.ts</span></td><td class="n">119</td><td>поднимает API + веб, проходит: вход → вопрос → решение → заявка → оператор отвечает → пользователь видит</td><td><span class="tag keep">переносится 1:1</span> команда запуска API меняется на jar</td></tr>
-</tbody></table></div>
+<h2 id="steps">Шаги</h2>
 
-<h2>Что читать, но не переписывать</h2>
+<div class="stepbox" id="s0"><div class="hd"><span class="no">шаг 0</span><b>Рабочее место</b><small>полдня</small></div><div class="bd">
+<h5>Что сделать</h5>
+<ol>
+<li>JDK 21 (Temurin), IntelliJ IDEA (Community хватает), Docker Desktop — нужен для Testcontainers и локального Postgres.</li>
+<li>Склонировать текущий репозиторий <code>helpdesk-ai</code> рядом — это эталон поведения. Запустить его: <code>npm ci &amp;&amp; npm run dev</code>, открыть <code>http://localhost:5173</code>, пройти чат руками. Ты должен видеть, что именно повторяешь.</li>
+<li>Прочитать три файла целиком: <code>apps/api/src/app.ts</code> (63 строки — как собран сервер), <code>apps/api/src/routes/tickets.ts</code> (185 — главный маршрут), <code>packages/shared/src/dialog.ts</code> (122 — контракт JSON).</li>
+<li>Прочитать <code>docs/ARCHITECTURE.md</code>.</li>
+</ol>
+<div class="done">Готово, когда: старый проект запущен локально, чат отвечает; ты можешь на словах описать, что происходит при отправке сообщения.</div>
+</div></div>
+
+<div class="stepbox" id="s1"><div class="hd"><span class="no">шаг 1</span><b>Gradle-проект и модули</b><small>1 день</small></div><div class="bd">
+<h5>Что сделать</h5>
+<pre><code>helpdesk/
+├─ settings.gradle.kts          include(":shared", ":platform", ":engine", ":ai", ":integrations", ":api-app", ":worker-app")
+├─ build.gradle.kts             общие плагины: java 21, kotlin jvm 2.x, spotless
+├─ gradle/libs.versions.toml    все версии в одном месте
+├─ platform/                    твой: Java, Spring, БД, auth, конфиг
+├─ integrations/                твой: Kafka, боты, Naumen
+├─ api-app/                     твой: @SpringBootApplication, собирает platform + engine + ai
+└─ worker-app/                  твой: @SpringBootApplication, собирает integrations</code></pre>
 <ul>
-<li><code>packages/shared/src/*.ts</code> — контракт JSON, который отдают твои маршруты (владелец — shared).</li>
-<li><code>apps/api/src/modules/dialog/engine.ts:73</code> — сигнатура <code>handle(ticket, user, text, scope, guest)</code>: это то, что зовёт <code>routes/tickets.ts</code>.</li>
-<li><code>docs/ARCHITECTURE.md</code>, <code>docs/SPAM_PROTECTION.md</code> — почему так устроено.</li>
+<li><code>platform</code> и <code>integrations</code> — <code>java-library</code>, без Kotlin-плагина. <code>api-app</code> зависит от всех; <code>platform</code> не зависит ни от <code>engine</code>, ни от <code>ai</code>.</li>
+<li>Модули <code>shared</code>, <code>engine</code>, <code>ai</code> создаёшь пустыми с одним классом-заглушкой, чтобы сборка проходила — их наполняют другие.</li>
+<li>В <code>libs.versions.toml</code> — версии из таблицы выше. Spring Boot через <code>io.spring.dependency-management</code>.</li>
+<li>Spotless с <code>googleJavaFormat()</code> — чтобы не спорить о форматировании.</li>
+</ul>
+<h5>Как проверить</h5>
+<pre><code>./gradlew build          # зелёный, пусть и пустой
+./gradlew :api-app:bootRun   # Spring стартует на 8080 и отвечает 404 на /</code></pre>
+<div class="done">Готово, когда: <code>./gradlew build</code> зелёный; оба приложения стартуют; в git есть <code>.gitattributes</code> с <code>* text=auto eol=lf</code>.</div>
+</div></div>
+
+<div class="stepbox" id="s2"><div class="hd"><span class="no">шаг 2</span><b>Postgres + Flyway</b><small>1 день</small></div><div class="bd">
+<h5>Что сделать</h5>
+<ol>
+<li>Локальный Postgres: <code>docker run -d --name hd-pg -e POSTGRES_USER=helpdesk -e POSTGRES_PASSWORD=helpdesk -e POSTGRES_DB=helpdesk -p 5432:5432 pgvector/pgvector:pg16</code>.</li>
+<li>Открыть <code>apps/api/src/db/migrations.ts</code>. Там массив <code>MIGRATIONS</code> из 7 шагов; у каждого <code>id</code> и список SQL-выражений. Перенести <b>дословно</b> в файлы:</li>
+</ol>
+<pre><code>platform/src/main/resources/db/migration/
+  V0001__base.sql                 tenants, categories, kb_articles, users, tickets, messages, rag_chunks, daily_stats + индексы
+  V0002__helpdesk_link.sql        ALTER tickets: external_id, external_url, pending_escalation, handled_by, escalation_blocked
+  V0003__kb_audience_seed_hash.sql
+  V0004__dialog_v2.sql            closed_by, busy_until, pending_problems, pending_fields, escalated_to, complex, kind, human_insisted; categories.escalation; daily_user_counters
+  V0005__answer_cache.sql
+  V0006__operator_console.sql     assigned_to, assigned_to_id, operator_notes, operator_read_at, closed_by_name; индекс tickets_tenant_state
+  V0007__rate_limits.sql</code></pre>
+<ul>
+<li>В каждом файле — несколько выражений через <code>;</code>, Flyway это умеет. <code>IF NOT EXISTS</code> оставить: так старая база TypeScript-версии не сломается.</li>
+<li><code>application.yml</code>: <code>spring.flyway.baseline-on-migrate: true</code>, <code>baseline-version: 0</code> — для базы, где таблицы уже есть от старой версии.</li>
+<li>Тест: <code>@SpringBootTest</code> + <code>@Testcontainers</code> с <code>PostgreSQLContainer("pgvector/pgvector:pg16")</code>; проверить, что после старта в <code>flyway_schema_history</code> 7 строк, повторный старт ничего не применяет.</li>
+</ul>
+<div class="done">Готово, когда: тест миграций зелёный; <code>\dt</code> в psql показывает 11 таблиц с теми же именами, что в <code>schema.ts</code>.</div>
+</div></div>
+
+<div class="stepbox" id="s3"><div class="hd"><span class="no">шаг 3</span><b>Таблицы и TicketRepository</b><small>2 дня</small></div><div class="bd">
+<p>Это самый объёмный кусок платформы — все обращения к БД в одном классе. Движок (Kotlin) будет вызывать его методы, поэтому <b>имена и сигнатуры — из TypeScript-версии</b>, менять нельзя. Открыть <code>apps/api/src/modules/tickets/repository.ts</code> и переносить метод за методом на <code>JdbcClient</code> (Spring 6.1) с ручным SQL — запросы там простые.</p>
+<h5>Записи (Java records)</h5>
+<pre><code>platform/src/main/java/ru/tpu/helpdesk/db/
+  UserRow        id, platform, platformUserId, displayName, createdAt
+  TicketRow      все 40 колонок tickets (список — schema.ts:60-130); JSONB-поля (fields, triedArticles, pendingProblems, pendingFields) — через Jackson в Map/List
+  MessageRow     id, ticketId, role, content, meta (JSONB), createdAt</code></pre>
+<h5>Методы, которые должны быть (сигнатура → что делает)</h5>
+<div class="tbl"><table><thead><tr><th>Метод</th><th>Смысл</th><th>Где в TS</th></tr></thead><tbody>
+<tr><td><code>upsertUser(platform, platformUserId, displayName)</code></td><td>INSERT … ON CONFLICT (platform, platform_user_id) DO UPDATE displayName; вернуть строку</td><td>:21</td></tr>
+<tr><td><code>getUser(id)</code></td><td>по id</td><td>:34</td></tr>
+<tr><td><code>create(tenantId, userId)</code></td><td>новое обращение в состоянии intake</td><td>:41</td></tr>
+<tr><td><code>get(id, userId)</code> / <code>getAny(id)</code></td><td>с проверкой владельца / без</td><td>:46 / :100</td></tr>
+<tr><td><code>latestOpen(userId)</code></td><td>последнее не закрытое и не переданное — чтобы не плодить пустые</td><td>:56</td></tr>
+<tr><td><code>pruneEmpty(userId, keepId?)</code></td><td>удалить обращения без описания (только приветствие)</td><td>:81</td></tr>
+<tr><td><code>listForUser(userId, limit)</code></td><td>история</td><td>:266</td></tr>
+<tr><td><code>listForOperator(tenantId, me, limit)</code></td><td>очередь: JOIN users, фильтр <code>NOT LIKE 'guest:%'</code>, группа 0..4 (мои / ждут / у коллег / закрыты специалистами / без специалиста), <code>unanswered</code>, <code>lastMessageAt</code></td><td>:114</td></tr>
+<tr><td><code>operatorStats(tenantId)</code></td><td>сегодня/7 дней: created, resolvedByAssistant, closedByOperator, sentToHelpdesk, withdrawn, escalated, ratingSum/Count, openQueue</td><td>:190</td></tr>
+<tr><td><code>tryLock(ticketId, leaseMs)</code> / <code>unlock(ticketId)</code></td><td>атомарно: <code>UPDATE tickets SET busy_until = now()+lease WHERE id=? AND (busy_until IS NULL OR busy_until &lt; now())</code>; вернуть true, если обновилась 1 строка</td><td>:279</td></tr>
+<tr><td><code>update(id, patch)</code></td><td>частичное обновление + <code>updated_at = now()</code>; вернуть строку</td><td>:293</td></tr>
+<tr><td><code>addMessage(ticketId, role, content, meta)</code> / <code>listMessages(ticketId, limit)</code></td><td>сообщения по времени</td><td>:382 / :395</td></tr>
+<tr><td><code>cacheGet(key)</code> / <code>cacheSet(key, text, sources)</code></td><td>answer_cache, TTL 24 ч</td><td>:304</td></tr>
+<tr><td><code>countersToday(userId)</code> / <code>bumpCounter(userId, kind)</code></td><td>daily_user_counters: requests / humanCalls</td><td>:360</td></tr>
+<tr><td><code>purgeGuests(ttlMs)</code></td><td>удалить гостевые обращения старше ttl с сообщениями + осиротевших гостевых пользователей</td><td>:336</td></tr>
+<tr><td><code>toCard(ticket, catalog)</code></td><td>TicketRow → TicketCard (JSON для клиента; categoryName, articleTitle, fieldLabels — из каталога)</td><td>:420+</td></tr>
+</tbody></table></div>
+<p>Плюс класс <code>WindowCounters</code> (из <code>modules/usage/counters.ts</code>, 60 строк): один UPSERT со скользящим окном в таблице <code>rate_limits</code> — <code>bump(key, windowMs, by)</code>, <code>peek(key)</code>, <code>peekMany(keys)</code>, <code>sweep()</code>. SQL взять дословно.</p>
+<h5>Как проверить</h5>
+<p>Тест на Testcontainers: создать пользователя → обращение → два сообщения → <code>listMessages</code> возвращает 2; <code>tryLock</code> второй раз подряд возвращает false, после <code>unlock</code> — true; <code>purgeGuests(0)</code> удаляет гостя и не трогает студента.</p>
+<div class="done">Готово, когда: все методы из таблицы есть, тесты на lock и purge зелёные; <code>toCard</code> отдаёт все 30 полей <code>TicketCard</code> (см. <code>dialog.ts:70-120</code>) с теми же именами в camelCase.</div>
+</div></div>
+
+<div class="stepbox" id="s4"><div class="hd"><span class="no">шаг 4</span><b>Конфиг из переменных окружения</b><small>полдня</small></div><div class="bd">
+<p>Все настройки — переменные окружения с теми же именами, что в <code>.env.example</code> (129 строк, с комментариями). Spring читает их через <code>application.yml</code>: <code>jwt.secret: ${JWT_SECRET}</code> и т.д. Сделать один класс <code>@ConfigurationProperties AppConfig</code> с группами: llm, telegram, vk, max, oidc, ldap, smtp, jwt, web, database, kafka, cors, limits, catalog, helpdesk, operator, rag, guest, turnstile.</p>
+<ul>
+<li>Дефолты — из <code>config.ts</code> (там у каждой переменной <code>.default(...)</code>).</li>
+<li>Вычисляемые: <code>corsOrigins</code> (список из CSV), <code>adminUsers</code> (Set строк <code>platform:puid</code>), <code>llmEnabled</code>.</li>
+<li>Проверки при старте (<code>config.ts:205-215</code>): в production <code>OPERATOR_OPEN_ACCESS=true</code> → приложение не стартует с понятной ошибкой; <code>JWT_SECRET</code> короче 32 символов → то же.</li>
+<li>Для локального запуска — <code>.env</code> в корне, подхватывать через плагин или <code>docker compose --env-file</code>.</li>
+</ul>
+<div class="done">Готово, когда: старт без <code>JWT_SECRET</code> падает с сообщением, какую переменную задать; все имена из <code>.env.example</code> читаются.</div>
+</div></div>
+
+<div class="stepbox" id="s5"><div class="hd"><span class="no">шаг 5</span><b>/health и /api/tenants</b><small>полдня</small></div><div class="bd">
+<pre><code>GET /health            → {"status":"ok","db":"postgres","events":"memory","llm":false,"llmProvider":"anthropic","rag":"disabled","llmBudget":"ok","uptime":12}
+GET /api/tenants       → {"tenants":[{"id":"tpu","sphere":"…","organisation":"…"}],"default":"tpu","botUrl":"https://t.me/…"}</code></pre>
+<ul>
+<li><code>/health</code> без авторизации и без rate-limit — по нему деплой решает, живо ли приложение.</li>
+<li>Глобальный обработчик ошибок (<code>@RestControllerAdvice</code>) по <code>app.ts:34-47</code>: ошибка валидации → 400 <code>{"error":"bad_request","issues":[…]}</code>; 429 → <code>{"error":"too_many_requests","message":"Слишком много запросов. Подождите минуту."}</code>; прочее → 500 <code>{"error":"internal","requestId":"…"}</code>, стек в лог.</li>
+<li>Логи: JSON, <b>никогда не логировать тело запроса</b> — там переписка пользователя. В <code>app.ts:20</code> это сделано явно; повторить.</li>
+</ul>
+<div class="done">Готово, когда: <code>curl localhost:8080/health</code> отдаёт JSON выше; несуществующий путь → 404 JSON, а не HTML-страница Spring.</div>
+</div></div>
+
+<div class="stepbox" id="s6"><div class="hd"><span class="no">шаг 6</span><b>Каталог из JSON</b><small>1 день</small></div><div class="bd">
+<p><code>data/catalog/tpu.json</code> — категории и статьи. При старте API импортирует их в таблицы <code>tenants / categories / kb_articles</code>; если файл изменился (хэш SHA-256 содержимого ≠ <code>tenants.seed_hash</code>) — переимпорт. Это <code>modules/knowledge/repository.ts</code> (235 строк): <code>seedFromDir(dir, log, force)</code>, <code>listTenants()</code>, <code>load(tenantId)</code> → объект с <code>categoryById</code>, <code>articleById</code>, <code>version</code>, <code>bumpVersion()</code>.</p>
+<p>Формат файла описан классами в <code>packages/shared/src/catalog.ts</code> — их даст модуль shared; до этого читай в Jackson-классы у себя, потом замени.</p>
+<div class="done">Готово, когда: после старта в <code>categories</code> есть строки для тенанта <code>tpu</code>; правка JSON и перезапуск — данные обновились; повторный старт без правки — импорт пропущен (в логе «catalog: up to date»).</div>
+</div></div>
+
+<div class="stepbox" id="s7"><div class="hd"><span class="no">шаг 7</span><b>JWT и вход /api/auth/dev</b><small>1 день</small></div><div class="bd">
+<h5>Токен</h5>
+<p>HS256 на <code>JWT_SECRET</code>, claims (<code>modules/auth/index.ts:98-114</code>): <code>sub</code> (users.id), <code>platform</code>, <code>puid</code>, <code>name</code>, <code>tenant</code>, <code>scope</code> (guest|full), <code>device</code> (только гость), <code>roles</code> (список, может отсутствовать). Срок: <code>JWT_TTL</code> (12h), для гостя <code>GUEST_JWT_TTL</code> (1h).</p>
+<h5>Фильтр</h5>
+<p><code>OncePerRequestFilter</code>: читает <code>Authorization: Bearer …</code>, проверяет подпись и срок, кладёт claims в SecurityContext. Три «уровня» (<code>plugins/security.ts:78-125</code>):</p>
+<ul>
+<li><code>authenticate</code> — любой валидный токен;</li>
+<li><code>requireOperator</code> — не гость и (<code>OPERATOR_OPEN_ACCESS</code> или <code>platform:puid ∈ ADMIN_USERS</code> или роль <code>operator</code>);</li>
+<li><code>requireAdmin</code> — только <code>ADMIN_USERS</code>.</li>
+</ul>
+<h5>Маршруты</h5>
+<pre><code>POST /api/auth/dev   {"name":"Иван","scope":"full"}        → {"token":"…","user":{"id":"uuid","platform":"web","displayName":"Пользователь 1ED2CD","scope":"full"}}
+                     разрешён только при WEB_DEMO_LOGIN=true (scope=full) / WEB_GUEST_LOGIN=true (scope=guest); иначе 403 {"error":"login_disabled"}
+GET  /api/me                                                 → {"id","platform","displayName","tenant","scope","isAdmin"}
+GET  /api/auth/providers                                     → {"providers":{"telegram":bool,"vk":bool,"max":bool,"guest":bool,"demo":bool,"sso":bool,"ldap":bool,"email":bool},"ssoLabel":"…","emailDomains":[],"turnstileSiteKey":null}</code></pre>
+<ul>
+<li>Имя пользователя <b>не хранится</b>: <code>pseudonym(platform, id)</code> = «Пользователь » + 6 hex-символов SHA-256 (<code>auth/index.ts:21</code>). Для dev-входа id = SHA-256(имя в нижнем регистре)[:16].</li>
+<li>Гостевую ветку (cookie устройства, Turnstile) — в шаге 19; сейчас гость = как студент, но <code>scope=guest</code>.</li>
+</ul>
+<div class="done">Готово, когда: веб-фронт (<code>npm run dev -w @helpdesk/web</code> с <code>VITE_API_PROXY=http://localhost:8080</code>) показывает экран входа, «Я студент» → входит и видит пустой чат (он ещё не работает — это шаг 9).</div>
+</div></div>
+
+<div class="stepbox" id="s8"><div class="hd"><span class="no">шаг 8</span><b>Rate-limit, CORS, заголовки безопасности</b><small>полдня</small></div><div class="bd">
+<ul>
+<li><b>Rate-limit</b>: фильтр перед контроллерами. Ключ — <code>u:&lt;sub&gt;</code> из токена, иначе <code>ip:&lt;addr&gt;</code>; окно минута, лимит <code>RATE_LIMIT_PER_MINUTE</code> (90). Счётчик — <code>WindowCounters.bump(key, 60000)</code> в таблице <code>rate_limits</code> (общий для реплик). Отдельные лимиты на <code>/api/auth/*</code>: 10 в минуту. При превышении 429 + заголовки <code>X-RateLimit-Limit / Remaining / Reset</code>. <code>/health</code> и SSE-стрим очереди оператора — без лимита.</li>
+<li><b>CORS</b>: белый список <code>CORS_ORIGINS</code>; запрос без Origin — пропускать; чужой Origin — без CORS-заголовков (не 500). Методы GET/POST/PUT/DELETE, credentials=false.</li>
+<li><b>Заголовки</b>: <code>X-Content-Type-Options: nosniff</code>, <code>Referrer-Policy</code>, без CSP (CSP отдаёт Caddy для сайта).</li>
+<li><code>server.forward-headers-strategy: framework</code> — за Caddy настоящий IP в <code>X-Forwarded-For</code>.</li>
+<li>Лимит тела запроса — <code>BODY_LIMIT_BYTES</code> (16 КБ).</li>
+</ul>
+<div class="done">Готово, когда: тест — 3 запроса при лимите 2 дают 200, 200, 429 (как <code>db-infra.test.ts:70-95</code>).</div>
+</div></div>
+
+<div class="stepbox" id="s9"><div class="hd"><span class="no">шаг 9</span><b>Обращения: открыть, список, одно, закрыть, оценить</b><small>1 день</small></div><div class="bd">
+<pre><code>POST /api/tickets            → переиспользует последнее открытое (latestOpen) или создаёт новое: pruneEmpty → create → приветствие как первое сообщение assistant → событие ticket.created
+                               ?new=1 — всегда новое
+                             ← {"ticket": TicketCard, "messages":[ChatMessage]}
+GET  /api/tickets            ← {"tickets":[TicketCard]}  (без пустых: summary null и state=intake — скрыть)
+GET  /api/tickets/{id}       ← {"ticket", "messages"}   404 если чужое
+POST /api/tickets/{id}/close → 409 already_closed | busy; иначе engine.closeByUser(...) → {"ticket","message"}
+POST /api/tickets/{id}/rating {"rating":1..5,"comment"?} → 409 not_closed | already_rated; update rating → событие ticket.rated → сообщение «спасибо» → {"ticket","message"}</code></pre>
+<ul>
+<li>Текст приветствия и «спасибо за оценку» — из <code>modules/dialog/templates.ts</code> (<code>T.greeting(sphere)</code>, <code>T.rated(n)</code>). Пока движка нет — скопируй строки к себе, потом замени на вызов модуля engine.</li>
+<li>Формат <code>ChatMessage</code>: <code>{id, role, content, createdAt, quickReplies?, author?}</code> — <code>author</code> ставится только у сообщений оператора.</li>
+<li><code>engine.closeByUser</code> — метод движка (Kotlin). До его появления: перевести в <code>closed</code>, <code>closedBy=user</code>, добавить сообщение «Обращение закрыто», вернуть.</li>
+</ul>
+<div class="done">Готово, когда: во фронте после входа открывается чат с приветствием; вкладка «История» показывает список; «Закрыть обращение» работает.</div>
+</div></div>
+
+<div class="stepbox" id="s10"><div class="hd"><span class="no">шаг 10</span><b>SSE-поток сообщений — главный маршрут</b><small>2 дня</small></div><div class="bd">
+<p><code>POST /api/tickets/{id}/messages</code> с телом <code>{"text":"…"}</code> (1–2000 символов). Ответ — не JSON, а поток <code>text/event-stream</code>, который клиент читает по мере прихода (<code>routes/tickets.ts:85-127</code>).</p>
+<h5>Последовательность</h5>
+<ol>
+<li>Найти обращение по id и владельцу → 404.</li>
+<li><code>tryLock(id, 90 с)</code> → если занято, 409 <code>{"error":"busy"}</code>. Это защита от двойного тапа: два прохода движка по одному состоянию ломают автомат.</li>
+<li>Ответить заголовками: <code>Content-Type: text/event-stream; charset=utf-8</code>, <code>Cache-Control: no-cache, no-transform</code>, <code>X-Accel-Buffering: no</code>, CORS-заголовок вручную (SSE идёт мимо CORS-фильтра — <code>tickets.ts:170-180</code>).</li>
+<li>Вызвать движок: <code>engine.handle(ticket, user, text, scope, guestKey)</code> — он отдаёт поток событий. Каждое событие писать как <code>data: {json}\n\n</code> и <b>flush сразу</b>. Раз в 15 с — <code>: ping\n\n</code>, чтобы прокси не закрыл соединение.</li>
+<li>Любое исключение → событие <code>{"type":"error","message":"Не удалось обработать сообщение. Попробуйте ещё раз."}</code>, стек в лог.</li>
+<li><code>finally</code>: <code>unlock</code>, закрыть поток.</li>
+</ol>
+<h5>События (contract → <code>ChatStreamEvent</code>)</h5>
+<pre><code>data: {"type":"meta","ticket":{…TicketCard}}
+data: {"type":"status","text":"Определяю суть обращения…"}
+data: {"type":"delta","text":"Похоже, это "}          ← много подряд, по мере генерации
+data: {"type":"done","message":{…ChatMessage с quickReplies},"ticket":{…}}
+data: {"type":"ack","ticket":{…}}                    ← принято, помощник молчит (обращение у оператора)
+data: {"type":"error","message":"…"}</code></pre>
+<h5>В Spring MVC</h5>
+<p>Вернуть <code>ResponseBodyEmitter</code> (или <code>SseEmitter</code>) и писать из отдельного потока; либо <code>StreamingResponseBody</code> с ручным <code>write + flush</code>. Движок — suspend-функция Kotlin, из Java вызывается через мост, который даст модуль engine (<code>Flow → Iterator</code> или callback). До появления движка — <b>заглушка</b>: на любой текст отдать <code>meta → status → 3 delta → done</code> с текстом «Эхо: …» и кнопками «Помогло / Не помогло». Этого хватает, чтобы отладить поток с фронтом.</p>
+<h5>Как проверить</h5>
+<pre><code>curl -N -X POST localhost:8080/api/tickets/&lt;id&gt;/messages -H "Authorization: Bearer $T" -H 'content-type: application/json' -d '{"text":"не работает wifi"}'
+# события должны появляться по одному, а не пачкой в конце — если пачкой, нет flush или буферизует прокси</code></pre>
+<div class="done">Готово, когда: во фронте текст ответа «печатается» постепенно, статусы мелькают, кнопки появляются в конце; второй параллельный запрос получает 409; при исключении в движке фронт показывает ошибку, а не висит.</div>
+</div></div>
+
+<div class="stepbox" id="s11"><div class="hd"><span class="no">шаг 11</span><b>Шина событий (память сейчас, Kafka потом)</b><small>полдня</small></div><div class="bd">
+<p>Интерфейс <code>EventBus</code> (<code>modules/events/bus.ts</code>, 32 строки): <code>publish(topic, key, event)</code>, <code>subscribe(topic, group, handler)</code>, <code>close()</code>. Топики и события — в <code>packages/shared/src/events.ts</code>:</p>
+<pre><code>support.ticket.v1        ticket.created | updated | classified | solution_shown | resolved | closed | escalated | rated   (ключ партиции — ticketId)
+support.llm-usage.v1     расход токенов на вызов модели
+support.notification.v1  {ticketId, platform, platformUserId, text} — пуш пользователю</code></pre>
+<ul>
+<li>Сейчас — <code>MemoryEventBus</code> (35 строк): список подписчиков, вызов в том же процессе. Kafka-реализация — шаг 16, интерфейс один.</li>
+<li>Выбор по <code>EVENT_BUS=memory|kafka</code>.</li>
+<li>Публиковать из маршрутов: <code>ticket.created</code> в POST /api/tickets, <code>ticket.rated</code> в rating, <code>ticket.closed</code> в close. Остальные — движок.</li>
+</ul>
+<div class="done">Готово, когда: тест — подписчик получает событие, опубликованное в том же процессе; при <code>EVENT_BUS=kafka</code> без брокера старт падает с понятной ошибкой.</div>
+</div></div>
+
+<div class="stepbox" id="s12"><div class="hd"><span class="no">шаг 12</span><b>Консоль оператора</b><small>2 дня</small></div><div class="bd">
+<p>Все маршруты под <code>requireOperator</code> (<code>routes/operator.ts</code>, 244 строки).</p>
+<pre><code>GET  /api/operator/tickets                ← {"tickets":[TicketCard + user{displayName,platform} + lastMessageAt + unanswered + group 0..4], "me":"имя оператора"}
+GET  /api/operator/stats                  ← {"today":{…},"week":{…},"openQueue":n,"budget":{"stage":"ok","tokensToday":0,"dailyTokenBudget":0,"usedShare":null}}
+GET  /api/operator/tickets/{id}           ← {"ticket","messages","notes","tried":[статьи],"escalationReason"} + помечает operator_read_at=now()
+POST /api/operator/tickets/{id}/assign    → assigned_to = имя, assigned_to_id = sub; 409 если не escalated
+POST /api/operator/tickets/{id}/notes     {"notes":"…"} → operator_notes (пользователю не видны)
+POST /api/operator/tickets/{id}/reply     {"text":"…"} → сообщение assistant с author=имя; авто-assign если пусто; событие + пуш пользователю; ← {"message"}
+POST /api/operator/tickets/{id}/close     → state=closed, closed_by=operator, closed_by_name; сообщение с просьбой оценить; событие ticket.closed by=operator
+POST /api/operator/tickets/{id}/handback  → вернуть помощнику: handled_by=ai, escalation_blocked=true
+GET  /api/operator/stream                 SSE: событие {"ticketId"} при любом изменении в тенанте — консоль перезагружает очередь</code></pre>
+<ul>
+<li><code>OperatorHub</code> (<code>modules/operator/hub.ts</code>, 65 строк): держит открытые SSE-соединения операторов по тенанту; подписан на <code>support.ticket.v1</code> — поэтому при Kafka изменение с любой реплики доходит до всех консолей. Метод <code>notify(tenantId, ticketId)</code> зовут маршруты после изменений.</li>
+<li><code>budget</code> в stats — от модуля ai (<code>LlmBudget.snapshot()</code>); пока его нет — константа <code>{"stage":"ok",…}</code>.</li>
+</ul>
+<div class="done">Готово, когда: <b>e2e-тест <code>e2e/support-flow.spec.ts</code> проходит целиком</b> против твоего сервера (вход → вопрос → «свяжи с оператором» → заявка → консоль → «Взять себе» → ответ → пользователь видит). Запуск: в <code>e2e/playwright.config.ts</code> заменить команду API на <code>java -jar api-app.jar</code>, затем <code>npm run e2e</code>. Для этого нужен движок от Kotlin-1 хотя бы в «упрощённом режиме»; до этого — заглушка, которая на текст «свяжи с оператором» переводит в escalated.</div>
+</div></div>
+
+<div class="stepbox" id="s13"><div class="hd"><span class="no">шаг 13</span><b>База знаний и admin</b><small>1 день</small></div><div class="bd">
+<pre><code>GET /api/kb/categories                ← категории тенанта (гость — только публичные)
+GET /api/kb/search?q=…                ← {"results":[{id,categoryId,title,steps,score}], "docs":[DocPassage]}   поиск — метод модуля ai (KnowledgeService.search / RagService.search)
+GET /api/kb/articles/{id}             ← статья со шагами
+GET    /api/admin/tenants, /api/admin/tenants/{id}
+POST   /api/admin/catalog/import      переимпорт каталога (bumpVersion)
+PUT    /api/admin/tenants/{id}/articles/{articleId}   правка статьи
+DELETE /api/admin/tenants/{id}/articles/{articleId}
+GET    /api/admin/rag/{id}, POST /api/admin/rag/ingest   состояние и переиндексация RAG — вызовы модуля ai</code></pre>
+<div class="done">Готово, когда: вкладка «База знаний» во фронте показывает плитки и находит статьи; admin-маршруты требуют <code>ADMIN_USERS</code>.</div>
+</div></div>
+
+<div class="stepbox" id="s14"><div class="hd"><span class="no">шаг 14</span><b>Подписи мессенджеров: Telegram, VK, MAX</b><small>1 день</small></div><div class="bd">
+<p>Три класса-верификатора за одним интерфейсом <code>PlatformVerifier { verify(payload) → {platform, platformUserId, displayName} }</code>. Алгоритмы переносятся 1:1, у каждого есть тест с реальным примером подписи:</p>
+<ul>
+<li><b>Telegram</b> (<code>auth/telegram.ts</code>, 75 строк): initData Mini App → пары key=value, отсортировать, склеить через <code>\n</code>, HMAC-SHA256 с ключом <code>HMAC-SHA256("WebAppData", botToken)</code>, сравнить с <code>hash</code>; <code>auth_date</code> не старше 24 ч. Тест — <code>telegram-auth.test.ts</code>.</li>
+<li><b>VK</b> (<code>auth/vk.ts</code>, 53): параметры <code>vk_*</code> отсортировать, HMAC-SHA256 на <code>VK_APP_SECRET</code>, base64url, сравнить с <code>sign</code>. Тест — <code>vk-auth.test.ts</code>.</li>
+<li><b>MAX</b> (<code>auth/max.ts</code>, 54): аналогично на <code>MAX_BOT_TOKEN</code>.</li>
+</ul>
+<pre><code>POST /api/auth/telegram  {"initData":"…"}   → AuthResponse | 401 invalid_init_data | 503 telegram_auth_disabled (нет токена в конфиге)
+POST /api/auth/vk        {"payload":"…"}
+POST /api/auth/max       {"payload":"…"}</code></pre>
+<div class="done">Готово, когда: три теста с образцами подписей зелёные; Mini App в Telegram входит на dev-стенд (через туннель) без экрана входа.</div>
+</div></div>
+
+<div class="stepbox" id="s15"><div class="hd"><span class="no">шаг 15</span><b>Корпоративный вход: SSO, LDAP, код на почту</b><small>2 дня</small></div><div class="bd">
+<p><code>modules/auth/corporate.ts</code> (339 строк) и <code>routes/corporate-auth.ts</code> (166). Каждый провайдер включается своими переменными; если переменных нет — провайдер <code>null</code> и в <code>/api/auth/providers</code> он <code>false</code>.</p>
+<ul>
+<li><b>OIDC</b>: <code>GET /api/auth/sso/start?returnTo=…</code> → редирект на <code>OIDC_ISSUER</code> с PKCE; <code>GET /api/auth/sso/callback</code> → обмен кода, claims по <code>OIDC_CLAIM_*</code>, группы → роль <code>operator</code> если пересекаются с <code>OPERATOR_GROUPS</code>; выдать JWT и редирект на <code>returnTo#token=…</code>. Spring: <code>spring-boot-starter-oauth2-client</code> либо руками на <code>RestClient</code> (там 60 строк).</li>
+<li><b>LDAP</b>: <code>POST /api/auth/ldap {"login","password"}</code> → bind по <code>LDAP_BIND_TEMPLATE</code>, поиск атрибутов <code>LDAP_ATTR_*</code>, группы из <code>memberOf</code>. UnboundID.</li>
+<li><b>Почта</b>: <code>POST /api/auth/email/send {"email"}</code> — домен из <code>EMAIL_AUTH_DOMAINS</code>, код 6 цифр, TTL 10 мин, хранить хэш в памяти/БД; <code>POST /api/auth/email/verify {"email","code"}</code> → JWT. Лимиты 5 отправок / 10 минут.</li>
+</ul>
+<div class="done">Готово, когда: тест <code>corporate-auth.test.ts</code> перенесён (выдача кода, срок, домены, роли из групп); SSO проверен с любым тестовым OIDC (Keycloak в Docker подойдёт).</div>
+</div></div>
+
+<div class="stepbox" id="s16"><div class="hd"><span class="no">шаг 16</span><b>Kafka и worker</b><small>2 дня</small></div><div class="bd">
+<ul>
+<li><code>KafkaEventBus</code> (<code>events/kafka.ts</code>, 102 строки): при старте создать три топика (если нет), продюсер с ключом партиции = ticketId (порядок событий одного обращения сохраняется), консьюмеры по группам. Spring Kafka: <code>KafkaTemplate</code> + <code>@KafkaListener(groupId=…)</code>.</li>
+<li><code>worker-app</code> (<code>apps/worker/src/index.ts</code>): отдельное приложение, та же БД, слушает:
+  <ul><li><code>notifier</code> (29 строк): <code>support.notification.v1</code> → отправить пуш в мессенджер пользователя (шаг 17);</li>
+  <li><code>analytics</code> (93 строки): <code>support.ticket.v1</code> и <code>support.llm-usage.v1</code> → UPSERT в <code>daily_stats</code> по дню/тенанту/категории: created, resolved, escalated, rating, токены.</li></ul></li>
+<li>Worker стартует после API (в compose — <code>depends_on: api healthy</code>): схемой владеет API.</li>
+</ul>
+<div class="done">Готово, когда: Testcontainers Kafka — событие, опубликованное API, доходит до консьюмера worker; в <code>daily_stats</code> появляется строка за сегодня.</div>
+</div></div>
+
+<div class="stepbox" id="s17"><div class="hd"><span class="no">шаг 17</span><b>Бот Telegram и пуши</b><small>1 день</small></div><div class="bd">
+<ul>
+<li>Бот (<code>worker/src/bot.ts</code>, 75 строк): <code>/start</code> → сообщение с кнопкой «Открыть помощника» (web_app: <code>WEB_APP_URL</code>); любой текст → «Откройте приложение по кнопке». Long polling.</li>
+<li><b>Обязательно</b>: базовый URL API Telegram = <code>TELEGRAM_API_ROOT</code> — это Cloudflare Worker (<code>deploy/telegram-proxy.worker.js</code>), потому что с сервера прямой доступ к api.telegram.org может быть закрыт. В TelegramBots — <code>TelegramUrl</code> с кастомным хостом.</li>
+<li>Пуш: consumer <code>notifier</code> → <code>sendMessage(chatId=platformUserId, text)</code>. Для VK/MAX — их Bot API через <code>RestClient</code>, тем же consumer'ом по полю <code>platform</code>.</li>
+<li>В dev без worker API сам шлёт пуш (<code>events/dev-notifier.ts</code>) — удобно, повторить.</li>
+</ul>
+<div class="done">Готово, когда: ответ оператора в консоли приходит пользователю в Telegram сообщением.</div>
+</div></div>
+
+<div class="stepbox" id="s18"><div class="hd"><span class="no">шаг 18</span><b>Naumen / help.tpu.ru</b><small>1 день</small></div><div class="bd">
+<p>Интерфейс <code>HelpdeskConnector { kind; createRequest(ticket, summary, fields, userText) → {externalId, externalUrl} }</code> (<code>modules/helpdesk/index.ts</code>, 142 строки). Две реализации: <code>NoopHelpdesk</code> (dev: возвращает фиктивный номер) и <code>NaumenHelpdesk</code> (REST Naumen SD: <code>NAUMEN_URL</code>, <code>NAUMEN_ACCESS_KEY</code>, сервис по категории из <code>NAUMEN_SERVICE_BY_CATEGORY</code> JSON, иначе <code>NAUMEN_DEFAULT_SERVICE</code>). Выбор — <code>HELPDESK_KIND=noop|naumen</code>. Зовёт движок при эскалации в helpdesk.</p>
+<div class="done">Готово, когда: с <code>HELPDESK_KIND=naumen</code> и тестовым стендом ТПУ заявка создаётся и её номер виден в карточке (<code>externalId</code>, <code>externalUrl</code>). Без доступа к стенду — тест на <code>MockRestServiceServer</code>.</div>
+</div></div>
+
+<div class="stepbox" id="s19"><div class="hd"><span class="no">шаг 19</span><b>Гости: cookie устройства, Turnstile, короткий токен, чистка</b><small>1 день</small></div><div class="bd">
+<p>Из <code>routes/auth.ts:24-70, 93-115</code> и <code>docs/SPAM_PROTECTION.md</code>.</p>
+<ul>
+<li>При <code>scope=guest</code>: cookie <code>hd_device</code> — 16 случайных байт hex + подпись HMAC на <code>JWT_SECRET</code>; <code>HttpOnly; SameSite=Lax; Path=/api; Max-Age=год; Secure</code> за HTTPS. Если валидная уже есть — использовать. Гость = <code>platformUserId = "guest:" + device</code>, имя не берётся.</li>
+<li>Если задан <code>TURNSTILE_SECRET</code>: тело должно содержать <code>turnstileToken</code>, проверить POST на <code>https://challenges.cloudflare.com/turnstile/v0/siteverify</code> (secret, response, remoteip); иначе 403 <code>captcha_required</code>.</li>
+<li>Токен гостя — <code>GUEST_JWT_TTL</code>, в claims <code>device</code>.</li>
+<li>В маршруте сообщений для гостя передавать в движок <code>guestKey = {device, ip}</code> — по нему модуль ai считает бюджет.</li>
+<li>Таймер раз в 5 минут (<code>@Scheduled</code>): <code>purgeGuests(GUEST_CHAT_TTL_MINUTES)</code> + <code>WindowCounters.sweep()</code>; и один раз при старте.</li>
+</ul>
+<div class="done">Готово, когда: два входа гостем с одной cookie дают одного пользователя; гостевой токен живёт час; через TTL гостевые обращения исчезают, студенческие — нет; в очереди оператора гостей никогда нет.</div>
+</div></div>
+
+<div class="stepbox" id="s20"><div class="hd"><span class="no">шаг 20</span><b>Docker и compose</b><small>1 день</small></div><div class="bd">
+<pre><code># deploy/api.Dockerfile
+FROM gradle:8-jdk21 AS build
+WORKDIR /src
+COPY . .
+RUN gradle :api-app:bootJar --no-daemon
+FROM eclipse-temurin:21-jre
+COPY --from=build /src/api-app/build/libs/api-app.jar /app/app.jar
+COPY data/catalog /app/data/catalog
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=70"
+EXPOSE 8080
+HEALTHCHECK CMD curl -fsS http://127.0.0.1:8080/health || exit 1
+ENTRYPOINT ["java","-jar","/app/app.jar"]</code></pre>
+<ul>
+<li><code>worker.Dockerfile</code> — то же с <code>:worker-app</code>. <code>web.Dockerfile</code>, <code>Caddyfile</code>, <code>nginx.conf</code> — без изменений.</li>
+<li><code>docker-compose.yml</code>: сервисы те же (postgres, kafka, api, worker, web); у api лимит памяти поднять до <code>1500m</code> (JVM), у worker — <code>768m</code>. Переменные — из <code>.env</code> как сейчас.</li>
+<li>Multi-arch не нужен: API остаётся на x86-сервере; на Spark — только vLLM.</li>
+</ul>
+<div class="done">Готово, когда: <code>docker compose up -d</code> на чистой машине с одним <code>.env</code> поднимает стек, <code>/health</code> зелёный, сайт открывается через Caddy.</div>
+</div></div>
+
+<div class="stepbox" id="s21"><div class="hd"><span class="no">шаг 21</span><b>CI без SSH-деплоя</b><small>полдня</small></div><div class="bd">
+<p><code>.github/workflows/ci.yml</code> — переписать шаги:</p>
+<pre><code>- setup-java 21, gradle cache
+- ./gradlew spotlessCheck ktlintCheck detekt
+- ./gradlew test            (Testcontainers: нужен Docker на runner — на ubuntu-latest есть)
+- npm ci && npm run build -w web
+- e2e: собрать jar, npm run e2e (config запускает jar вместо tsx)
+- node scripts/check-personal-data.mjs
+- сборка образов api/worker/web (без push на PR)</code></pre>
+<p><code>deploy.yml</code> → переименовать в <code>release.yml</code>: на тег <code>v*</code> собирает образы, пушит в GHCR с тегами <code>vX.Y.Z</code> и <code>sha</code>. <b>SSH-шаг удалить</b> — доступа снаружи нет.</p>
+<div class="done">Готово, когда: PR с ошибкой в тесте — красный; тег <code>v0.1.0</code> — образы в GHCR.</div>
+</div></div>
+
+<div class="stepbox" id="s22"><div class="hd"><span class="no">шаг 22</span><b>update.sh, откат, офлайн-комплект</b><small>1 день</small></div><div class="bd">
+<h5>deploy/update.sh &lt;версия&gt;</h5>
+<ol>
+<li><code>backup.sh</code> — дамп базы до обновления.</li>
+<li>Запомнить текущий <code>IMAGE_TAG</code> из <code>.env</code> как <code>PREVIOUS_TAG</code>.</li>
+<li><code>docker compose pull api worker web</code> с новым тегом (или <code>docker load</code> из <code>images-vX.tar</code>, если сети нет).</li>
+<li><code>docker compose up -d</code>; ждать <code>/health</code> до 90 с.</li>
+<li>Не поднялось → вернуть <code>PREVIOUS_TAG</code> в <code>.env</code>, <code>up -d</code> снова, вывести <code>docker compose logs --tail=100 api</code>, exit 1.</li>
+<li>Поднялось → <code>docker image prune -af</code>, записать в <code>/var/log/helpdesk-update.log</code>.</li>
+</ol>
+<h5>Офлайн-комплект (если с сервера нет доступа к GitHub/GHCR)</h5>
+<pre><code># на своей машине
+git bundle create helpdesk-vX.bundle master
+docker save ghcr.io/…-api:vX ghcr.io/…-worker:vX ghcr.io/…-web:vX | gzip > images-vX.tar.gz
+# на сервере
+git fetch /media/usb/helpdesk-vX.bundle master && git reset --hard FETCH_HEAD
+gunzip -c /media/usb/images-vX.tar.gz | docker load
+deploy/update.sh vX</code></pre>
+<p>Плюс <code>server-setup.sh</code> дополнить: cron бэкапа уже ставится; добавить проверку доступности registry и подсказку про офлайн-режим.</p>
+<div class="done">Готово, когда: на тестовой машине без интернета обновление с флешки проходит одной командой; сломанный образ (например, с неверным <code>JWT_SECRET</code>) откатывается сам.</div>
+</div></div>
+
+<h2 id="files">Полный список файлов TypeScript-версии — что с ними делать</h2>
+<h3>Платформа</h3>
+<div class="tbl"><table><thead><tr><th>Файл</th><th>Строк</th><th>Что внутри</th><th>Шаг</th></tr></thead><tbody>
+<tr><td><span class="path">apps/api/src/index.ts</span></td><td class="n">15</td><td>точка входа</td><td>1</td></tr>
+<tr><td><span class="path">apps/api/src/app.ts</span></td><td class="n">63</td><td>сборка сервера, обработчик ошибок, логгер без тел</td><td>5</td></tr>
+<tr><td><span class="path">apps/api/src/config.ts</span></td><td class="n">248</td><td>переменные окружения, дефолты, prod-запреты</td><td>4</td></tr>
+<tr><td><span class="path">apps/api/src/context.ts</span></td><td class="n">306</td><td>порядок инициализации всех зависимостей — читать как «что за чем создаётся»</td><td>1, 6, 11, 19</td></tr>
+<tr><td><span class="path">apps/api/src/plugins/security.ts</span></td><td class="n">134</td><td>JWT, CORS, helmet, rate-limit, три уровня доступа</td><td>7, 8</td></tr>
+<tr><td><span class="path">apps/api/src/plugins/rate-limit-store.ts</span></td><td class="n">64</td><td>хранилище счётчиков в БД</td><td>8</td></tr>
+<tr><td><span class="path">apps/api/src/modules/usage/counters.ts</span></td><td class="n">60</td><td>WindowCounters — UPSERT со скользящим окном</td><td>3</td></tr>
+<tr><td><span class="path">apps/api/src/db/schema.ts</span></td><td class="n">255</td><td>все таблицы и колонки</td><td>2, 3</td></tr>
+<tr><td><span class="path">apps/api/src/db/migrations.ts</span></td><td class="n">204</td><td>7 миграций — SQL дословно в Flyway</td><td>2</td></tr>
+<tr><td><span class="path">apps/api/src/db/client.ts, migrate.ts</span></td><td class="n">87</td><td>подключение и применение миграций</td><td>2</td></tr>
+<tr><td><span class="path">apps/api/src/modules/tickets/repository.ts</span></td><td class="n">469</td><td>весь доступ к обращениям</td><td>3</td></tr>
+<tr><td><span class="path">apps/api/src/modules/knowledge/repository.ts</span></td><td class="n">235</td><td>импорт каталога из JSON, версия, хэш</td><td>6</td></tr>
+<tr><td><span class="path">apps/api/src/modules/auth/index.ts</span></td><td class="n">114</td><td>claims, pseudonym, dev-верификатор</td><td>7</td></tr>
+<tr><td><span class="path">apps/api/src/modules/auth/telegram.ts, vk.ts, max.ts</span></td><td class="n">182</td><td>проверка подписей</td><td>14</td></tr>
+<tr><td><span class="path">apps/api/src/modules/auth/corporate.ts</span></td><td class="n">339</td><td>OIDC, LDAP, почта</td><td>15</td></tr>
+<tr><td><span class="path">apps/api/src/routes/health.ts</span></td><td class="n">30</td><td>/health, /api/tenants</td><td>5</td></tr>
+<tr><td><span class="path">apps/api/src/routes/auth.ts</span></td><td class="n">192</td><td>входы, cookie гостя, Turnstile, /api/me</td><td>7, 14, 19</td></tr>
+<tr><td><span class="path">apps/api/src/routes/corporate-auth.ts</span></td><td class="n">166</td><td>providers, SSO, LDAP, почта</td><td>7, 15</td></tr>
+<tr><td><span class="path">apps/api/src/routes/tickets.ts</span></td><td class="n">185</td><td>обращения и SSE</td><td>9, 10</td></tr>
+<tr><td><span class="path">apps/api/src/routes/operator.ts</span></td><td class="n">244</td><td>консоль</td><td>12</td></tr>
+<tr><td><span class="path">apps/api/src/modules/operator/hub.ts</span></td><td class="n">65</td><td>SSE-хаб консоли</td><td>12</td></tr>
+<tr><td><span class="path">apps/api/src/routes/kb.ts, admin.ts</span></td><td class="n">170</td><td>база знаний, admin</td><td>13</td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/db-infra, telegram-auth, vk-auth, corporate-auth</span></td><td class="n">280</td><td>тесты — перенести</td><td>2, 8, 14, 15</td></tr>
+</tbody></table></div>
+<h3>Интеграции и worker</h3>
+<div class="tbl"><table><thead><tr><th>Файл</th><th>Строк</th><th>Что внутри</th><th>Шаг</th></tr></thead><tbody>
+<tr><td><span class="path">apps/api/src/modules/events/bus.ts, memory.ts, index.ts, dev-notifier.ts</span></td><td class="n">126</td><td>интерфейс шины, память, выбор, dev-пуш</td><td>11, 17</td></tr>
+<tr><td><span class="path">apps/api/src/modules/events/kafka.ts</span></td><td class="n">102</td><td>Kafka-реализация</td><td>16</td></tr>
+<tr><td><span class="path">apps/api/src/modules/helpdesk/index.ts</span></td><td class="n">142</td><td>Noop и Naumen</td><td>18</td></tr>
+<tr><td><span class="path">apps/worker/src/index.ts, bot.ts, consumers/notifier.ts, consumers/analytics.ts</span></td><td class="n">263</td><td>worker, бот, пуши, аналитика</td><td>16, 17</td></tr>
+<tr><td><span class="path">deploy/telegram-proxy.worker.js</span></td><td class="n">18</td><td>Cloudflare Worker — не трогать</td><td>17</td></tr>
+</tbody></table></div>
+<h3>Эксплуатация</h3>
+<div class="tbl"><table><thead><tr><th>Файл</th><th>Строк</th><th>Что внутри</th><th>Шаг</th></tr></thead><tbody>
+<tr><td><span class="path">docker-compose.yml, deploy/api.Dockerfile, worker.Dockerfile</span></td><td class="n">195</td><td>стек и образы</td><td>20</td></tr>
+<tr><td><span class="path">deploy/web.Dockerfile, Caddyfile, nginx.conf</span></td><td class="n">135</td><td>веб и прокси — без изменений</td><td>—</td></tr>
+<tr><td><span class="path">deploy/server-setup.sh, backup.sh, restore.sh, backup.cron</span></td><td class="n">98</td><td>bootstrap и бэкапы</td><td>22</td></tr>
+<tr><td><span class="path">.github/workflows/ci.yml, deploy.yml</span></td><td class="n">175</td><td>CI и сборка образов</td><td>21</td></tr>
+<tr><td><span class="path">.env.example</span></td><td class="n">129</td><td>все переменные — имена не менять</td><td>4</td></tr>
+<tr><td><span class="path">scripts/check-personal-data.mjs</span></td><td class="n">61</td><td>гейт ПД в CI — оставить на Node</td><td>21</td></tr>
+<tr><td><span class="path">e2e/playwright.config.ts, support-flow.spec.ts</span></td><td class="n">119</td><td>сквозной тест — поменять команду запуска API</td><td>12, 21</td></tr>
+<tr><td><span class="path">deploy/prefetch-model.mjs</span></td><td class="n">10</td><td>не нужен: эмбеддинги на Spark</td><td>—</td></tr>
+</tbody></table></div>
+
+<h2 id="pitfalls">Подводные камни — прочитать до шага 10</h2>
+<ul>
+<li><b>SSE через POST, не EventSource.</b> Клиент читает поток из ответа на POST (<code>apps/web/src/lib/api.ts</code>). Значит, обычный <code>SseEmitter</code> подходит, но заголовки и CORS ставишь сам. Проверь flush: если события приходят пачкой в конце — буферизует либо Spring, либо прокси (<code>X-Accel-Buffering: no</code> для nginx, <code>flush_interval -1</code> уже есть в Caddyfile).</li>
+<li><b>Один поток на запрос при стриме.</b> Ответ модели длится 5–20 с. С Tomcat по умолчанию 200 потоков — на нагрузку вуза хватает; если станет тесно — <code>spring.threads.virtual.enabled: true</code> (Java 21) решает без переписывания.</li>
+<li><b>JSONB-колонки.</b> <code>fields</code>, <code>tried_articles</code>, <code>pending_problems</code>, <code>pending_fields</code>, <code>meta</code> — писать как <code>?::jsonb</code> из строки Jackson, читать в <code>Map&lt;String,String&gt;</code> / <code>List&lt;String&gt;</code>.</li>
+<li><b>Время — в UTC.</b> Все <code>TIMESTAMPTZ</code>; в JSON — ISO-строки с <code>Z</code>. Дневные счётчики — по UTC-дате (<code>today()</code> в repository.ts).</li>
+<li><b>Псевдонимизация.</b> Имя пользователя нигде не хранится и не логируется. Единственный человекочитаемый идентификатор — «Пользователь 1ED2CD».</li>
+<li><b>Гости не видны специалистам</b> — фильтр в двух запросах (<code>listForOperator</code>, <code>operatorStats</code>); забудешь — гостевой мусор попадёт в статистику.</li>
+<li><b>Не логировать тела.</b> Ни запросов, ни ответов модели. Только id, метод, путь, статус, длительность.</li>
+<li><b>Каталог — источник истины.</b> Правки статей через admin API живут до следующего изменения JSON-файла; так задумано.</li>
 </ul>
 
-<h2>Порядок работ</h2>
-<div class="steps"><div class="step"><span class="w">нед. 1</span><div><b>Gradle-скелет, Flyway, схема</b>Модули, Testcontainers, 7 миграций как SQL-файлы, Exposed-таблицы. Тест: пустая БД → все миграции → повтор ничего не делает.</div></div><div class="step"><span class="w">нед. 2</span><div><b>HTTP и вход</b>Ktor: /health, /api/auth/dev (студент и гость с cookie), /api/me, JWT, rate-limit из БД. Веб-фронт входит и видит пустой чат.</div></div><div class="step"><span class="w">нед. 2–3</span><div><b>Обращения и SSE</b>TicketRepository, POST /api/tickets, /messages со стримом (движок — заглушка «эхо», пока Kotlin-1 не отдал автомат). <b>e2e первая половина зелёная.</b></div></div><div class="step"><span class="w">нед. 3–4</span><div><b>Консоль оператора, шина</b>EventBus memory + kafka, хаб SSE, /api/operator/*. <b>e2e целиком зелёный.</b></div></div><div class="step"><span class="w">нед. 4–5</span><div><b>Интеграции</b>worker, бот Telegram, notifier, analytics, Naumen; корпоративный вход.</div></div><div class="step"><span class="w">нед. 5–6</span><div><b>Эксплуатация</b>Dockerfile под JVM, compose, <code>update.sh</code> с откатом по /health, офлайн-комплект (git bundle + docker save), CI без SSH-деплоя.</div></div></div>
-
-<h2>Критерий готовности</h2>
-<ul>
-<li><code>e2e/support-flow.spec.ts</code> проходит против нового сервера без правок теста.</li>
-<li>Все переменные из <code>.env.example</code> читаются с теми же именами и дефолтами.</li>
-<li>Свежая БД поднимается миграциями; старая БД TypeScript-версии — тоже (Flyway baseline на <code>schema_migrations</code>).</li>
-<li>Тела запросов и переписка не попадают в логи (см. serializers в <code>app.ts:20</code>).</li>
-<li><code>update.sh</code>: обновление одной командой, откат при неудачном /health.</li>
-</ul>
-
-<h2>Подводные камни</h2>
-<ul>
-<li><b>SSE через POST.</b> Клиент шлёт сообщение POST-ом и читает поток в ответе (не EventSource). В Ktor — <code>respondBytesWriter</code> с <code>text/event-stream</code>, flush после каждого события, heartbeat <code>: ping</code> раз в 15 с.</li>
-<li><b>Блокировка обращения.</b> <code>tryLock</code> — атомарный UPDATE по <code>busy_until</code>; без него два параллельных сообщения ломают автомат.</li>
-<li><b>Псевдонимизация.</b> Имя пользователя никогда не хранится сырым — <code>pseudonym()</code>; в консоли оператора «Пользователь 1ED2CD».</li>
-<li><b>Гостевые чаты</b> удаляются по таймеру (<code>purgeGuests</code>) и не попадают в очередь/статистику — это фильтр <code>NOT LIKE 'guest:%'</code> в двух запросах.</li>
-<li><b>Prod-запреты в конфиге:</b> <code>OPERATOR_OPEN_ACCESS=true</code> в production — ошибка при старте.</li>
-</ul>
+<h2 id="contacts">С кем и о чём договариваться</h2>
+<div class="tbl"><table><thead><tr><th>С кем</th><th>О чём</th><th>Когда</th></tr></thead><tbody>
+<tr><td>shared (Kotlin)</td><td>data-классы контракта: ты их <b>используешь</b> в контроллерах, не объявляешь свои. До их появления — временные Java-records, потом заменить</td><td>неделя 1</td></tr>
+<tr><td>Движок (Kotlin)</td><td>сигнатуры <code>engine.handle(ticket, user, text, scope, guestKey)</code> и <code>closeByUser</code>; как из Java получить поток событий (Iterator / callback)</td><td>до шага 10</td></tr>
+<tr><td>ИИ и поиск (Kotlin)</td><td><code>KnowledgeService.search</code>, <code>RagService.search/ingest/status</code>, <code>LlmBudget.snapshot()</code> — для kb, admin, stats</td><td>до шага 12–13</td></tr>
+<tr><td>Веб (TS)</td><td>ничего менять не нужно; если меняешь путь или поле — предупреди, e2e упадёт</td><td>постоянно</td></tr>
+<tr><td>ИТ-служба ТПУ</td><td>Spring или Ktor; доступ к GHCR/GitHub с сервера; есть ли codelab.tpu с CI и registry; стенд Naumen; SSO (OIDC issuer)</td><td>до шага 1 и 15</td></tr>
+</tbody></table></div>
 
 <footer>Проект «Помоги мне» · исходный репозиторий: <code>github.com/p1rogram/helpdesk-ai</code> (ветка master). Номера строк — на момент составления; файл в репозитории всегда главнее этого документа.</footer>
 </div>
