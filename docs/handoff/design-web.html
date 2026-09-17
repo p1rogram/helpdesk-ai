@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дизайн «Помоги мне» · веб</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* ---------- документ ---------- */
+:root{color-scheme:light;--d-bg:#f5f6f3;--d-surface:#fff;--d-surface-2:#eef0ec;--d-fg:#1b2027;--d-muted:#5c6570;--d-line:#dfe3dd;--d-accent:#0f6e73;--d-accent-soft:rgba(15,110,115,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+/* ---------- токены приложения (из apps/web/src/styles.css, светлая тема) ---------- */
+--bg:#f3f6fa;--surface:#ffffff;--surface-2:#f7f9fc;--fg:#0f172a;--muted:#64748b;--border:#e4eaf2;--border-strong:#d3dceb;
+--accent:#2563eb;--accent-fg:#fff;--accent-soft:rgba(37,99,235,.10);--ok:#16a34a;--ok-soft:rgba(22,163,74,.12);--warn:#d97706;--warn-soft:rgba(217,119,6,.13);--danger:#dc2626;--danger-soft:rgba(220,38,38,.12);--violet:#7c3aed;--violet-soft:rgba(124,58,237,.12);
+--bubble-bot:#fff;--bubble-user:#2563eb;--bubble-user-fg:#fff;--shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px -16px rgba(15,23,42,.24);--radius:16px;--radius-sm:12px;
+--app-font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}
+/* тёмная тема приложения — включается классом на макете, не зависит от темы документа */
+.mock.dark{--bg:#0b1520;--surface:#16243a;--surface-2:#1b2c45;--fg:#e8eef7;--muted:#93a4bd;--border:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.16);--accent:#3b82f6;--accent-soft:rgba(59,130,246,.18);--ok:#34d399;--ok-soft:rgba(52,211,153,.16);--warn:#fbbf24;--warn-soft:rgba(251,191,36,.16);--danger:#f87171;--danger-soft:rgba(248,113,113,.16);--violet:#a78bfa;--violet-soft:rgba(167,139,250,.16);--bubble-bot:#16243a;--bubble-user:#2f6fe4;--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -18px rgba(0,0,0,.8)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--d-bg);color:var(--d-fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:1180px;margin:0 auto}
+header.doc{padding:40px 0 20px;border-bottom:1px solid var(--d-line);margin-bottom:24px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--d-muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:21px;margin:44px 0 12px;padding-top:12px;border-top:1px solid var(--d-line)}
+h3{font-size:15px;margin:22px 0 8px;color:var(--d-muted);font-weight:600;letter-spacing:.03em;text-transform:uppercase;font-size:12.5px}
+p{margin:0 0 12px;max-width:74ch}.lead{font-size:17px;color:var(--d-muted)}
+ul{margin:0 0 12px;padding-left:22px;max-width:74ch}li{margin:3px 0}
+code{font-family:var(--mono);font-size:13px;background:var(--d-surface-2);padding:1px 5px;border-radius:5px}
+nav.toc{font-size:13.5px;margin:0 0 8px}nav.toc a{color:var(--d-accent);text-decoration:none;margin-right:14px}
+a{color:var(--d-accent)}
+.tbl{overflow-x:auto;border:1px solid var(--d-line);border-radius:10px;background:var(--d-surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--d-line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--d-muted);background:var(--d-surface-2)}tr:last-child td{border-bottom:0}
+.sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px;border:1px solid rgba(0,0,0,.15)}
+.note{border-left:3px solid var(--d-accent);background:var(--d-accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;margin:14px 0;max-width:74ch}
+.frame{border:1px solid var(--d-line);border-radius:12px;overflow:hidden;background:var(--d-surface);margin:10px 0 6px}
+.frame .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--d-line);font-family:var(--mono);font-size:12px;color:var(--d-muted)}
+.frame .bar i{width:10px;height:10px;border-radius:50%;background:var(--d-line);display:inline-block}
+.cap{font-size:13px;color:var(--d-muted);margin:0 0 18px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:860px){.two{grid-template-columns:1fr}}
+
+/* ---------- макет приложения (воспроизводит styles.css) ---------- */
+.mock{font-family:var(--app-font);background:var(--bg);color:var(--fg);font-size:14px;line-height:1.45}
+.mock *{box-sizing:border-box}
+.shell{display:grid;grid-template-columns:76px 1fr;height:640px}
+.shell.wide{grid-template-columns:76px 1fr 300px}
+.side{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:8px}
+.side .brand{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin-bottom:10px;font-weight:800;font-size:15px}
+.side .nav{width:100%;display:flex;flex-direction:column;gap:2px}
+.side .nav div{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;font-size:10.5px;font-weight:500;color:var(--muted);border-radius:10px}
+.side .nav div.active{color:var(--accent);background:var(--accent-soft)}
+.ico{width:20px;height:20px;border-radius:5px;background:currentColor;opacity:.75}
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar .t{font-weight:700;font-size:16px}.topbar .s{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.iconbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--surface);margin-left:auto}
+.iconbtn+.iconbtn{margin-left:0}
+.chat{flex:1;overflow:hidden;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.msg{display:flex;flex-direction:column;max-width:78%}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.msg .author{font-size:11px;color:var(--muted);margin:0 0 3px 40px;font-weight:600}
+.msg.user .author{color:var(--ok);margin:0 0 3px}
+.row{display:flex;gap:8px;align-items:flex-end}
+.avatar{width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:700;flex:0 0 auto}
+.avatar.op{background:var(--violet-soft);color:var(--violet)}
+.bubble{background:var(--bubble-bot);border:1px solid var(--border);border-radius:var(--radius);border-bottom-left-radius:6px;padding:10px 13px;box-shadow:var(--shadow)}
+.msg.user .bubble{background:var(--bubble-user);color:var(--bubble-user-fg);border:none;border-radius:var(--radius);border-bottom-right-radius:6px}
+.time{font-size:10.5px;color:var(--muted);margin:3px 0 0 40px}.msg.user .time{margin:3px 0 0}
+.steps{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}
+.step{display:flex;gap:9px;align-items:flex-start;font-size:13.5px}
+.stepn{width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;display:grid;place-items:center;flex:0 0 auto}
+.quick{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 8px}
+.quick span{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:500}
+.quick span.pri{background:var(--accent);color:var(--accent-fg)}
+.esc{margin:0 16px 8px;display:flex;align-items:center;gap:8px;background:var(--violet-soft);color:var(--violet);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-weight:500}
+.esc .pill{margin-left:auto;border:1px solid var(--violet);border-radius:999px;padding:3px 10px;font-size:12px}
+.composer{display:flex;gap:8px;align-items:flex-end;padding:10px 16px 14px;background:var(--surface);border-top:1px solid var(--border)}
+.composer .in{flex:1;border:1px solid var(--border-strong);border-radius:14px;padding:10px 14px;color:var(--muted);background:var(--bg)}
+.composer .send{width:40px;height:40px;border-radius:12px;background:var(--accent);flex:0 0 auto}
+.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px;margin-left:40px}
+.status i{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;animation:p 1.2s infinite}
+@keyframes p{50%{opacity:.25}}
+@media(prefers-reduced-motion:reduce){.status i{animation:none}}
+.panel{background:var(--surface);border-left:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.panel .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.card b{display:block;font-size:13.5px;margin-bottom:6px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}.kv span:nth-child(odd){color:var(--muted)}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}.chip.danger{background:var(--danger-soft);color:var(--danger);border-color:transparent}.chip.violet{background:var(--violet-soft);color:var(--violet);border-color:transparent}
+.conf{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;border:1px solid var(--border)}.conf i{display:block;height:100%;width:82%;background:var(--ok)}
+.btn{border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px;text-align:center;background:var(--accent);color:var(--accent-fg)}
+.btn.sec{background:var(--surface);color:var(--fg);border:1px solid var(--border-strong)}
+.btn.ghost{background:none;color:var(--muted);border:1px solid var(--border)}
+/* оператор */
+.op{padding:12px 16px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.stats div{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 10px}
+.stats b{display:block;font-size:20px;line-height:1.1}.stats small{color:var(--muted);font-size:11px;line-height:1.3;display:block}
+.stats div.warn{border-color:var(--danger)}
+.filters{display:flex;gap:8px}.filters div{border:1px solid var(--border-strong);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--muted);background:var(--surface);flex:1}
+.gt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:6px 0 0}
+.item{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px}
+.item.muted{opacity:.7}
+.tile{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:700;flex:0 0 auto}
+.tile.v{background:var(--violet-soft);color:var(--violet)}.tile.o{background:var(--warn-soft);color:var(--warn)}
+.item .b{min-width:0;flex:1}.item .t{font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center}.item .m{font-size:11.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.login{display:grid;place-items:center;height:100%}
+.loginbox{width:360px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shadow)}
+.loginbox h4{margin:0;font-size:18px}.loginbox .sub{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.loginbox .in{border:1px solid var(--border-strong);border-radius:12px;padding:10px 12px;color:var(--muted);background:var(--bg)}
+/* компоненты-галерея */
+.gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.gal .cell{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.gal .cell .lbl{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.type h4{margin:0}.type .h1{font-size:22px;font-weight:700}.type .h2{font-size:16px;font-weight:700}.type .b{font-size:14px}.type .s{font-size:12px;color:var(--muted)}.type .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="01-server-java.html">Сервер · Java</a><a href="02-engine-kotlin.html">Движок · Kotlin</a>
+<a href="03-ai-search-kotlin.html">ИИ и поиск · Kotlin</a><a href="04-shared-kotlin.html">shared · Kotlin</a><a href="05-web-typescript.html">Веб · TS</a>
+<a href="06-android-compose.html">Android · Compose</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Дизайн · сайт и десктопная консоль</div>
+<h1>«Помоги мне» в браузере: как выглядит сейчас</h1>
+<p class="lead">Макеты собраны из настоящих токенов и компонентов приложения (<code>apps/web/src/styles.css</code>), а не нарисованы заново — то, что здесь, то и на экране. Для дизайнера: что есть, что зафиксировано, что можно улучшать.</p>
+</header>
+
+<h2 id="brief">Бриф дизайнеру</h2>
+<p><b>Продукт.</b> Чат поддержки университета: студент описывает проблему, помощник отвечает пошагово, при необходимости передаёт специалисту. Три поверхности: сайт (десктоп и телефон), Mini App внутри Telegram/VK/MAX (только телефон, см. <a href="design-mobile.html">мобильный дизайн</a>), Android-приложение.</p>
+<p><b>Аудитория.</b> Студенты 17–25 и сотрудники; часть пользователей — на телефоне в общежитии с плохим интернетом; операторы поддержки — за столом на большом мониторе весь день.</p>
+<p><b>Что зафиксировано и почему.</b></p>
+<ul>
+<li><b>Светлая тема по умолчанию</b> — показывают на проекторе и в аудиториях; тёмная — по переключателю или от темы мессенджера.</li>
+<li><b>Внутри Telegram цвета приходят от мессенджера</b> (<code>themeParams</code>): фон, текст, кнопка. Наши токены должны уметь принять чужие значения — палитра не может опираться на конкретный оттенок синего.</li>
+<li><b>Ответ печатается потоком</b> — пузырь помощника растёт по мере прихода текста; статусы «Определяю суть…», «Подбираю решение…» видны 1–3 с.</li>
+<li><b>Кнопки быстрых ответов</b> — главный способ взаимодействия после ответа («Помогло / Не помогло», варианты уточнения). Их не больше 4, они всегда над полем ввода.</li>
+<li><b>Шаги решения</b> — нумерованный список внутри пузыря; это самый читаемый элемент, его нельзя сжимать.</li>
+<li><b>Категория обращения пользователю не показывается</b> (только в карточке справа и у оператора).</li>
+<li>Системный шрифт (без загрузки веб-шрифтов) — Mini App должна открываться мгновенно.</li>
+</ul>
+<p><b>Где точно есть что улучшать.</b></p>
+<ul>
+<li>Правая панель «Карточка» на десктопе выглядит служебно: статус, уверенность, поля — можно сделать понятнее человеку, а не разработчику.</li>
+<li>Экран входа: пять кнопок провайдеров одинаковые — нужна иерархия (основной вход вуза vs гость).</li>
+<li>Консоль оператора: сводка из шести одинаковых плиток; чипы состояний («ждёт ответа», «новое сообщение», «помощник», «через help.tpu.ru») — разные по смыслу, а по форме одинаковые.</li>
+<li>Пустые состояния («Пока у вас нет обращений») — сейчас иконка + текст, без характера.</li>
+<li>Иконки — набор из <code>Icon.tsx</code>, разного веса; нужен один комплект.</li>
+<li>Оценка звёздами после закрытия — стандартная; можно найти форму под «помогло/не помогло + комментарий».</li>
+</ul>
+<div class="note">Формат передачи: любые правки цветов/радиусов/отступов — через токены (таблица ниже) → один файл <code>design/tokens.json</code>, из которого собираются CSS и Compose. Правки компонентов — в терминах компонентов ниже, у каждого есть имя в коде.</div>
+
+<h2 id="tokens">Токены</h2>
+<div class="two">
+<div><h3>Светлая (по умолчанию)</h3>
+<div class="tbl"><table><thead><tr><th>Токен</th><th>Значение</th><th>Роль</th></tr></thead><tbody>
+<tr><td><code>--bg</code></td><td><i class="sw" style="background:#f3f6fa"></i>#f3f6fa</td><td>фон приложения</td></tr>
+<tr><td><code>--surface</code></td><td><i class="sw" style="background:#fff"></i>#ffffff</td><td>шапка, панели, пузырь помощника</td></tr>
+<tr><td><code>--surface-2</code></td><td><i class="sw" style="background:#f7f9fc"></i>#f7f9fc</td><td>вложенные плашки, чипы</td></tr>
+<tr><td><code>--fg</code></td><td><i class="sw" style="background:#0f172a"></i>#0f172a</td><td>основной текст</td></tr>
+<tr><td><code>--muted</code></td><td><i class="sw" style="background:#64748b"></i>#64748b</td><td>вторичный текст, подписи</td></tr>
+<tr><td><code>--border</code> / <code>--border-strong</code></td><td><i class="sw" style="background:#e4eaf2"></i>#e4eaf2 · <i class="sw" style="background:#d3dceb"></i>#d3dceb</td><td>линии, рамки полей</td></tr>
+<tr><td><code>--accent</code></td><td><i class="sw" style="background:#2563eb"></i>#2563eb</td><td>кнопки, активная вкладка, пузырь пользователя</td></tr>
+<tr><td><code>--ok</code> / <code>--warn</code> / <code>--danger</code></td><td><i class="sw" style="background:#16a34a"></i>#16a34a · <i class="sw" style="background:#d97706"></i>#d97706 · <i class="sw" style="background:#dc2626"></i>#dc2626</td><td>решено / ждёт / у специалиста; у каждого есть <code>-soft</code> для фона чипа</td></tr>
+<tr><td><code>--violet</code></td><td><i class="sw" style="background:#7c3aed"></i>#7c3aed</td><td>всё, что связано со специалистом-человеком</td></tr>
+<tr><td><code>--radius</code> / <code>--radius-sm</code></td><td>16px · 12px</td><td>пузыри и карточки / поля и чипы</td></tr>
+<tr><td><code>--shadow</code></td><td>2 слоя, очень мягкая</td><td>только пузыри и модальные</td></tr>
+</tbody></table></div></div>
+<div><h3>Тёмная</h3>
+<div class="tbl"><table><thead><tr><th>Токен</th><th>Значение</th></tr></thead><tbody>
+<tr><td><code>--bg</code></td><td><i class="sw" style="background:#0b1520"></i>#0b1520</td></tr>
+<tr><td><code>--surface</code></td><td><i class="sw" style="background:#16243a"></i>#16243a</td></tr>
+<tr><td><code>--surface-2</code></td><td><i class="sw" style="background:#1b2c45"></i>#1b2c45</td></tr>
+<tr><td><code>--fg</code></td><td><i class="sw" style="background:#e8eef7"></i>#e8eef7</td></tr>
+<tr><td><code>--muted</code></td><td><i class="sw" style="background:#93a4bd"></i>#93a4bd</td></tr>
+<tr><td><code>--border</code></td><td>rgba(255,255,255,.08) / .16</td></tr>
+<tr><td><code>--accent</code></td><td><i class="sw" style="background:#3b82f6"></i>#3b82f6</td></tr>
+<tr><td><code>--ok</code> / <code>--warn</code> / <code>--danger</code></td><td><i class="sw" style="background:#34d399"></i> <i class="sw" style="background:#fbbf24"></i> <i class="sw" style="background:#f87171"></i></td></tr>
+<tr><td><code>--violet</code></td><td><i class="sw" style="background:#a78bfa"></i>#a78bfa</td></tr>
+<tr><td><code>--bubble-user</code></td><td><i class="sw" style="background:#2f6fe4"></i>#2f6fe4</td></tr>
+</tbody></table></div>
+<p class="cap">Тёмная тема — тёмно-синяя, не серая: это осознанно, чтобы синий акцент не терялся. Внутри Telegram оба набора могут быть переопределены темой мессенджера.</p></div>
+</div>
+
+<h2 id="type">Типографика</h2>
+<div class="mock" style="border:1px solid var(--d-line);border-radius:12px;padding:16px 18px">
+<div class="type" style="display:grid;gap:8px">
+<div class="h1">Заголовок экрана · 22/700</div>
+<div class="h2">Заголовок карточки, название обращения · 16/700</div>
+<div class="b">Текст сообщений и статей · 14/400, межстрочный 1.45. Шаги решения — 13.5.</div>
+<div class="s">Подписи, время, вторичное · 12/400 muted</div>
+<div class="l">Заголовок группы · 11 / caps / 0.06em</div>
+</div>
+</div>
+<p class="cap">Шрифт — системный стек (<code>-apple-system, Segoe UI, Roboto, Inter, system-ui</code>). Внутри мессенджера — его шрифт.</p>
+
+<h2 id="components">Компоненты</h2>
+<div class="mock" style="border:1px solid var(--d-line);border-radius:12px;padding:16px">
+<div class="gal">
+<div class="cell"><div class="lbl">MessageBubble · assistant / user</div>
+<div class="msg"><div class="author">Помощник</div><div class="row"><div class="avatar">П</div><div class="bubble">Похоже, это «Не работает Wi-Fi». Попробуйте по шагам:</div></div><div class="time">12:04</div></div>
+<div class="msg user"><div class="row"><div class="bubble">Не ловит вайфай в общаге 12</div></div><div class="time">12:03</div></div></div>
+<div class="cell"><div class="lbl">StepList</div>
+<div class="bubble"><div class="steps"><div class="step"><span class="stepn">1</span><span>Выключите и включите Wi-Fi на устройстве.</span></div><div class="step"><span class="stepn">2</span><span>Забудьте сеть TPU-WiFi и подключитесь заново.</span></div><div class="step"><span class="stepn">3</span><span>Проверьте, ловит ли на другом устройстве.</span></div></div>Напишите, помогло ли.</div></div>
+<div class="cell"><div class="lbl">QuickReplies</div><div class="quick" style="padding:0"><span class="pri">Помогло</span><span>Не помогло</span><span>Позвать специалиста</span></div></div>
+<div class="cell"><div class="lbl">Composer</div><div class="composer" style="padding:0;border:0;background:none"><div class="in">Опишите проблему…</div><div class="send"></div></div></div>
+<div class="cell"><div class="lbl">Chips · состояния</div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip">intake</span><span class="chip warn">уточняем</span><span class="chip">решаем</span><span class="chip violet">у специалиста</span><span class="chip ok">решено</span><span class="chip danger">ждёт ответа</span><span class="chip ok">помощник</span><span class="chip">через help.tpu.ru</span></div></div>
+<div class="cell"><div class="lbl">Escalated bar</div><div class="esc" style="margin:0"><span>У специалиста: Иванова А. · прочитано 12:10</span><span class="pill">Закрыть обращение</span></div></div>
+<div class="cell"><div class="lbl">Buttons</div><div class="btn">Войти</div><div class="btn sec">Другой способ входа</div><div class="btn ghost">Отмена</div></div>
+<div class="cell"><div class="lbl">Status (стрим)</div><div class="status"><i></i> Понял: Сеть, Wi-Fi → ищу решение…</div><div class="status"><i></i> Подбираю решение: «Не работает Wi-Fi»…</div></div>
+<div class="cell"><div class="lbl">TicketCardPanel · уверенность</div><div class="card"><b>Карточка обращения</b><div class="kv"><span>Категория</span><span>Сеть, Wi-Fi и удалённый доступ</span><span>Уверенность</span><span><div class="conf"><i></i></div></span><span>Общежитие</span><span>№12, комната 305</span><span>Приоритет</span><span>high</span></div></div></div>
+</div></div>
+
+<h2 id="chat">Экран: чат на десктопе</h2>
+<div class="frame"><div class="bar"><i></i><i></i><i></i> https://помоги-мне.tpu.ru/#/chat · 1100×640</div>
+<div class="mock"><div class="shell wide">
+<div class="side"><div class="brand">П</div><div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База знаний</div><div><span class="ico"></span>Оператор</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="main">
+<div class="topbar"><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>Томского политехнического университета</div></div><div class="iconbtn"></div><div class="iconbtn"></div></div>
+<div class="chat">
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="row"><div class="avatar">П</div><div class="bubble">Привет! Я помощник поддержки — Томского политехнического университета. Расскажите своими словами, что случилось: что не работает и где — постараюсь помочь.</div></div><div class="time">12:02</div></div>
+<div class="msg user"><div class="author">Вы</div><div class="row"><div class="bubble">не ловит вайфай в общаге 12, комната 305, с ноута</div></div><div class="time">12:03</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="row"><div class="avatar">П</div><div class="bubble">Похоже, это «Не работает Wi-Fi или сеть в корпусе/общежитии». Попробуйте по шагам:<div class="steps"><div class="step"><span class="stepn">1</span><span>Выключите и снова включите Wi-Fi на ноутбуке.</span></div><div class="step"><span class="stepn">2</span><span>«Забудьте» сеть TPU-WiFi и подключитесь заново с логином ТПУ.</span></div><div class="step"><span class="stepn">3</span><span>Проверьте, ловит ли на телефоне — если нет, проблема в точке доступа.</span></div></div>Напишите, помогло ли.</div></div><div class="time">12:03</div></div>
+</div>
+<div class="quick"><span class="pri">Помогло</span><span>Не помогло</span></div>
+<div class="composer"><div class="in">Опишите проблему…</div><div class="send"></div></div>
+</div>
+<div class="panel"><div class="h">Карточка</div>
+<div class="card"><b>Не ловит Wi-Fi в общежитии 12</b><div class="kv"><span>Статус</span><span><span class="chip warn">решаем</span></span><span>Категория</span><span>Сеть, Wi-Fi и удалённый доступ</span><span>Уверенность</span><span><div class="conf"><i></i></div></span><span>Общежитие</span><span>№12, к. 305</span><span>Устройство</span><span>ноутбук</span><span>Номер</span><span>TPU-8E393D93</span></div></div>
+<div class="card"><b>Что уже пробовали</b><div style="font-size:12.5px;color:var(--muted)">Не работает Wi-Fi или сеть в корпусе/общежитии</div></div>
+<div class="btn ghost">Закрыть обращение</div>
+</div>
+</div></div></div>
+<p class="cap">Три колонки от 1000px: навигация · чат · карточка. До 1000px карточка прячется за кнопку «Карточка» в шапке; до 700px — мобильная раскладка с нижней навигацией.</p>
+
+<h3>То же в тёмной теме</h3>
+<div class="frame"><div class="bar"><i></i><i></i><i></i> data-theme="dark"</div>
+<div class="mock dark"><div class="shell" style="height:300px">
+<div class="side"><div class="brand">П</div><div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База</div></div></div>
+<div class="main"><div class="topbar"><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ</div></div><div class="iconbtn"></div></div>
+<div class="chat"><div class="msg user"><div class="row"><div class="bubble">не ловит вайфай в общаге 12</div></div></div>
+<div class="msg"><div class="row"><div class="avatar">П</div><div class="bubble">Похоже, это «Не работает Wi-Fi». Попробуйте по шагам…</div></div></div><div class="status"><i></i> Подбираю решение…</div></div>
+<div class="quick"><span class="pri">Помогло</span><span>Не помогло</span></div>
+<div class="composer"><div class="in">Опишите проблему…</div><div class="send"></div></div></div>
+</div></div></div>
+
+<h2 id="escalated">Экран: обращение у специалиста</h2>
+<div class="frame"><div class="bar"><i></i><i></i><i></i> #/chat · state = escalated</div>
+<div class="mock"><div class="shell" style="height:420px">
+<div class="side"><div class="brand">П</div><div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="main"><div class="topbar"><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ</div></div><div class="iconbtn"></div></div>
+<div class="chat">
+<div class="msg user"><div class="row"><div class="bubble">Не помогло, свяжите с оператором</div></div><div class="time">12:06</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="row"><div class="avatar">П</div><div class="bubble">Хорошо, подключаю специалиста.<br>Заявка №8E393D93 создана.<br>Специалист получит: проблема, категория, общежитие №12, к. 305, что уже пробовали.</div></div><div class="time">12:06</div></div>
+<div class="msg"><div class="author">Оператор · Иванова А.</div><div class="row"><div class="avatar op">И</div><div class="bubble">Проверила точку доступа в общежитии 12 — перезапустила, попробуйте подключиться снова.</div></div><div class="time">12:14</div></div>
+</div>
+<div class="esc"><span>У специалиста: Иванова А. · прочитано 12:10</span><span class="pill">Закрыть обращение</span></div>
+<div class="composer"><div class="in">Написать специалисту…</div><div class="send"></div></div></div>
+</div></div></div>
+<p class="cap">Фиолетовый — цвет «живого человека»: аватар оператора, панель статуса, чип «у специалиста». Помощник молчит, пока обращение у специалиста.</p>
+
+<h2 id="operator">Экран: консоль оператора</h2>
+<div class="frame"><div class="bar"><i></i><i></i><i></i> #/operator · 1100×640</div>
+<div class="mock"><div class="shell">
+<div class="side"><div class="brand">П</div><div class="nav"><div><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База</div><div class="active"><span class="ico"></span>Оператор</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="main"><div class="topbar"><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>Томского политехнического университета</div></div><div class="iconbtn"></div></div>
+<div class="op">
+<div class="stats"><div><b>3</b><small>в очереди сейчас</small></div><div><b>41</b><small>обращений сегодня · 212 за 7 дней</small></div><div><b>29</b><small>решил помощник · 71 % · 148 за 7 дней</small></div><div><b>7</b><small>закрыли специалисты · 39 за 7 дней</small></div><div><b>4</b><small>в help.tpu.ru · 19 за 7 дней</small></div><div><b>4.6</b><small>средняя оценка · 4.5 за 7 дней (63)</small></div></div>
+<div class="filters"><div>Все категории ▾</div><div style="flex:2">Поиск: суть, номер, корпус, общежитие…</div></div>
+<div class="gt">Мои обращения</div>
+<div class="item"><div class="tile">W</div><div class="b"><div class="t">Не ловит Wi-Fi в общежитии 12 <span class="chip warn">новое сообщение</span></div><div class="m"><span>№8E393D93</span><span>Пользователь 1ED2CD</span><span>Сеть, Wi-Fi</span><span>общежитие №12</span><span>12:06</span></div></div></div>
+<div class="gt">Ждут специалиста</div>
+<div class="item"><div class="tile o">Л</div><div class="b"><div class="t">Не может войти в личный кабинет <span class="chip danger">ждёт ответа</span></div><div class="m"><span>№1E117FFC</span><span>Пользователь D32D6A</span><span>Личный кабинет и портал</span><span>приоритет: high</span><span>11:58</span></div></div></div>
+<div class="item"><div class="tile">V</div><div class="b"><div class="t">VPN не подключается из дома <span class="chip danger">ждёт ответа</span></div><div class="m"><span>№B99E0DF6</span><span>Пользователь 2185AD</span><span>Сеть, Wi-Fi</span><span>11:41</span></div></div></div>
+<div class="gt">Завершены без специалиста</div>
+<div class="item muted"><div class="tile v">О</div><div class="b"><div class="t">Не работает розетка в общежитии №12 <span class="chip">через help.tpu.ru</span></div><div class="m"><span>№21C810D3</span><span>Кампус и общежития</span><span>10:22</span></div></div></div>
+<div class="item muted"><div class="tile">W</div><div class="b"><div class="t">Wi-Fi в корпусе 10 <span class="chip ok">помощник</span></div><div class="m"><span>№98A1C0F2</span><span>Сеть, Wi-Fi</span><span>оценка 5</span><span>09:50</span></div></div></div>
+</div></div>
+</div></div></div>
+<p class="cap">Пять групп очереди: мои · ждут специалиста · в работе у коллег · закрыты специалистами · завершены без специалиста. Внутри обращения: блок «почему у специалиста / что пробовал помощник / детали», заметки (не видны пользователю), шаблоны быстрых ответов, «Взять себе», ответ, закрыть.</p>
+
+<h2 id="login">Экран: вход</h2>
+<div class="frame"><div class="bar"><i></i><i></i><i></i> / · до входа</div>
+<div class="mock"><div class="login" style="height:420px">
+<div class="loginbox"><h4>Помоги мне</h4><div class="sub">Помощник поддержки Томского политехнического университета</div>
+<div class="btn">Войти через учётную запись ТПУ</div><div class="btn sec">Логин и пароль организации</div><div class="btn sec">Код на корпоративную почту</div><div class="btn sec">Я студент или сотрудник ТПУ</div><div class="btn ghost">Я гость: вопросы о поступлении и контакты</div>
+<div class="sub" style="text-align:center;margin-top:4px">Открыть в Telegram</div></div>
+</div></div></div>
+<p class="cap">Набор кнопок зависит от того, что включил вуз (<code>/api/auth/providers</code>). Гостю имя не нужно; в проде «Я студент» выключен, вместо него SSO.</p>
+
+<h2 id="handoff">Как отдавать правки</h2>
+<ul>
+<li><b>Цвета, радиусы, тени, отступы</b> — как значения токенов из таблицы выше. Если нужен новый токен — с именем и ролью.</li>
+<li><b>Компоненты</b> — по именам из галереи (MessageBubble, StepList, QuickReplies, Composer, TicketCardPanel, chips, escalated bar). У каждого — состояния: обычное, hover, disabled, тёмная тема, внутри Telegram.</li>
+<li><b>Экраны</b> — три ширины: телефон 390, планшет/узкий десктоп 700–1000, десктоп 1000+.</li>
+<li>Всё, что зависит от мессенджера (цвета, шрифт, safe-area), — в <a href="design-mobile.html">мобильном документе</a>.</li>
+</ul>
+</div>
+</body>
+</html>

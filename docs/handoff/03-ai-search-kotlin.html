@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ИИ и поиск · Kotlin</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--bg:#f5f6f3;--surface:#ffffff;--surface-2:#eef0ec;--fg:#1b2027;--muted:#5c6570;--line:#dfe3dd;--line-strong:#c7cdc4;
+--accent:#0f6e73;--accent-soft:rgba(15,110,115,.10);--accent-fg:#ffffff;--warn:#a1620a;--warn-soft:rgba(161,98,10,.12);--ok:#2f7d4f;--ok-soft:rgba(47,125,79,.12);--danger:#b3362a;--danger-soft:rgba(179,54,42,.10);
+--java:#7a3e0c;--java-soft:rgba(122,62,12,.10);--kotlin:#5b3fa6;--kotlin-soft:rgba(91,63,166,.10);--ts:#1f5f9e;--ts-soft:rgba(31,95,158,.10);--compose:#2c7a3f;--compose-soft:rgba(44,122,63,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,'Courier New',monospace;--radius:10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:960px;margin:0 auto}
+header.doc{padding:40px 0 24px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance;font-weight:700}
+h2{font-size:21px;margin:40px 0 12px;padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
+h3{font-size:16px;margin:24px 0 8px}
+p{margin:0 0 12px;max-width:72ch}
+ul,ol{margin:0 0 12px;padding-left:22px;max-width:72ch}
+li{margin:3px 0}
+.lead{font-size:17px;color:var(--muted);max-width:70ch}
+code,.path{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0;white-space:pre}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.n{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag.java{background:var(--java-soft);color:var(--java)}.tag.kotlin{background:var(--kotlin-soft);color:var(--kotlin)}.tag.ts{background:var(--ts-soft);color:var(--ts)}.tag.compose{background:var(--compose-soft);color:var(--compose)}
+.tag.keep{background:var(--ok-soft);color:var(--ok)}.tag.new{background:var(--accent-soft);color:var(--accent)}.tag.drop{background:var(--danger-soft);color:var(--danger)}.tag.read{background:var(--surface-2);color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0;max-width:72ch}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.card h4{margin:0 0 6px;font-size:14px}
+.card p{font-size:13.5px;color:var(--muted);margin:0}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+.role{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--surface);text-decoration:none;color:inherit;display:block}
+.role:hover{border-color:var(--line-strong)}
+.role b{display:block;font-size:14px;margin-bottom:4px}
+.role small{color:var(--muted);font-size:12.5px;line-height:1.4;display:block}
+nav.toc{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+nav.toc a{color:var(--accent);text-decoration:none;margin-right:14px}
+a{color:var(--accent)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;font-size:14px;margin:8px 0 16px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.step{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step .w{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px}
+.step b{display:block;margin-bottom:2px}
+footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){h1{font-size:24px}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="01-server-java.html">Сервер · Java</a><a href="02-engine-kotlin.html">Движок · Kotlin</a>
+<a href="03-ai-search-kotlin.html">ИИ и поиск · Kotlin</a><a href="04-shared-kotlin.html">shared · Kotlin</a><a href="05-web-typescript.html">Веб · TS</a>
+<a href="06-android-compose.html">Android · Compose</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Роль · ИИ и поиск · Kotlin</div>
+<h1>Модель, промпты, эмбеддинги, RAG, бюджет</h1>
+<p class="lead">Связь с Qwen на DGX Spark, разбор JSON, поиск по каталогу и документации, защита бюджета и оценочный прогон качества.</p>
+</header>
+
+<h2>Роль одним абзацем</h2>
+<p>Ты отвечаешь за всё, что связано с моделями и поиском: как сервер разговаривает с LLM (на Spark вуза или в
+облаке), какие промпты отправляет, как разбирает JSON, как ищет по каталогу и документации (BM25 + векторы),
+как считает бюджет. И за <b>оценочный прогон</b> — доказательство, что выбранная локальная модель справляется.
+Ты же — контакт с администраторами GPU-сервера. Модуль <code>ai/</code> на Kotlin.</p>
+<div class="note">Целевая конфигурация: <b>Qwen3-30B-A3B (FP8)</b> через vLLM на NVIDIA DGX Spark + эмбеддер <b>deepvk/USER-bge-m3</b> через <code>/v1/embeddings</code> там же. Облако (Claude) — запасной провайдер, переключается конфигом.</div>
+
+<h2>Стек</h2>
+<div class="tbl"><table><thead><tr>
+<th>Задача</th>
+<th>Инструмент</th>
+<th>Замечание</th>
+</tr></thead><tbody>
+<tr><td>HTTP к модели</td><td><b>Ktor Client</b> (CIO) + плагин SSE</td><td>POST /v1/chat/completions; stream=true; <code>stream_options.include_usage</code></td></tr>
+<tr><td>Облачный провайдер</td><td><code>anthropic-java</code> (официальный SDK)</td><td>structured output, prompt cache — как в transport.ts</td></tr>
+<tr><td>JSON анализа</td><td>kotlinx.serialization, <code>Json {{ ignoreUnknownKeys = true; isLenient = true }}</code></td><td>+ терпимый предразбор из json.ts</td></tr>
+<tr><td>Эмбеддинги</td><td>vLLM <code>/v1/embeddings</code> (Spark); запас — ONNX Runtime Java + DJL tokenizers</td><td>префиксы bge-m3: query / passage не нужны; для e5 — <code>query:</code>/<code>passage:</code></td></tr>
+<tr><td>Векторы</td><td>pgvector: <code>vector(1024)</code>, HNSW, <code>&lt;=&gt;</code> косинус</td><td>SQL из rag/index.ts дословно; размерность = модель</td></tr>
+<tr><td>BM25</td><td>чистый Kotlin (порт search.ts)</td><td>можно положить в shared для подсказок на клиенте</td></tr>
+<tr><td>Кэш ответов</td><td>таблица answer_cache (через TicketRepository)</td><td>ключ tenant|scope|catalogVersion|нормализованный текст, 24 ч</td></tr>
+<tr><td>Метрики прогона</td><td>скрипт на Kotlin (Gradle-таск) или Python-ноутбук</td><td>JSON-валидность, точность категории, «дописал от себя»</td></tr>
+</tbody></table></div>
+
+<h2>Файлы</h2>
+<div class="tbl"><table><thead><tr>
+<th>Файл</th>
+<th>Строк</th>
+<th>Что внутри</th>
+<th>Что делать</th>
+</tr></thead><tbody>
+<tr><td><span class="path">apps/api/src/modules/llm/transport.ts</span></td><td class="n">315</td><td>интерфейс LlmTransport; AnthropicTransport (prompt cache, adaptive thinking, structured output); OpenAiCompatibleTransport — fetch к /chat/completions, response_format json_object, SSE-стрим с usage; describeError; createTransport</td><td><span class="tag new">переписать</span> Kotlin: интерфейс + два класса на Ktor Client; добавить <code>enable_thinking</code> per-call для Qwen3</td></tr>
+<tr><td><span class="path">apps/api/src/modules/llm/index.ts</span></td><td class="n">220</td><td>LlmService: analyze (JSON → Zod → Analysis, refusal, невалидный вывод → LlmUnavailableError), solve/answer (стрим по одной статье / фрагментам), analyzeModel, withoutModel(), onUsage (токены)</td><td><span class="tag new">переписать</span> kotlinx.serialization вместо Zod; ошибки → LlmUnavailableException</td></tr>
+<tr><td><span class="path">apps/api/src/modules/llm/prompts.ts</span></td><td class="n">189</td><td>системные промпты: analyze (роль, категории каталога, схема JSON, правила: несколько проблем, informational, complex, asksForHuman), solve («только по статье»), answer (по фрагментам, ссылки)</td><td><span class="tag keep">переносится 1:1</span> текст промптов дословно; затем — донастройка под Qwen3 по результатам прогона</td></tr>
+<tr><td><span class="path">apps/api/src/modules/llm/json.ts</span></td><td class="n">27</td><td>терпимый разбор JSON из ответа модели (снимает ```json-ограждение, ищет первый объект)</td><td><span class="tag keep">переносится 1:1</span></td></tr>
+<tr><td><span class="path">apps/api/src/modules/knowledge/search.ts</span></td><td class="n">389</td><td>токенизация с SYNONYMS (общага→общежитие, вайфай→wi-fi…), stem(), closestTerm() — исправление опечаток (одна правка, prefix-aware known), tokenizeQuery, KnowledgeIndex (BM25 по каталогу, prefix-подсказки)</td><td><span class="tag keep">переносится 1:1</span> чистый алгоритм; в KMP shared можно вынести токенизатор для подсказок на клиенте</td></tr>
+<tr><td><span class="path">apps/api/src/modules/rag/index.ts</span></td><td class="n">603</td><td>RagService: ingest (нарезка, хэши, векторизация, pgvector HNSW), warmup, search (гибрид: BM25 + косинус, RRF), denseBackend pgvector|memory, отпечаток корпуса для переиндексации между репликами, scope гостя</td><td><span class="tag new">переписать</span> самая объёмная часть роли; SQL к pgvector — дословно</td></tr>
+<tr><td><span class="path">apps/api/src/modules/rag/chunker.ts</span></td><td class="n">132</td><td>нарезка markdown-документов на фрагменты по заголовкам с перекрытием</td><td><span class="tag keep">переносится 1:1</span></td></tr>
+<tr><td><span class="path">apps/api/src/modules/rag/embedder.ts</span></td><td class="n">77</td><td>Embedder: LocalEmbedder (ONNX, префиксы query:/passage:), NullEmbedder</td><td><span class="tag new">переписать</span> <b>RemoteEmbedder</b> через vLLM /v1/embeddings (основной) + ONNX Runtime Java (запас); префиксы под bge-m3</td></tr>
+<tr><td><span class="path">apps/api/src/modules/rag/redact.ts</span></td><td class="n">91</td><td>чистка ПД из корпуса: телефоны, почты, ФИО-паттерны</td><td><span class="tag keep">переносится 1:1</span></td></tr>
+<tr><td><span class="path">apps/api/src/modules/usage/budget.ts</span></td><td class="n">112</td><td>LlmBudget: бюджет гостя (устройство час/сутки, IP час), суточный потолок токенов (80 % гости, 100 % все), snapshot для /health и консоли</td><td><span class="tag keep">переносится 1:1</span> 1:1; счётчики — WindowCounters из platform</td></tr>
+<tr><td><span class="path">scripts/crawl-help-tpu.mjs, crawl-site.mjs</span></td><td class="n">304</td><td>сбор документации help.tpu.ru и tpu.ru в data/raw через Playwright</td><td><span class="tag keep">переносится 1:1</span> остаются на JS/Node: одноразовые скрипты, не часть сервера</td></tr>
+<tr><td><span class="path">data/raw/*</span></td><td class="n">790</td><td>собранный корпус (md/json/jsonl)</td><td><span class="tag keep">переносится 1:1</span></td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/llm-transport.test.ts</span></td><td class="n">138</td><td>мини-сервер, притворяющийся vLLM: JSON-анкета в ```json, SSE-стрим с usage; enabled без ключа для openai</td><td><span class="tag new">переписать</span> Kotest + ktor MockEngine / embedded server</td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/rag.test.ts</span></td><td class="n">220</td><td>нарезка, гибридный поиск в памяти и через pgvector, скоуп гостя, чистка ПД, подхват переиндексации второй репликой</td><td><span class="tag new">переписать</span></td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/search.test.ts</span></td><td class="n">59</td><td>синонимы, опечатки, prefix-подсказки</td><td><span class="tag new">переписать</span></td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/budget.test.ts</span></td><td class="n">220</td><td>бюджет гостя по устройству/IP, 0 = без модели, ступени потолка, чистка гостевых чатов</td><td><span class="tag new">переписать</span></td></tr>
+</tbody></table></div>
+
+<h2>Что попросить у администраторов Spark</h2>
+<pre><code># vLLM как постоянный сервис (NGC-образ arm64), доля памяти — чтобы соседи не уронили
+vllm serve Qwen/Qwen3-30B-A3B-FP8 --max-model-len 8192 --gpu-memory-utilization 0.35 --port 8000
+vllm serve deepvk/USER-bge-m3 --task embed --port 8001
+# нам нужны: URL обоих, ключ (если включат), доступность с сервера API по сети</code></pre>
+<p>В <code>.env</code> API: <code>LLM_PROVIDER=openai</code>, <code>LLM_BASE_URL=http://spark:8000/v1</code>,
+<code>LLM_MODEL=Qwen/Qwen3-30B-A3B-FP8</code>, <code>RAG_EMBEDDINGS=remote</code>, <code>RAG_EMBEDDINGS_URL=http://spark:8001/v1</code>,
+<code>RAG_EMBEDDING_MODEL=deepvk/USER-bge-m3</code>. Переменные <code>RAG_EMBEDDINGS=remote</code> и <code>RAG_EMBEDDINGS_URL</code> — новые, их добавляешь ты.</p>
+
+<h2>Оценочный прогон — обязательная задача</h2>
+<ol>
+<li>Собрать 30–50 реальных обращений (с ИТ-службы, обезличенных) + ожидаемую категорию и статью.</li>
+<li>Прогнать через <code>analyze</code> на Qwen3 и на Claude; посчитать: доля невалидного JSON, точность категории, полнота извлечения полей.</li>
+<li>Прогнать <code>solve</code>: глазами оценить «дописал от себя», русский язык, длину.</li>
+<li>Поиск: доля запросов, где нужный фрагмент в топ-3, для e5-small vs USER-bge-m3.</li>
+<li>Результат — таблица в <code>docs/EVAL.md</code>. По ней решается: остаёмся на 30B-A3B или берём Qwen3-32B 4-bit; ужесточать ли промпт solve.</li>
+</ol>
+
+<h2>Порядок работ</h2>
+<div class="steps"><div class="step"><span class="w">нед. 1</span><div><b>Интерфейсы и BM25</b>LlmService/LlmTransport/SearchService как интерфейсы для движка; порт search.ts с тестами синонимов и опечаток.</div></div><div class="step"><span class="w">нед. 2</span><div><b>Транспорт к vLLM</b>OpenAiCompatibleTransport + тест с фейковым сервером; разбор JSON → Analysis; thinking on для analyze, off для solve.</div></div><div class="step"><span class="w">нед. 3</span><div><b>RAG</b>chunker, redact, RemoteEmbedder, ingest в pgvector, гибридный поиск, кэш ответов; тесты rag.</div></div><div class="step"><span class="w">нед. 4</span><div><b>Бюджет и прогон</b>LlmBudget, /v1/embeddings на Spark, оценочный прогон, docs/EVAL.md, донастройка промптов.</div></div></div>
+
+<h2>Критерий готовности</h2>
+<ul><li>Тесты llm-transport, rag, search, budget перенесены и зелёные.</li>
+<li>Переключение провайдера (<code>LLM_PROVIDER</code>) и эмбеддера (<code>RAG_EMBEDDINGS</code>) — только конфигом, без правок кода.</li>
+<li><code>docs/EVAL.md</code> с цифрами по локальной модели.</li>
+<li>Модель никогда не роняет чат: любая ошибка → <code>LlmUnavailableException</code> → движок идёт по fallback.</li></ul>
+
+<footer>Проект «Помоги мне» · исходный репозиторий: <code>github.com/p1rogram/helpdesk-ai</code> (ветка master). Номера строк — на момент составления; файл в репозитории всегда главнее этого документа.</footer>
+</div>
+</body>
+</html>

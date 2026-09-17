@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shared · Kotlin Multiplatform</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--bg:#f5f6f3;--surface:#ffffff;--surface-2:#eef0ec;--fg:#1b2027;--muted:#5c6570;--line:#dfe3dd;--line-strong:#c7cdc4;
+--accent:#0f6e73;--accent-soft:rgba(15,110,115,.10);--accent-fg:#ffffff;--warn:#a1620a;--warn-soft:rgba(161,98,10,.12);--ok:#2f7d4f;--ok-soft:rgba(47,125,79,.12);--danger:#b3362a;--danger-soft:rgba(179,54,42,.10);
+--java:#7a3e0c;--java-soft:rgba(122,62,12,.10);--kotlin:#5b3fa6;--kotlin-soft:rgba(91,63,166,.10);--ts:#1f5f9e;--ts-soft:rgba(31,95,158,.10);--compose:#2c7a3f;--compose-soft:rgba(44,122,63,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,'Courier New',monospace;--radius:10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:960px;margin:0 auto}
+header.doc{padding:40px 0 24px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance;font-weight:700}
+h2{font-size:21px;margin:40px 0 12px;padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
+h3{font-size:16px;margin:24px 0 8px}
+p{margin:0 0 12px;max-width:72ch}
+ul,ol{margin:0 0 12px;padding-left:22px;max-width:72ch}
+li{margin:3px 0}
+.lead{font-size:17px;color:var(--muted);max-width:70ch}
+code,.path{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0;white-space:pre}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.n{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag.java{background:var(--java-soft);color:var(--java)}.tag.kotlin{background:var(--kotlin-soft);color:var(--kotlin)}.tag.ts{background:var(--ts-soft);color:var(--ts)}.tag.compose{background:var(--compose-soft);color:var(--compose)}
+.tag.keep{background:var(--ok-soft);color:var(--ok)}.tag.new{background:var(--accent-soft);color:var(--accent)}.tag.drop{background:var(--danger-soft);color:var(--danger)}.tag.read{background:var(--surface-2);color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0;max-width:72ch}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.card h4{margin:0 0 6px;font-size:14px}
+.card p{font-size:13.5px;color:var(--muted);margin:0}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+.role{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--surface);text-decoration:none;color:inherit;display:block}
+.role:hover{border-color:var(--line-strong)}
+.role b{display:block;font-size:14px;margin-bottom:4px}
+.role small{color:var(--muted);font-size:12.5px;line-height:1.4;display:block}
+nav.toc{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+nav.toc a{color:var(--accent);text-decoration:none;margin-right:14px}
+a{color:var(--accent)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;font-size:14px;margin:8px 0 16px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.step{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step .w{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px}
+.step b{display:block;margin-bottom:2px}
+footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){h1{font-size:24px}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="01-server-java.html">Сервер · Java</a><a href="02-engine-kotlin.html">Движок · Kotlin</a>
+<a href="03-ai-search-kotlin.html">ИИ и поиск · Kotlin</a><a href="04-shared-kotlin.html">shared · Kotlin</a><a href="05-web-typescript.html">Веб · TS</a>
+<a href="06-android-compose.html">Android · Compose</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Роль · shared · Kotlin</div>
+<h1>Общий модуль: контракт, валидация, клиент</h1>
+<p class="lead">KMP-модуль, который делят сервер, Android и (через OpenAPI) веб. Первое, что должно появиться в новом репозитории.</p>
+</header>
+
+<h2>Роль одним абзацем</h2>
+<p>Ты делаешь модуль, который видят все: <code>shared/</code> на Kotlin Multiplatform (цели <code>jvm</code> и
+<code>android</code>). В нём — контракт API (одни и те же data-классы на сервере и в Android-приложении),
+валидация, парсер SSE-потока и Ktor-клиент. Плюс генерация TypeScript-типов для веб-фронта, чтобы он не
+разошёлся с сервером. Твой модуль ни от кого не зависит; от него зависят все.</p>
+<div class="warn note">В <code>commonMain</code> — только Kotlin и мультиплатформенные библиотеки (kotlinx.*, Ktor Client). Никаких JVM-зависимостей: Exposed, Kafka, java.* сюда нельзя. Если что-то нужно «только на сервере» — это не shared.</div>
+
+<h2>Стек</h2>
+<div class="tbl"><table><thead><tr>
+<th>Задача</th>
+<th>Инструмент</th>
+<th>Замечание</th>
+</tr></thead><tbody>
+<tr><td>Модуль</td><td>Kotlin Multiplatform: <code>jvm()</code>, <code>androidTarget()</code></td><td>iOS — добавить цель позже, код не меняется</td></tr>
+<tr><td>Сериализация</td><td>kotlinx.serialization</td><td><code>@Serializable</code>, <code>@SerialName("type")</code> для sealed-классов событий; имена полей — camelCase как в TS</td></tr>
+<tr><td>Валидация</td><td>Konform</td><td>белые списки, форматы; те же правила, что у движка</td></tr>
+<tr><td>HTTP/SSE</td><td>Ktor Client (движок задаёт платформа: OkHttp на Android, CIO на JVM)</td><td>POST /api/tickets/{{id}}/messages → читать поток построчно</td></tr>
+<tr><td>Дата/время</td><td>kotlinx.datetime</td><td>createdAt как ISO-строки, парсить на границе</td></tr>
+<tr><td>TypeScript для веба</td><td>Ktor OpenAPI-плагин (или ручной <code>openapi.yaml</code>) → <code>openapi-typescript</code></td><td>генерируется в CI в <code>web/src/lib/api.types.ts</code></td></tr>
+<tr><td>Тесты</td><td>Kotest в <code>commonTest</code></td><td>round-trip JSON для каждого класса; SSE-парсер на реальном дампе потока</td></tr>
+</tbody></table></div>
+
+<h2>Файлы</h2>
+<div class="tbl"><table><thead><tr>
+<th>Файл</th>
+<th>Строк</th>
+<th>Что внутри</th>
+<th>Что делать</th>
+</tr></thead><tbody>
+<tr><td><span class="path">packages/shared/src/dialog.ts</span></td><td class="n">122</td><td>TicketState, Tone, TicketCard (40 полей карточки), ChatMessage, QuickReply, ChatStreamEvent (meta|status|delta|done|ack|error), Analysis + AnalysisSchema (Zod), SendMessageRequest</td><td><span class="tag new">переписать</span> @Serializable data class / sealed class ChatStreamEvent с дискриминатором <code>type</code></td></tr>
+<tr><td><span class="path">packages/shared/src/api.ts</span></td><td class="n">80</td><td>AuthResponse, TelegramAuthRequest, ответы /api/tickets, /api/kb, /api/operator</td><td><span class="tag new">переписать</span></td></tr>
+<tr><td><span class="path">packages/shared/src/catalog.ts</span></td><td class="n">102</td><td>Category (clarify: ClarifyField с options/required/requiredWhen), Article, Catalog; escalation helpdesk|operator</td><td><span class="tag new">переписать</span></td></tr>
+<tr><td><span class="path">packages/shared/src/events.ts</span></td><td class="n">82</td><td>TOPICS (ticket-events, llm-usage, notifications), TicketEvent union (created/updated/escalated/resolved/operator_reply/closed…), LlmUsage</td><td><span class="tag new">переписать</span> sealed class; имена топиков — константы</td></tr>
+<tr><td><span class="path">packages/shared/src/index.ts</span></td><td class="n">4</td><td>реэкспорт</td><td><span class="tag drop">не нужно</span></td></tr>
+<tr><td><span class="path">apps/web/src/lib/api.ts</span></td><td class="n">376</td><td>клиент API на fetch + разбор SSE (парсер строк <code>data:</code>) + типы ответов</td><td><span class="tag read">только читать</span> источник для SSE-парсера в shared и для проверки, что OpenAPI покрывает всё, что зовёт веб</td></tr>
+<tr><td><span class="path">apps/api/src/modules/dialog/extract.ts</span></td><td class="n">142</td><td>белые списки корпусов/общежитий, правила полей</td><td><span class="tag read">только читать</span> кандидат на перенос в shared, чтобы Android валидировал офлайн (согласовать с Движком)</td></tr>
+<tr><td><span class="path">apps/api/src/modules/knowledge/search.ts</span></td><td class="n">389</td><td>токенизатор, синонимы, опечатки</td><td><span class="tag read">только читать</span> кандидат на перенос в shared для подсказок при вводе</td></tr>
+</tbody></table></div>
+
+<h2>Что должно оказаться в shared</h2>
+<div class="tbl"><table><thead><tr>
+<th>Пакет</th>
+<th>Содержимое</th>
+<th>Кто потребитель</th>
+</tr></thead><tbody>
+<tr><td><code>contract</code></td><td>TicketCard, ChatMessage, ChatStreamEvent, Analysis, QuickReply, AuthResponse, ответы операторских маршрутов</td><td>сервер (сериализует), Android (десериализует), веб (через OpenAPI)</td></tr>
+<tr><td><code>catalog</code></td><td>Category, ClarifyField, Article — формат <code>data/catalog/*.json</code></td><td>сервер (импорт), Android (экран базы знаний)</td></tr>
+<tr><td><code>events</code></td><td>TOPICS, TicketEvent, LlmUsage</td><td>сервер, worker</td></tr>
+<tr><td><code>validation</code></td><td>белые списки корпусов/общежитий, проверка полей</td><td>сервер (движок), Android (подсказки офлайн)</td></tr>
+<tr><td><code>sse</code></td><td>парсер <code>data:</code>-строк в Flow&lt;ChatStreamEvent&gt;</td><td>Android; сервер — в тестах</td></tr>
+<tr><td><code>client</code></td><td>HelpdeskApi: login, tickets, sendMessage(): Flow, kb, operator — на Ktor Client</td><td>Android</td></tr>
+</tbody></table></div>
+
+<h2>Порядок работ</h2>
+<div class="steps"><div class="step"><span class="w">нед. 1</span><div><b>Контракт</b>Все классы из packages/shared перенесены; round-trip тесты; опубликован как зависимость для platform/engine/ai. <b>Это блокирует всех — первым.</b></div></div><div class="step"><span class="w">нед. 2</span><div><b>OpenAPI → TS</b>Схема API, генерация типов в web; веб-фронт собирается с ними без ручных правок.</div></div><div class="step"><span class="w">нед. 3</span><div><b>SSE и клиент</b>Парсер потока, HelpdeskApi на Ktor Client; тест на дампе реального ответа.</div></div><div class="step"><span class="w">нед. 4</span><div><b>Валидация и поиск</b>Белые списки и токенизатор — по согласованию с Движком и ИИ; Android получает подсказки офлайн.</div></div></div>
+<p>Модуль небольшой; после недели 2 у тебя останется время. Разумно взять на себя из роли «Серверный» боты
+Telegram/VK/MAX и notifier (они — первые потребители контракта) или помочь Android.</p>
+
+<h2>Критерий готовности</h2>
+<ul><li>Один и тот же JSON, отданный сервером, читается Android-клиентом без адаптеров.</li>
+<li>Веб-фронт использует сгенерированные типы; ручной <code>api.ts</code> сведён к вызовам.</li>
+<li>В <code>commonMain</code> нет ни одной JVM-зависимости (Gradle это проверит на цели android).</li></ul>
+
+<footer>Проект «Помоги мне» · исходный репозиторий: <code>github.com/p1rogram/helpdesk-ai</code> (ветка master). Номера строк — на момент составления; файл в репозитории всегда главнее этого документа.</footer>
+</div>
+</body>
+</html>

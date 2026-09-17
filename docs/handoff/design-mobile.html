@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дизайн «Помоги мне» · мобильный</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--d-bg:#f5f6f3;--d-surface:#fff;--d-surface-2:#eef0ec;--d-fg:#1b2027;--d-muted:#5c6570;--d-line:#dfe3dd;--d-accent:#0f6e73;--d-accent-soft:rgba(15,110,115,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+--bg:#f3f6fa;--surface:#ffffff;--surface-2:#f7f9fc;--fg:#0f172a;--muted:#64748b;--border:#e4eaf2;--border-strong:#d3dceb;
+--accent:#2563eb;--accent-fg:#fff;--accent-soft:rgba(37,99,235,.10);--ok:#16a34a;--ok-soft:rgba(22,163,74,.12);--warn:#d97706;--warn-soft:rgba(217,119,6,.13);--danger:#dc2626;--danger-soft:rgba(220,38,38,.12);--violet:#7c3aed;--violet-soft:rgba(124,58,237,.12);
+--bubble-bot:#fff;--bubble-user:#2563eb;--bubble-user-fg:#fff;--shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px -16px rgba(15,23,42,.24);--radius:16px;--radius-sm:12px;
+--app-font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}
+.phone.dark{--bg:#0b1520;--surface:#16243a;--surface-2:#1b2c45;--fg:#e8eef7;--muted:#93a4bd;--border:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.16);--accent:#3b82f6;--accent-soft:rgba(59,130,246,.18);--ok:#34d399;--ok-soft:rgba(52,211,153,.16);--warn:#fbbf24;--warn-soft:rgba(251,191,36,.16);--danger:#f87171;--danger-soft:rgba(248,113,113,.16);--violet:#a78bfa;--violet-soft:rgba(167,139,250,.16);--bubble-bot:#16243a;--bubble-user:#2f6fe4;--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -18px rgba(0,0,0,.8)}
+/* Telegram-тема (пример реальных themeParams тёмного клиента) */
+.phone.tg{--bg:#212d3b;--surface:#17212b;--surface-2:#232e3c;--fg:#f5f5f5;--muted:#708499;--border:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.16);--accent:#5288c1;--accent-soft:rgba(82,136,193,.2);--bubble-bot:#182533;--bubble-user:#2b5278;--ok:#4fae4e;--violet:#a78bfa;--violet-soft:rgba(167,139,250,.16);--warn:#fbbf24;--warn-soft:rgba(251,191,36,.16);--danger:#f87171;--danger-soft:rgba(248,113,113,.16)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--d-bg);color:var(--d-fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:1180px;margin:0 auto}
+header.doc{padding:40px 0 20px;border-bottom:1px solid var(--d-line);margin-bottom:24px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--d-muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:21px;margin:44px 0 12px;padding-top:12px;border-top:1px solid var(--d-line)}
+p{margin:0 0 12px;max-width:74ch}.lead{font-size:17px;color:var(--d-muted)}
+ul{margin:0 0 12px;padding-left:22px;max-width:74ch}li{margin:3px 0}
+code{font-family:var(--mono);font-size:13px;background:var(--d-surface-2);padding:1px 5px;border-radius:5px}
+nav.toc{font-size:13.5px;margin:0 0 8px}nav.toc a{color:var(--d-accent);text-decoration:none;margin-right:14px}a{color:var(--d-accent)}
+.note{border-left:3px solid var(--d-accent);background:var(--d-accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;margin:14px 0;max-width:74ch}
+.tbl{overflow-x:auto;border:1px solid var(--d-line);border-radius:10px;background:var(--d-surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--d-line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--d-muted);background:var(--d-surface-2)}tr:last-child td{border-bottom:0}
+/* ряд телефонов */
+.row-ph{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin:14px 0 6px}
+.ph{width:300px;max-width:100%}
+.ph .cap{font-size:12.5px;color:var(--d-muted);margin:8px 2px 0;line-height:1.4}
+.ph .cap b{color:var(--d-fg)}
+.phone{width:300px;max-width:100%;aspect-ratio:300/620;border:8px solid #1c1f24;border-radius:38px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--app-font);font-size:13px;line-height:1.4;display:flex;flex-direction:column;position:relative;box-shadow:0 14px 40px -20px rgba(0,0,0,.5)}
+.phone *{box-sizing:border-box}
+.sb{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:600;background:var(--surface)}
+.sb .notch{position:absolute;left:50%;top:6px;transform:translateX(-50%);width:84px;height:20px;border-radius:12px;background:#1c1f24}
+.tgbar{height:34px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);gap:8px}
+.tgbar b{color:var(--fg)}
+.topbar{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{width:32px;height:32px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:800;font-size:14px}
+.topbar .t{font-weight:700;font-size:14.5px;line-height:1.2}.topbar .s{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.iconbtn{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--surface);margin-left:auto}
+.body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.chat{flex:1;padding:12px;display:flex;flex-direction:column;gap:9px;overflow:hidden}
+.msg{display:flex;flex-direction:column;max-width:86%}.msg.user{align-self:flex-end;align-items:flex-end}
+.author{font-size:10.5px;color:var(--muted);margin:0 0 3px 36px;font-weight:600}.msg.user .author{color:var(--ok);margin:0 0 3px}
+.r{display:flex;gap:7px;align-items:flex-end}
+.avatar{width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:700;flex:0 0 auto}.avatar.op{background:var(--violet-soft);color:var(--violet)}
+.bubble{background:var(--bubble-bot);border:1px solid var(--border);border-radius:var(--radius);border-bottom-left-radius:6px;padding:9px 12px;box-shadow:var(--shadow);font-size:13px}
+.msg.user .bubble{background:var(--bubble-user);color:var(--bubble-user-fg);border:none;border-bottom-left-radius:var(--radius);border-bottom-right-radius:6px}
+.time{font-size:10px;color:var(--muted);margin:2px 0 0 36px}.msg.user .time{margin:2px 0 0}
+.steps{display:flex;flex-direction:column;gap:5px;margin:7px 0 4px}.step{display:flex;gap:8px;align-items:flex-start;font-size:12.5px}
+.stepn{width:18px;height:18px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:10px;font-weight:700;display:grid;place-items:center;flex:0 0 auto}
+.quick{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 8px}
+.quick span{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:500}.quick span.pri{background:var(--accent);color:var(--accent-fg)}
+.esc{margin:0 12px 8px;display:flex;align-items:center;gap:6px;background:var(--violet-soft);color:var(--violet);border-radius:var(--radius-sm);padding:7px 10px;font-size:12px;font-weight:500}.esc .pill{margin-left:auto;border:1px solid var(--violet);border-radius:999px;padding:2px 8px;font-size:11px;white-space:nowrap}
+.composer{display:flex;gap:7px;align-items:flex-end;padding:8px 12px 10px;background:var(--surface);border-top:1px solid var(--border)}
+.composer .in{flex:1;border:1px solid var(--border-strong);border-radius:13px;padding:9px 12px;color:var(--muted);background:var(--bg);font-size:13px}
+.composer .send{width:36px;height:36px;border-radius:11px;background:var(--accent);flex:0 0 auto}
+.status{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-left:36px}.status i{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;animation:p 1.2s infinite}
+@keyframes p{50%{opacity:.25}}@media(prefers-reduced-motion:reduce){.status i{animation:none}}
+.nav{display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:16px}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 6px;font-size:10px;font-weight:500;color:var(--muted)}.nav div.active{color:var(--accent)}
+.ico{width:20px;height:20px;border-radius:5px;background:currentColor;opacity:.75}
+.mainbtn{background:var(--accent);color:var(--accent-fg);text-align:center;font-weight:600;padding:13px;font-size:14px}
+.home{width:110px;height:4px;border-radius:2px;background:var(--fg);opacity:.35;margin:4px auto 6px}
+/* списки/плитки */
+.list{padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.item{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:9px 11px}
+.tile{width:32px;height:32px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:700;flex:0 0 auto}.tile.v{background:var(--violet-soft);color:var(--violet)}.tile.o{background:var(--warn-soft);color:var(--warn)}.tile.g{background:var(--ok-soft);color:var(--ok)}
+.item .b{min-width:0;flex:1}.item .t{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item .m{font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--border);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}.chip.violet{background:var(--violet-soft);color:var(--violet);border-color:transparent}
+.seg{display:flex;background:var(--surface-2);border-radius:10px;padding:3px;margin:10px 12px 0;font-size:12px;font-weight:500}.seg div{flex:1;text-align:center;padding:6px;border-radius:8px;color:var(--muted)}.seg div.on{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+.search{margin:10px 12px 0;border:1px solid var(--border-strong);border-radius:12px;padding:9px 12px;color:var(--muted);background:var(--surface);font-size:13px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px}
+.tile2{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:600}
+.tile2 small{font-weight:400;color:var(--muted);font-size:11px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);text-align:center;padding:20px;font-size:12.5px}
+.empty .big{width:48px;height:48px;border-radius:14px;background:var(--surface-2)}
+.empty b{color:var(--fg);font-size:14px}
+/* профиль */
+.panel{margin:10px 12px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-bottom:1px solid var(--border);font-size:13px}.prow:last-child{border-bottom:0}.prow small{display:block;color:var(--muted);font-size:11px}
+.sw{width:36px;height:20px;border-radius:10px;background:var(--accent);position:relative;flex:0 0 auto}.sw::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.off{background:var(--border-strong)}.sw.off::after{right:auto;left:2px}
+.prof{display:flex;gap:11px;align-items:center;padding:14px 12px 4px}.prof .av{width:46px;height:46px;border-radius:14px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:800;font-size:17px}
+.prof b{display:block;font-size:14px}.prof small{color:var(--muted);font-size:11.5px}
+/* вход */
+.loginbox{margin:auto 14px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.loginbox h4{margin:0;font-size:16px}.loginbox .sub{font-size:11.5px;color:var(--muted);margin-bottom:4px}
+.btn{border-radius:12px;padding:10px 12px;font-weight:600;font-size:13px;text-align:center;background:var(--accent);color:var(--accent-fg)}.btn.sec{background:var(--surface);color:var(--fg);border:1px solid var(--border-strong)}.btn.ghost{background:none;color:var(--muted);border:1px solid var(--border)}
+.stars{display:flex;gap:6px;justify-content:center;padding:6px 0 2px}.stars span{width:22px;height:22px;border-radius:50%;background:var(--warn-soft);border:1px solid var(--warn)}.stars span.on{background:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="01-server-java.html">Сервер · Java</a><a href="02-engine-kotlin.html">Движок · Kotlin</a>
+<a href="03-ai-search-kotlin.html">ИИ и поиск · Kotlin</a><a href="04-shared-kotlin.html">shared · Kotlin</a><a href="05-web-typescript.html">Веб · TS</a>
+<a href="06-android-compose.html">Android · Compose</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Дизайн · Mini App и Android</div>
+<h1>«Помоги мне» на телефоне: как выглядит сейчас</h1>
+<p class="lead">Экраны Mini App (Telegram / VK / MAX) и будущего Android-приложения — одни и те же пять вкладок. Макеты собраны из настоящих токенов приложения; токены, типографика и компоненты — в <a href="design-web.html">веб-документе</a>, здесь — только то, что относится к телефону.</p>
+</header>
+
+<h2 id="brief">Что важно именно на телефоне</h2>
+<ul>
+<li><b>Ширина 360–430, одна колонка.</b> Нижняя навигация из пяти вкладок; для оператора — та же пятая вкладка, но консоль на телефоне — «посмотреть и ответить», не рабочее место.</li>
+<li><b>Внутри Telegram</b> сверху — панель мессенджера (название бота, «⋯», закрыть), снизу может быть его <b>MainButton</b> (мы используем для «Отправить/Помогло» в некоторых состояниях). Цвета фона/текста/кнопки приходят от темы Telegram — макет «Telegram · тёмная» ниже показывает, как наши компоненты выглядят в чужой палитре.</li>
+<li><b>Safe-area</b>: шапка и низ учитывают вырез и жест «домой» (<code>env(safe-area-inset-*)</code>).</li>
+<li><b>Стрим ответа</b> и статусы «Определяю суть…» — на телефоне это единственный сигнал, что что-то происходит; их нельзя убирать.</li>
+<li><b>Кнопки быстрых ответов</b> над полем ввода — основной способ ответить одним тапом; на узком экране переносятся в две строки.</li>
+<li><b>Звуки</b>: тап, отправка, получение + тихая фоновая музыка; включены по умолчанию, два тумблера в профиле. Android — то же + haptic.</li>
+<li><b>Свайп</b> влево/вправо переключает вкладки (<code>lib/swipe.ts</code>).</li>
+</ul>
+<div class="note">Android-приложение повторяет эти экраны в Compose один в один по токенам; отличия допустимы только там, где этого требует платформа (системная навигация, пуш-уведомления, шаринг).</div>
+
+<h2 id="chat">Чат</h2>
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>12:03</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ</div></div><div class="iconbtn"></div></div>
+<div class="body"><div class="chat">
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="r"><div class="avatar">П</div><div class="bubble">Привет! Расскажите своими словами, что случилось: что не работает и где — постараюсь помочь.</div></div><div class="time">12:02</div></div>
+<div class="msg user"><div class="r"><div class="bubble">не ловит вайфай в общаге 12, комната 305</div></div><div class="time">12:03</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="r"><div class="avatar">П</div><div class="bubble">Похоже, это «Не работает Wi-Fi в общежитии». Попробуйте по шагам:<div class="steps"><div class="step"><span class="stepn">1</span><span>Выключите и включите Wi-Fi.</span></div><div class="step"><span class="stepn">2</span><span>«Забудьте» сеть TPU-WiFi и подключитесь заново.</span></div><div class="step"><span class="stepn">3</span><span>Проверьте на другом устройстве.</span></div></div>Напишите, помогло ли.</div></div><div class="time">12:03</div></div>
+</div>
+<div class="quick"><span class="pri">Помогло</span><span>Не помогло</span></div>
+<div class="composer"><div class="in">Опишите проблему…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База знаний</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Сайт на телефоне · светлая.</b> Решение показано; пользователь отвечает кнопкой.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>12:03</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ</div></div><div class="iconbtn"></div></div>
+<div class="body"><div class="chat">
+<div class="msg user"><div class="r"><div class="bubble">не ловит вайфай в общаге 12, комната 305</div></div><div class="time">12:03</div></div>
+<div class="status"><i></i> Понял: Сеть, Wi-Fi → ищу решение…</div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="r"><div class="avatar">П</div><div class="bubble">Похоже, это «Не работает Wi-Fi в общежитии». Попробуйте по ш▍</div></div></div>
+</div>
+<div class="composer"><div class="in">Опишите проблему…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База знаний</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Стрим.</b> Статус живёт 1–3 с, потом пузырь растёт по мере прихода текста; поле ввода заблокировано до конца.</p></div>
+
+<div class="ph"><div class="phone tg"><div class="sb"><span>12:03</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="tgbar">✕ &nbsp; <b>Помоги мне</b> · бот &nbsp; ⋯</div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ</div></div><div class="iconbtn"></div></div>
+<div class="body"><div class="chat">
+<div class="msg user"><div class="r"><div class="bubble">Не помогло, свяжите с оператором</div></div><div class="time">12:06</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="r"><div class="avatar">П</div><div class="bubble">Хорошо, подключаю специалиста.<br>Заявка №8E393D93 создана.</div></div><div class="time">12:06</div></div>
+<div class="msg"><div class="author">Оператор · Иванова А.</div><div class="r"><div class="avatar op">И</div><div class="bubble">Перезапустила точку доступа в общежитии 12, попробуйте снова.</div></div><div class="time">12:14</div></div>
+</div>
+<div class="esc"><span>У специалиста: Иванова А. · прочитано</span><span class="pill">Закрыть</span></div>
+<div class="composer"><div class="in">Написать специалисту…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Telegram Mini App · тема мессенджера.</b> Палитра пришла от Telegram (<code>themeParams</code>): наш синий заменён на его, пузыри — на его цвета. Обращение у специалиста.</p></div>
+</div>
+
+<h2 id="tabs">Остальные вкладки</h2>
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>12:20</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">История</div><div class="s">4 обращения</div></div><div class="iconbtn"></div></div>
+<div class="body">
+<div class="seg"><div class="on">Все 4</div><div>Решённые 2</div><div>Переданные 1</div></div>
+<div class="list">
+<div class="item"><div class="tile v">W</div><div class="b"><div class="t">Не ловит Wi-Fi в общежитии 12</div><div class="m">У специалиста · 13 сент., 12:06</div></div><span class="chip violet">специалист</span></div>
+<div class="item"><div class="tile g">Л</div><div class="b"><div class="t">Не может войти в личный кабинет</div><div class="m">Решено · 11 сент.</div></div><span class="chip ok">решено</span></div>
+<div class="item"><div class="tile g">V</div><div class="b"><div class="t">VPN из дома на ноутбуке</div><div class="m">Решено помощником · 11 сент.</div></div><span class="chip ok">решено</span></div>
+<div class="item"><div class="tile o">О</div><div class="b"><div class="t">Розетка в общежитии №12, к. 305</div><div class="m">Заявка в help.tpu.ru · 10 сент.</div></div><span class="chip">help.tpu.ru</span></div>
+</div></div>
+<div class="nav"><div><span class="ico"></span>Чат</div><div class="active"><span class="ico"></span>История</div><div><span class="ico"></span>База знаний</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>История.</b> Сегмент-фильтр, карточки с состоянием; тап открывает чат.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>12:20</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">База знаний</div><div class="s">ТПУ · 38 статей</div></div></div>
+<div class="body">
+<div class="search">Поиск: вайфай, пропуск, ЛК…</div>
+<div class="tiles"><div class="tile2"><span class="tile">W</span>Сеть, Wi-Fi и удалённый доступ<small>9 статей</small></div><div class="tile2"><span class="tile o">Л</span>Личный кабинет и портал<small>7 статей</small></div><div class="tile2"><span class="tile v">К</span>Кампус и общежития<small>8 статей</small></div><div class="tile2"><span class="tile g">П</span>Поступление<small>5 статей</small></div><div class="tile2"><span class="tile">Э</span>Электронная почта<small>4 статьи</small></div><div class="tile2"><span class="tile o">О</span>Оборудование<small>5 статей</small></div></div>
+</div>
+<div class="nav"><div><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div class="active"><span class="ico"></span>База знаний</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>База знаний.</b> Категории плитками, поиск с подсказками и исправлением опечаток; статья — шаги списком.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>12:20</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Профиль</div><div class="s">Telegram</div></div></div>
+<div class="body">
+<div class="prof"><div class="av">П</div><div><b>Пользователь 1ED2CD</b><small>студент · ТПУ</small></div></div>
+<div class="panel"><div class="prow"><span>Тёмная тема<small>сейчас — как в Telegram</small></span><span class="sw off"></span></div><div class="prow"><span>Звуки окружения<small>тап, отправка, получение</small></span><span class="sw"></span></div><div class="prow"><span>Фоновая музыка<small>тихо, 3 %</small></span><span class="sw"></span></div></div>
+<div class="panel"><div class="prow"><span>Обращений<small>4 всего · 2 решено</small></span><span></span></div><div class="prow"><span>Оператор<small>консоль открывается в браузере</small></span><span>›</span></div></div>
+<div class="panel"><div class="prow" style="color:var(--danger)">Выйти</div></div>
+</div>
+<div class="nav"><div><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База знаний</div><div class="active"><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Профиль.</b> Тема, звуки, статистика, выход. Имя — псевдоним: настоящее не хранится.</p></div>
+</div>
+
+<h2 id="states">Состояния, которые тоже нужно нарисовать</h2>
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>9:41</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s">ТПУ</div></div></div>
+<div class="body" style="display:flex"><div class="loginbox"><h4>Помоги мне</h4><div class="sub">Помощник поддержки ТПУ</div><div class="btn">Войти через учётную запись ТПУ</div><div class="btn sec">Код на корпоративную почту</div><div class="btn ghost">Я гость: поступление и контакты</div><div class="sub" style="text-align:center;margin-top:2px">Открыть в Telegram</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Вход на сайте.</b> В Mini App этого экрана нет — вход тихий по подписи мессенджера.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>9:41</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">История</div></div></div>
+<div class="body"><div class="empty"><div class="big"></div><b>Пока у вас нет обращений</b>Здесь будут отображаться ваши запросы в техподдержку</div></div>
+<div class="nav"><div><span class="ico"></span>Чат</div><div class="active"><span class="ico"></span>История</div><div><span class="ico"></span>База</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Пустое состояние.</b> Сейчас — иконка-заглушка + текст. Хочется характера.</p></div>
+
+<div class="ph"><div class="phone dark"><div class="sb"><span>12:30</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ</div></div><div class="iconbtn"></div></div>
+<div class="body"><div class="chat">
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="r"><div class="avatar">П</div><div class="bubble">Рад, что помогло! Обращение закрыто. Оцените, пожалуйста, ответ:<div class="stars"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div></div></div><div class="time">12:30</div></div>
+</div>
+<div class="quick"><span class="pri">Новое обращение</span></div>
+<div class="composer"><div class="in">Обращение закрыто</div><div class="send" style="opacity:.4"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>История</div><div><span class="ico"></span>База</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Закрытие и оценка · тёмная тема.</b> Звёзды — стандартные; поле ввода заблокировано, кнопка «Новое обращение».</p></div>
+</div>
+
+<h2 id="list">Полный список экранов и состояний</h2>
+<div class="tbl"><table><thead><tr><th>Экран</th><th>Состояния</th><th>Код</th></tr></thead><tbody>
+<tr><td>Вход (только сайт)</td><td>меню провайдеров · гость (Turnstile) · студент · LDAP · почта (два шага) · ошибка</td><td><code>screens/LoginScreen.tsx</code></td></tr>
+<tr><td>Чат</td><td>приветствие · стрим со статусами · решение со шагами · уточнения (список вопросов) · выбор из нескольких проблем · кнопки · у специалиста (панель, «прочитано») · заявка в help.tpu.ru · закрыто + оценка · упрощённый режим (без модели) · ошибка сети · лимит 429</td><td><code>screens/ChatScreen.tsx</code>, <code>components/*</code></td></tr>
+<tr><td>История</td><td>список с сегментами · пустое · карточка обращения</td><td><code>screens/HistoryScreen.tsx</code>, <code>TicketCardPanel.tsx</code></td></tr>
+<tr><td>База знаний</td><td>плитки категорий · поиск с подсказками · статья · «ничего не найдено»</td><td><code>screens/KbScreen.tsx</code></td></tr>
+<tr><td>Профиль</td><td>настройки · статистика · выход</td><td><code>screens/ProfileScreen.tsx</code></td></tr>
+<tr><td>Оператор (телефон)</td><td>сводка · очередь · обращение · ответ — сжатая версия десктопа</td><td><code>screens/OperatorScreen.tsx</code></td></tr>
+</tbody></table></div>
+
+<h2 id="handoff">Как отдавать правки</h2>
+<ul>
+<li>Токены и компоненты — общие с вебом (<a href="design-web.html#tokens">таблица</a>); правки — через них.</li>
+<li>Для Mini App — проверять макет в двух палитрах: наша светлая и «Telegram · тёмная» (пример выше). Если компонент читается в обеих — он готов.</li>
+<li>Для Android — те же экраны; отдельные нативные элементы (системная навигация, диалоги разрешений, пуш) — по Material 3 без переопределений.</li>
+<li>Артефакты: три ширины (360 / 390 / 430), safe-area сверху 47 и снизу 34, состояния из таблицы выше.</li>
+</ul>
+</div>
+</body>
+</html>

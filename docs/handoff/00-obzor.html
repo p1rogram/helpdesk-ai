@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Переписывание «Помоги мне»</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--bg:#f5f6f3;--surface:#ffffff;--surface-2:#eef0ec;--fg:#1b2027;--muted:#5c6570;--line:#dfe3dd;--line-strong:#c7cdc4;
+--accent:#0f6e73;--accent-soft:rgba(15,110,115,.10);--accent-fg:#ffffff;--warn:#a1620a;--warn-soft:rgba(161,98,10,.12);--ok:#2f7d4f;--ok-soft:rgba(47,125,79,.12);--danger:#b3362a;--danger-soft:rgba(179,54,42,.10);
+--java:#7a3e0c;--java-soft:rgba(122,62,12,.10);--kotlin:#5b3fa6;--kotlin-soft:rgba(91,63,166,.10);--ts:#1f5f9e;--ts-soft:rgba(31,95,158,.10);--compose:#2c7a3f;--compose-soft:rgba(44,122,63,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,'Courier New',monospace;--radius:10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:960px;margin:0 auto}
+header.doc{padding:40px 0 24px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance;font-weight:700}
+h2{font-size:21px;margin:40px 0 12px;padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
+h3{font-size:16px;margin:24px 0 8px}
+p{margin:0 0 12px;max-width:72ch}
+ul,ol{margin:0 0 12px;padding-left:22px;max-width:72ch}
+li{margin:3px 0}
+.lead{font-size:17px;color:var(--muted);max-width:70ch}
+code,.path{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0;white-space:pre}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.n{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag.java{background:var(--java-soft);color:var(--java)}.tag.kotlin{background:var(--kotlin-soft);color:var(--kotlin)}.tag.ts{background:var(--ts-soft);color:var(--ts)}.tag.compose{background:var(--compose-soft);color:var(--compose)}
+.tag.keep{background:var(--ok-soft);color:var(--ok)}.tag.new{background:var(--accent-soft);color:var(--accent)}.tag.drop{background:var(--danger-soft);color:var(--danger)}.tag.read{background:var(--surface-2);color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0;max-width:72ch}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.card h4{margin:0 0 6px;font-size:14px}
+.card p{font-size:13.5px;color:var(--muted);margin:0}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+.role{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--surface);text-decoration:none;color:inherit;display:block}
+.role:hover{border-color:var(--line-strong)}
+.role b{display:block;font-size:14px;margin-bottom:4px}
+.role small{color:var(--muted);font-size:12.5px;line-height:1.4;display:block}
+nav.toc{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+nav.toc a{color:var(--accent);text-decoration:none;margin-right:14px}
+a{color:var(--accent)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;font-size:14px;margin:8px 0 16px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.step{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step .w{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px}
+.step b{display:block;margin-bottom:2px}
+footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){h1{font-size:24px}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="01-server-java.html">Сервер · Java</a><a href="02-engine-kotlin.html">Движок · Kotlin</a>
+<a href="03-ai-search-kotlin.html">ИИ и поиск · Kotlin</a><a href="04-shared-kotlin.html">shared · Kotlin</a><a href="05-web-typescript.html">Веб · TS</a>
+<a href="06-android-compose.html">Android · Compose</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Комплект для переписывания · обзор</div>
+<h1>Проект «Помоги мне» на Kotlin и Java</h1>
+<p class="lead">Что это, как устроено, кто что переписывает, какой стек и в каком порядке. Начинать отсюда; у каждой роли — свой документ с полным списком файлов.</p>
+</header>
+
+<h2 id="what">Что это за проект и как он устроен</h2>
+<p>«Помоги мне» — помощник технической поддержки Томского политехнического университета. Студент пишет в чат
+(сайт, Telegram/VK/MAX Mini App или Android-приложение), помощник понимает проблему, задаёт уточнения,
+предлагает решение из базы знаний, а если не помогло — создаёт заявку специалисту или в help.tpu.ru.
+Специалист отвечает в консоли оператора, ответ уходит пользователю в чат и push в мессенджер.</p>
+<p>Главный принцип, который нужно сохранить при переписывании: <b>решения принимает код, а не модель.</b>
+Языковая модель вызывается ровно в двух местах — «понять сообщение» (вернуть JSON по схеме) и «пересказать одну
+статью базы знаний». Кого звать, что спросить, когда создать заявку — решает детерминированный автомат
+(<code>engine.ts</code>), покрытый 91 тестом. Это и есть спецификация поведения: новая реализация готова,
+когда те же сценарии проходят.</p>
+
+<div class="grid">
+<div class="card"><h4>Клиенты</h4><p>Сайт и Mini App — один React-код с адаптерами платформ. Android — Compose. Все ходят в один HTTP API.</p></div>
+<div class="card"><h4>API</h4><p>Один процесс: HTTP, auth, диалоговый движок, поиск, вызов модели. Стримит ответ по SSE.</p></div>
+<div class="card"><h4>Worker</h4><p>Слушает Kafka: пуши в мессенджеры, аналитика. Боты Telegram/VK/MAX.</p></div>
+<div class="card"><h4>Данные</h4><p>PostgreSQL 16 + pgvector. Каталог категорий и статей — JSON-файлы, импортируются при старте.</p></div>
+<div class="card"><h4>Модели</h4><p>LLM — Qwen3-30B-A3B на DGX Spark вуза через vLLM (OpenAI-совместимый HTTP). Эмбеддинги — USER-bge-m3 там же. Облако Claude — запасной провайдер.</p></div>
+<div class="card"><h4>Эксплуатация</h4><p>Docker Compose на сервере вуза без внешнего доступа. Обновление — вручную изнутри: <code>update.sh &lt;версия&gt;</code>.</p></div>
+</div>
+
+<h2 id="roles">Роли и кто что переписывает</h2>
+<div class="roles">
+<a class="role" href="01-server-java.html"><b><span class="tag java">Java</span> Серверный</b><small>платформа, auth, БД, эксплуатация в закрытом контуре, worker, Kafka, боты, Naumen, API консоли оператора</small></a>
+<a class="role" href="02-engine-kotlin.html"><b><span class="tag kotlin">Kotlin</span> Движок</b><small>автомат диалога, извлечение полей, шаблоны текстов, каталог, тесты поведения</small></a>
+<a class="role" href="03-ai-search-kotlin.html"><b><span class="tag kotlin">Kotlin</span> ИИ и поиск</b><small>транспорт к модели, промпты, эмбеддинги, RAG, BM25, кэш, бюджет, оценочный прогон</small></a>
+<a class="role" href="04-shared-kotlin.html"><b><span class="tag kotlin">Kotlin</span> shared</b><small>KMP-модуль: контракт API, валидация, SSE-парсер, генерация типов для веба</small></a>
+<a class="role" href="05-web-typescript.html"><b><span class="tag ts">TypeScript</span> Веб</b><small>сайт + Mini App Telegram/VK/MAX — остаётся, меняется только источник типов</small></a>
+<a class="role" href="06-android-compose.html"><b><span class="tag compose">Compose</span> Android</b><small>новое приложение; исполнитель пока не назначен</small></a>
+</div>
+
+<h2 id="stack">Стек: было → станет</h2>
+<div class="tbl"><table><thead><tr>
+<th>Слой</th>
+<th>Сейчас (TypeScript)</th>
+<th>Станет</th>
+<th>Кто</th>
+</tr></thead><tbody>
+<tr><td>Язык сервера</td><td>TypeScript / Node 22</td><td><b>Java 21</b> (платформа) + <b>Kotlin 2.x</b> (движок, ИИ, shared) в одном Gradle-проекте</td><td><span class="tag java">Java</span> <span class="tag kotlin">Kotlin</span></td></tr>
+<tr><td>HTTP</td><td>Fastify 5</td><td><b>Ktor Server 3</b> (Netty) — или Spring Boot 3, если так у ИТ-службы ТПУ; решить до старта</td><td><span class="tag java">Java</span></td></tr>
+<tr><td>Валидация / JSON</td><td>Zod</td><td><b>kotlinx.serialization</b> (@Serializable data class) + Konform для правил</td><td><span class="tag kotlin">Kotlin</span></td></tr>
+<tr><td>БД</td><td>Drizzle ORM + pg; PGlite в dev</td><td><b>Exposed</b> + HikariCP; <b>Flyway</b> для миграций; Testcontainers в тестах</td><td><span class="tag java">Java</span></td></tr>
+<tr><td>Модель</td><td>@anthropic-ai/sdk + fetch к OpenAI-совместимому серверу</td><td><b>Ktor Client</b> к vLLM (/v1/chat/completions, SSE); anthropic-java для облака</td><td><span class="tag kotlin">Kotlin</span></td></tr>
+<tr><td>Эмбеддинги</td><td>@huggingface/transformers (ONNX в процессе)</td><td>vLLM <code>/v1/embeddings</code> на Spark (основной) + ONNX Runtime Java как офлайн-запас</td><td><span class="tag kotlin">Kotlin</span></td></tr>
+<tr><td>Kafka</td><td>kafkajs</td><td><b>kafka-clients</b> (официальный Java)</td><td><span class="tag java">Java</span></td></tr>
+<tr><td>Telegram-бот</td><td>grammY через Cloudflare-прокси</td><td><b>TelegramBots</b> (Java) или kotlin-telegram-bot, тот же прокси</td><td><span class="tag java">Java</span></td></tr>
+<tr><td>Auth</td><td>@fastify/jwt, ldapts, openid-client, nodemailer</td><td>auth0 java-jwt; UnboundID LDAP SDK; Nimbus JOSE (OIDC); Jakarta Mail</td><td><span class="tag java">Java</span></td></tr>
+<tr><td>Тесты</td><td>Vitest (91 тест)</td><td><b>Kotest</b> + MockK; те же сценарии</td><td><span class="tag kotlin">Kotlin</span></td></tr>
+<tr><td>Линт</td><td>ESLint + Prettier</td><td>ktlint + detekt (Kotlin), Checkstyle/Spotless (Java)</td><td>все</td></tr>
+<tr><td>Общий модуль</td><td>packages/shared (TS-типы + Zod)</td><td><b>KMP</b> <code>shared/</code> (jvm + android) + OpenAPI → TypeScript для веба</td><td><span class="tag kotlin">Kotlin</span></td></tr>
+<tr><td>Веб</td><td>React 19 + Vite + TypeScript</td><td><b>без изменений</b></td><td><span class="tag ts">TS</span></td></tr>
+<tr><td>Android</td><td>—</td><td><b>Jetpack Compose</b>, Material 3, Koin, Ktor Client из shared</td><td><span class="tag compose">Compose</span></td></tr>
+<tr><td>Инфраструктура</td><td>Docker Compose, Caddy, GitHub Actions, GHCR</td><td>то же; Dockerfile под JVM; деплой — ручной pull изнутри вуза</td><td><span class="tag java">Java</span></td></tr>
+</tbody></table></div>
+
+<h2 id="layout">Целевая структура репозитория</h2>
+<pre><code>helpdesk/
+├─ settings.gradle.kts, build.gradle.kts, gradle/libs.versions.toml
+├─ shared/          KMP (commonMain: jvm + android)  ← Kotlin-shared
+│   └─ src/commonMain/kotlin/…/{api,dialog,catalog,events}.kt, validation/, sse/
+├─ platform/        Java: HTTP, auth, БД, миграции, конфиг       ← Серверный
+├─ engine/          Kotlin: автомат диалога, шаблоны, каталог     ← Движок
+├─ ai/              Kotlin: транспорт LLM, промпты, RAG, поиск     ← ИИ и поиск
+├─ integrations/    Java: helpdesk (Naumen), боты, Kafka           ← Серверный
+├─ api-app/         сборка API: platform + engine + ai → jar       ← Серверный
+├─ worker-app/      сборка worker: integrations + Kafka-консьюмеры ← Серверный
+├─ android/         Compose                                        ← Android
+├─ web/             React/TS (текущий apps/web)                    ← Веб
+├─ data/catalog/    JSON каталога (без изменений)
+├─ deploy/, docker-compose.yml, .github/workflows/
+└─ docs/</code></pre>
+<p>Правило зависимостей: <code>platform</code> и <code>integrations</code> не знают про <code>engine</code> и <code>ai</code>;
+<code>engine</code> зависит от <code>ai</code> только через интерфейсы (<code>LlmService</code>, <code>SearchService</code>);
+<code>shared</code> ни от кого не зависит. Так Java-модули и Kotlin-модули не лезут друг в друга.</p>
+
+<h2 id="contracts">Швы между людьми — договориться в первую неделю</h2>
+<p>Это интерфейсы, по которым модули соединяются. Они уже есть в TypeScript-версии — переносятся как есть, менять сигнатуры без общего согласия нельзя.</p>
+<div class="tbl"><table><thead><tr>
+<th>Интерфейс</th>
+<th>Где сейчас</th>
+<th>Кто владеет</th>
+<th>Кто использует</th>
+</tr></thead><tbody>
+<tr><td>JSON-контракт API (<code>TicketCard</code>, <code>ChatMessage</code>, <code>ChatStreamEvent</code>, <code>Analysis</code>…)</td><td><code>packages/shared/src/*.ts</code></td><td>shared</td><td>все</td></tr>
+<tr><td><code>LlmTransport</code> — complete / stream / describeError</td><td><code>modules/llm/transport.ts:29</code></td><td>ИИ</td><td>движок (через LlmService)</td></tr>
+<tr><td><code>LlmService</code> — analyze / solve / answer / enabled / withoutModel</td><td><code>modules/llm/index.ts</code></td><td>ИИ</td><td>движок</td></tr>
+<tr><td><code>KnowledgeService.search</code>, <code>RagService.search</code></td><td><code>modules/knowledge</code>, <code>modules/rag</code></td><td>ИИ</td><td>движок</td></tr>
+<tr><td><code>TicketRepository</code> — доступ к обращениям/сообщениям/счётчикам</td><td><code>modules/tickets/repository.ts</code></td><td>Серверный</td><td>движок, routes, worker</td></tr>
+<tr><td><code>EventBus</code> — publish / subscribe (memory | kafka)</td><td><code>modules/events/bus.ts</code></td><td>Серверный</td><td>движок, worker, хаб оператора</td></tr>
+<tr><td><code>HelpdeskConnector</code> — createRequest (Noop | Naumen)</td><td><code>modules/helpdesk/index.ts</code></td><td>Серверный</td><td>движок</td></tr>
+<tr><td><code>PlatformVerifier</code> — проверка подписи Telegram/VK/MAX/web</td><td><code>modules/auth/index.ts</code></td><td>Серверный</td><td>routes/auth</td></tr>
+<tr><td><code>LlmBudget</code> — allows / noteGuestCall / noteTokens</td><td><code>modules/usage/budget.ts</code></td><td>ИИ</td><td>движок, routes</td></tr>
+</tbody></table></div>
+
+<h2 id="order">Порядок работ</h2>
+<div class="steps"><div class="step"><span class="w">нед. 1</span><div><b>Скелет и контракты</b>Gradle-проект с модулями; <code>shared</code> с data-классами контракта; интерфейсы выше как пустые Kotlin-интерфейсы; CI собирает и гоняет пустые тесты. Веб-фронт подключён к заглушке API.</div></div><div class="step"><span class="w">нед. 2–3</span><div><b>Платформа + движок без модели</b>Ktor: auth dev-входом, /api/tickets, SSE. Движок: автомат, уточнения, каталог, «упрощённый режим» без LLM. <b>Цель: e2e-тест <code>support-flow.spec.ts</code> зелёный против нового сервера.</b></div></div><div class="step"><span class="w">нед. 3–4</span><div><b>Модель и поиск</b>Транспорт к vLLM, промпты, разбор JSON, BM25, RAG с эмбеддингами через /v1/embeddings. Оценочный прогон на 30–50 реальных обращениях.</div></div><div class="step"><span class="w">нед. 4–5</span><div><b>Интеграции</b>Kafka, worker, бот Telegram (VK/MAX — вторыми), Naumen, консоль оператора. Корпоративный вход (SSO/LDAP/почта).</div></div><div class="step"><span class="w">нед. 5–6</span><div><b>Эксплуатация и Android</b>update.sh с откатом, офлайн-комплект, бэкапы; Android на shared.</div></div></div>
+
+<h2 id="glossary">Словарь для тех, кто видит проект впервые</h2>
+<dl class="kv">
+<dt>Обращение (ticket)</dt><dd>один диалог пользователя с помощником: состояние, категория, поля, история сообщений.</dd>
+<dt>Состояния</dt><dd><code>intake → clarifying → solving → offer_escalation → escalated | closed</code>; <code>choosing_category</code> при низкой уверенности.</dd>
+<dt>Анализ (Analysis)</dt><dd>JSON, который возвращает модель на сообщение: категория, уверенность 0–1, суть, поля, тон, флаги «просит человека», «несколько проблем», «это вопрос».</dd>
+<dt>Каталог</dt><dd><code>data/catalog/tpu.json</code>: категории с уточняющими полями (<code>clarify</code>) и статьи с шагами решения. Импортируется в БД при старте, пересев по хэшу файла.</dd>
+<dt>RAG</dt><dd>поиск по скачанной документации help.tpu.ru: фрагменты + векторы (pgvector) + BM25; результат отдаётся модели для ответа.</dd>
+<dt>Эскалация</dt><dd>передача специалисту: <code>operator</code> (консоль) или <code>helpdesk</code> (заявка в help.tpu.ru/Naumen) — выбирается по категории.</dd>
+<dt>Упрощённый режим</dt><dd>работа без модели: категория по ключевым словам, шаги статьи дословно. Включается при недоступной модели или исчерпанном бюджете гостя.</dd>
+<dt>Гость</dt><dd>анонимный вход на сайте; видит только публичные темы; личность — cookie устройства; чаты не хранятся дольше часа.</dd>
+<dt>Оператор / специалист</dt><dd>сотрудник поддержки в консоли: берёт обращение, отвечает, закрывает.</dd>
+</dl>
+
+<footer>Проект «Помоги мне» · исходный репозиторий: <code>github.com/p1rogram/helpdesk-ai</code> (ветка master). Номера строк — на момент составления; файл в репозитории всегда главнее этого документа.</footer>
+</div>
+</body>
+</html>

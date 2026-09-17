@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Движок диалога · Kotlin</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--bg:#f5f6f3;--surface:#ffffff;--surface-2:#eef0ec;--fg:#1b2027;--muted:#5c6570;--line:#dfe3dd;--line-strong:#c7cdc4;
+--accent:#0f6e73;--accent-soft:rgba(15,110,115,.10);--accent-fg:#ffffff;--warn:#a1620a;--warn-soft:rgba(161,98,10,.12);--ok:#2f7d4f;--ok-soft:rgba(47,125,79,.12);--danger:#b3362a;--danger-soft:rgba(179,54,42,.10);
+--java:#7a3e0c;--java-soft:rgba(122,62,12,.10);--kotlin:#5b3fa6;--kotlin-soft:rgba(91,63,166,.10);--ts:#1f5f9e;--ts-soft:rgba(31,95,158,.10);--compose:#2c7a3f;--compose-soft:rgba(44,122,63,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,'Courier New',monospace;--radius:10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;
+--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--accent-fg:#0d1b1c;--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14);
+--java:#e0a06a;--java-soft:rgba(224,160,106,.14);--kotlin:#b39ce8;--kotlin-soft:rgba(179,156,232,.14);--ts:#7fb3e6;--ts-soft:rgba(127,179,230,.14);--compose:#7fcf94;--compose-soft:rgba(127,207,148,.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:960px;margin:0 auto}
+header.doc{padding:40px 0 24px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance;font-weight:700}
+h2{font-size:21px;margin:40px 0 12px;padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
+h3{font-size:16px;margin:24px 0 8px}
+p{margin:0 0 12px;max-width:72ch}
+ul,ol{margin:0 0 12px;padding-left:22px;max-width:72ch}
+li{margin:3px 0}
+.lead{font-size:17px;color:var(--muted);max-width:70ch}
+code,.path{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0;white-space:pre}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.n{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag.java{background:var(--java-soft);color:var(--java)}.tag.kotlin{background:var(--kotlin-soft);color:var(--kotlin)}.tag.ts{background:var(--ts-soft);color:var(--ts)}.tag.compose{background:var(--compose-soft);color:var(--compose)}
+.tag.keep{background:var(--ok-soft);color:var(--ok)}.tag.new{background:var(--accent-soft);color:var(--accent)}.tag.drop{background:var(--danger-soft);color:var(--danger)}.tag.read{background:var(--surface-2);color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0;max-width:72ch}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.card h4{margin:0 0 6px;font-size:14px}
+.card p{font-size:13.5px;color:var(--muted);margin:0}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+.role{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--surface);text-decoration:none;color:inherit;display:block}
+.role:hover{border-color:var(--line-strong)}
+.role b{display:block;font-size:14px;margin-bottom:4px}
+.role small{color:var(--muted);font-size:12.5px;line-height:1.4;display:block}
+nav.toc{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+nav.toc a{color:var(--accent);text-decoration:none;margin-right:14px}
+a{color:var(--accent)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;font-size:14px;margin:8px 0 16px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.step{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step .w{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px}
+.step b{display:block;margin-bottom:2px}
+footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){h1{font-size:24px}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="01-server-java.html">Сервер · Java</a><a href="02-engine-kotlin.html">Движок · Kotlin</a>
+<a href="03-ai-search-kotlin.html">ИИ и поиск · Kotlin</a><a href="04-shared-kotlin.html">shared · Kotlin</a><a href="05-web-typescript.html">Веб · TS</a>
+<a href="06-android-compose.html">Android · Compose</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Роль · Движок · Kotlin</div>
+<h1>Автомат диалога, извлечение полей, тексты</h1>
+<p class="lead">Самая большая логика проекта и её тесты. Модель — за интерфейсом; поведение — в коде. Полный список файлов и карта engine.ts.</p>
+</header>
+
+<h2>Роль одним абзацем</h2>
+<p>Ты переписываешь <b>поведение</b> помощника — то, что пользователь воспринимает как «ум» бота, но что на самом
+деле конечный автомат. Модель ты не вызываешь напрямую: получаешь <code>LlmService</code> и <code>SearchService</code>
+как интерфейсы от роли «ИИ и поиск». Твой модуль — <code>engine/</code> на Kotlin; твоя валюта — тесты:
+91 сценарий текущей версии должен пройти на твоём коде.</p>
+
+<h2>Стек</h2>
+<div class="tbl"><table><thead><tr>
+<th>Задача</th>
+<th>Инструмент</th>
+<th>Замечание</th>
+</tr></thead><tbody>
+<tr><td>Состояния</td><td><code>sealed class</code> / <code>enum class TicketState</code> + <code>when</code></td><td>компилятор проверяет, что все состояния обработаны</td></tr>
+<tr><td>Поток ответа</td><td><code>Flow&lt;ChatStreamEvent&gt;</code> (kotlinx.coroutines)</td><td>аналог async-генератора; события meta/status/delta/done</td></tr>
+<tr><td>Модель</td><td>интерфейс <code>LlmService</code> из модуля ai</td><td>analyze(): Analysis; solve()/answer(): Flow&lt;String&gt;; enabled; withoutModel()</td></tr>
+<tr><td>Данные</td><td><code>TicketRepository</code> из platform (Java)</td><td>вызываешь как обычный класс; сигнатуры фиксированы</td></tr>
+<tr><td>События</td><td><code>EventBus.publish(topic, key, event)</code></td><td>типы событий — в shared</td></tr>
+<tr><td>Тексты</td><td><code>object Templates</code> с функциями</td><td>русский сейчас; структура позволяет добавить язык</td></tr>
+<tr><td>Тесты</td><td>Kotest + FakeLlm (очередь заготовленных Analysis) + Testcontainers</td><td>engine.test.ts — построчно</td></tr>
+</tbody></table></div>
+
+<h2>Файлы</h2>
+<div class="tbl"><table><thead><tr>
+<th>Файл</th>
+<th>Строк</th>
+<th>Что внутри</th>
+<th>Что делать</th>
+</tr></thead><tbody>
+<tr><td><span class="path">apps/api/src/modules/dialog/engine.ts</span></td><td class="n">1533</td><td><b>сердце проекта.</b> DialogEngine.handle(): бюджет → команды (__pick/__next/__close/__keep) → состояние escalated (молчание при операторе, отзыв) → freeText: анализ (LLM или fallback) → validateFields → несколько проблем → информационный вопрос → advance(): уточнения askMissing() (все вопросы одним сообщением, кнопки только при одном) → solve() (статья → стрим) → ragAnswer() (документация, кэш) → followUp() → offerEscalation() → humanRequested() (solve-first, дневные лимиты) → escalate() (helpdesk|operator по категории) → withdraw() → resolve(). Плюс fallbackAnalyze() по ключевым словам</td><td><span class="tag new">переписать</span> Kotlin: sealed class State, suspend-функции, Flow&lt;ChatStreamEvent&gt;; структуру и имена методов сохранить</td></tr>
+<tr><td><span class="path">apps/api/src/modules/dialog/templates.ts</span></td><td class="n">325</td><td>все тексты помощника (T.*), команды CMD, наборы кнопок QR_*; plural-хелпер; варианты для helpdesk/operator</td><td><span class="tag new">переписать</span> object Templates; при добавлении английского — по языку обращения</td></tr>
+<tr><td><span class="path">apps/api/src/modules/dialog/extract.ts</span></td><td class="n">142</td><td>правила извлечения полей из текста: FIELD_RULES (общежитие, корпус, комната, этаж, ОС, устройство…), белые списки (корпуса ТПУ 1–13, 15–22, Главный; общежития 1–22), validateFields, isRequired/requiredWhen, optionMentioned (5-буквенные основы)</td><td><span class="tag new">переписать</span> регулярки с Cyrillic: в Kotlin <code>Regex</code> с флагом IGNORE_CASE; <code>\b</code> с кириллицей не работает — как в TS, через <code>(?:^|[^а-яё])</code></td></tr>
+<tr><td><span class="path">apps/api/src/modules/safety/index.ts</span></td><td class="n">119</td><td>inspectMessage: маркеры prompt-injection, тон (агрессия/срочность), нецензурная лексика; не блокирует, а помечает</td><td><span class="tag keep">переносится 1:1</span></td></tr>
+<tr><td><span class="path">apps/api/src/modules/knowledge/index.ts</span></td><td class="n">74</td><td>KnowledgeService: catalog(tenant, scope) с кэшем по версии, search() по каталогу</td><td><span class="tag new">переписать</span></td></tr>
+<tr><td><span class="path">apps/api/src/modules/knowledge/repository.ts</span></td><td class="n">235</td><td>CatalogRepository: seedFromDir (хэш файла → пересев), listTenants, load с Map по id, bumpVersion</td><td><span class="tag new">переписать</span> Exposed-запросы через TicketRepository-стиль</td></tr>
+<tr><td><span class="path">data/catalog/tpu.json</span></td><td class="n">1224</td><td>каталог ТПУ: категории (id, name, priority, escalation: helpdesk|operator, clarify[] с options/required/requiredWhen), статьи (symptoms, steps, escalateAfter, audience)</td><td><span class="tag keep">переносится 1:1</span> формат не менять; читается и сервером, и тестами</td></tr>
+<tr><td><span class="path">data/catalog/it-support.json</span></td><td class="n">413</td><td>второй тенант (демо-сфера)</td><td><span class="tag keep">переносится 1:1</span></td></tr>
+<tr><td><span class="path">packages/shared/src/catalog.ts</span></td><td class="n">102</td><td>типы каталога: Category, ClarifyField, Article</td><td><span class="tag read">только читать</span> владелец shared</td></tr>
+<tr><td><span class="path">packages/shared/src/dialog.ts</span></td><td class="n">122</td><td>TicketCard, ChatMessage, ChatStreamEvent (meta/status/delta/done/ack/error), Analysis, QuickReply</td><td><span class="tag read">только читать</span> семантику полей задаёшь ты, класс — в shared</td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/engine.test.ts</span></td><td class="n">685</td><td><b>спецификация поведения</b>: уточнения, сбор полей перед передачей, эскалация по согласию, отзыв, молчание при операторе, гость без эскалации, лимиты 4/3, несколько проблем, информационные вопросы, маршрут helpdesk/operator, работа без LLM</td><td><span class="tag new">переписать</span> Kotest; каждый it() → один тест; FakeLlm с очередью анализов</td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/extract.test.ts</span></td><td class="n">110</td><td>правила полей, белые списки, requiredWhen комнаты, значения от модели</td><td><span class="tag new">переписать</span></td></tr>
+<tr><td><span class="path">apps/api/src/__tests__/safety.test.ts</span></td><td class="n">23</td><td>маркеры инъекций, тон</td><td><span class="tag new">переписать</span></td></tr>
+</tbody></table></div>
+
+<h2>Как читать engine.ts — карта</h2>
+<div class="tbl"><table><thead><tr>
+<th>Строки</th>
+<th>Метод</th>
+<th>За что отвечает</th>
+</tr></thead><tbody>
+<tr><td>73–260</td><td><code>handle()</code></td><td>вход: бюджет модели → команды кнопок → состояние escalated → freeText</td></tr>
+<tr><td>264–470</td><td><code>freeText()</code></td><td>анализ (LLM / fallback), валидация полей, несколько проблем, «просит человека», информационный вопрос, тон</td></tr>
+<tr><td>470–556</td><td><code>advance()</code>, <code>askMissing()</code></td><td>решает: спросить недостающее (все вопросы одним сообщением) или решать</td></tr>
+<tr><td>557–716</td><td><code>solve()</code></td><td>лучшая статья → стрим пересказа; без модели — шаги дословно; кнопки «Помогло / Не помогло»</td></tr>
+<tr><td>717–830</td><td><code>ragAnswer()</code>, <code>streamGrounded()</code></td><td>ответ по документации (RAG) с кэшем 24 ч</td></tr>
+<tr><td>832–964</td><td><code>followUp()</code>, <code>nextSolution()</code>, <code>resolve()</code></td><td>«не помогло» → следующая статья или предложение специалиста; «помогло» → закрытие и оценка</td></tr>
+<tr><td>965–1050</td><td><code>nextProblem()</code>, <code>offerEscalation()</code></td><td>следующая проблема из списка; предложение позвать специалиста</td></tr>
+<tr><td>1052–1258</td><td><code>humanRequested()</code>, <code>escalate()</code></td><td>solve-first, дневные лимиты 4/3, маршрут helpdesk/operator, карточка для специалиста</td></tr>
+<tr><td>1260–1400</td><td><code>withdraw()</code>, <code>setCategory()</code>, <code>reply()</code>, <code>finish()</code>, <code>history()</code></td><td>служебные</td></tr>
+<tr><td>1392–1425</td><td><code>fallbackAnalyze()</code></td><td>анализ без модели: BM25 по каталогу, поля по буквальным упоминаниям, «оператор/специалист» в тексте</td></tr>
+</tbody></table></div>
+
+<h2>Правила, которые нельзя потерять</h2>
+<ul>
+<li><b>Solve-first.</b> Просьба «позовите оператора» без попытки решения → сначала предложить решение; заявка — после.</li>
+<li><b>Уточнения одним сообщением.</b> Все недостающие поля — списком; кнопки с вариантами только когда открыт один вопрос.</li>
+<li><b>Несколько проблем в сообщении</b> → предложить выбрать первую; остальные — отдельными обращениями через «Разобрать: …».</li>
+<li><b>Маршрут:</b> бытовое (категория с <code>escalation: helpdesk</code>) и не сложное → заявка в help.tpu.ru; иначе → оператор.</li>
+<li><b>Информационный вопрос</b> (адрес, сроки) → ответ без специалиста; эскалация только при повторной настойчивой просьбе.</li>
+<li><b>Лимиты:</b> 4 заявки и 3 вызова человека в сутки на пользователя; операторов не касается.</li>
+<li><b>Гость</b> никогда не доходит до специалиста и не видит внутренних статей.</li>
+<li><b>Белые списки:</b> несуществующий корпус/общежитие от модели отбрасывается, пользователю — вежливый вопрос.</li>
+<li><b>Молчание при операторе:</b> пока обращение у специалиста, помощник не отвечает поверх него — только тихий ack; «уже не актуально» → предложить закрыть.</li>
+</ul>
+
+<h2>Порядок работ</h2>
+<div class="steps"><div class="step"><span class="w">нед. 1</span><div><b>Типы и каркас</b>Состояния, ChatStreamEvent, Templates; FakeLlm и заглушка репозитория; первые 10 тестов (intake → solving без модели).</div></div><div class="step"><span class="w">нед. 2</span><div><b>Автомат без модели</b>fallbackAnalyze, askMissing, solve по статье дословно, followUp, resolve. <b>Цель: e2e зелёный с «упрощённым режимом».</b></div></div><div class="step"><span class="w">нед. 3</span><div><b>С моделью</b>Подключение LlmService от ИИ-роли: analyze → validateFields; стрим solve; несколько проблем; информационные вопросы.</div></div><div class="step"><span class="w">нед. 4</span><div><b>Эскалация</b>humanRequested, лимиты, helpdesk/operator, withdraw, молчание при операторе; тесты до 91.</div></div></div>
+
+<h2>Критерий готовности</h2>
+<ul><li>Все сценарии из <code>engine.test.ts</code>, <code>extract.test.ts</code>, <code>safety.test.ts</code> перенесены и зелёные.</li>
+<li>Тексты помощника совпадают с <code>templates.ts</code> (их проверяет e2e: «Попробуйте по шагам», «Заявка №… создана»).</li>
+<li>Движок работает с <code>llm.enabled=false</code> — это не деградация, а поддерживаемый режим.</li></ul>
+
+<footer>Проект «Помоги мне» · исходный репозиторий: <code>github.com/p1rogram/helpdesk-ai</code> (ветка master). Номера строк — на момент составления; файл в репозитории всегда главнее этого документа.</footer>
+</div>
+</body>
+</html>
