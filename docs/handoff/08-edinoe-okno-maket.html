@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Единое окно · макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--d-bg:#f5f6f3;--d-surface:#fff;--d-surface-2:#eef0ec;--d-fg:#1b2027;--d-muted:#5c6570;--d-line:#dfe3dd;--d-accent:#0f6e73;--d-accent-soft:rgba(15,110,115,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+--bg:#f3f6fa;--surface:#ffffff;--surface-2:#f7f9fc;--fg:#0f172a;--muted:#64748b;--border:#e4eaf2;--border-strong:#d3dceb;
+--accent:#2563eb;--accent-fg:#fff;--accent-soft:rgba(37,99,235,.10);--ok:#16a34a;--ok-soft:rgba(22,163,74,.12);--warn:#d97706;--warn-soft:rgba(217,119,6,.13);--danger:#dc2626;--danger-soft:rgba(220,38,38,.12);--violet:#7c3aed;--violet-soft:rgba(124,58,237,.12);--teal:#0f766e;--teal-soft:rgba(15,118,110,.12);
+--bubble-bot:#fff;--bubble-user:#2563eb;--bubble-user-fg:#fff;--shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px -16px rgba(15,23,42,.24);--radius:16px;--radius-sm:12px;
+--app-font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--d-bg);color:var(--d-fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:1180px;margin:0 auto}
+header.doc{padding:40px 0 20px;border-bottom:1px solid var(--d-line);margin-bottom:24px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--d-muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:21px;margin:44px 0 12px;padding-top:12px;border-top:1px solid var(--d-line)}
+p{margin:0 0 12px;max-width:76ch}.lead{font-size:17px;color:var(--d-muted)}
+ul{margin:0 0 12px;padding-left:22px;max-width:76ch}li{margin:3px 0}
+code{font-family:var(--mono);font-size:13px;background:var(--d-surface-2);padding:1px 5px;border-radius:5px}
+nav.toc{font-size:13.5px;margin:0 0 8px}nav.toc a{color:var(--d-accent);text-decoration:none;margin-right:14px}a{color:var(--d-accent)}
+.note{border-left:3px solid var(--d-accent);background:var(--d-accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;margin:14px 0;max-width:76ch}
+.row-ph{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin:14px 0 6px}
+.ph{width:300px;max-width:100%}.ph .cap{font-size:12.5px;color:var(--d-muted);margin:8px 2px 0;line-height:1.4}.ph .cap b{color:var(--d-fg)}
+/* flow diagram */
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:center;margin:14px 0 8px}
+.flow .box{border:1px solid var(--d-line);border-radius:12px;background:var(--d-surface);padding:12px 14px;font-size:13.5px}
+.flow .box b{display:block;font-size:14px;margin-bottom:4px}.flow .box small{color:var(--d-muted);display:block;line-height:1.4}
+.flow .arr{font-size:22px;color:var(--d-muted);text-align:center}
+.flow .ports{display:grid;gap:6px}.flow .ports span{border:1px solid var(--d-line);border-radius:8px;padding:5px 9px;font-size:12.5px;background:var(--d-surface-2);font-family:var(--mono)}
+@media(max-width:820px){.flow{grid-template-columns:1fr}.flow .arr{transform:rotate(90deg)}}
+/* phone */
+.phone{width:300px;max-width:100%;aspect-ratio:300/880;border:8px solid #1c1f24;border-radius:38px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--app-font);font-size:13px;line-height:1.4;display:flex;flex-direction:column;position:relative;box-shadow:0 14px 40px -20px rgba(0,0,0,.5)}
+.phone *{box-sizing:border-box}
+.sb{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:600;background:var(--surface)}
+.sb .notch{position:absolute;left:50%;top:6px;transform:translateX(-50%);width:84px;height:20px;border-radius:12px;background:#1c1f24}
+.topbar{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{width:32px;height:32px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:800;font-size:14px}
+.topbar .t{font-weight:700;font-size:14.5px;line-height:1.2}.topbar .s{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.chat{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;overflow:hidden}
+.msg{display:flex;flex-direction:column;max-width:92%}.msg.user{align-self:flex-end;align-items:flex-end;max-width:80%}
+.author{font-size:10.5px;color:var(--muted);margin:0 0 3px 36px;font-weight:600}
+.r{display:flex;gap:7px;align-items:flex-end}
+.avatar{width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:700;flex:0 0 auto}
+.bubble{background:var(--bubble-bot);border:1px solid var(--border);border-radius:var(--radius);border-bottom-left-radius:6px;padding:8px 11px;box-shadow:var(--shadow);font-size:12.5px;min-width:0}
+.msg.user .bubble{background:var(--bubble-user);color:var(--bubble-user-fg);border:none;border-bottom-left-radius:var(--radius);border-bottom-right-radius:6px}
+.time{font-size:10px;color:var(--muted);margin:2px 0 0 36px}.msg.user .time{margin:2px 0 0}
+/* cards inside bubble */
+.tool{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin:0 0 6px 36px}
+.tool i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.card{border:1px solid var(--border);border-radius:12px;background:var(--surface-2);padding:8px 10px;margin:6px 0 0;font-size:12.5px}
+.card .h{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:12.5px;margin-bottom:5px}
+.card .src{font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-soft);border-radius:999px;padding:1px 7px}
+.lesson{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:4px 0;border-top:1px solid var(--border)}
+.lesson:first-of-type{border-top:0}
+.lesson .tm{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.3}
+.lesson .nm{font-weight:600;font-size:12.5px}.lesson .mt{font-size:11px;color:var(--muted)}
+.lesson .mt a{color:var(--accent);text-decoration:none}
+.dl{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid var(--border);font-size:12px}.dl:first-of-type{border-top:0}
+.dl b{font-weight:600}.dl .when{color:var(--danger);font-weight:600;white-space:nowrap}.dl .when.ok{color:var(--muted);font-weight:400}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}.kv span:nth-child(odd){color:var(--muted)}
+.status{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px}
+.status.new{background:var(--warn-soft);color:var(--warn)}.status.work{background:var(--violet-soft);color:var(--violet)}.status.done{background:var(--ok-soft);color:var(--ok)}
+.quick{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 8px}
+.quick span{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:500}.quick span.pri{background:var(--accent);color:var(--accent-fg)}.quick span.danger{border-color:var(--danger);color:var(--danger)}
+.composer{display:flex;gap:7px;align-items:flex-end;padding:8px 12px 10px;background:var(--surface);border-top:1px solid var(--border)}
+.composer .in{flex:1;border:1px solid var(--border-strong);border-radius:13px;padding:9px 12px;color:var(--muted);background:var(--bg);font-size:13px}
+.composer .send{width:36px;height:36px;border-radius:11px;background:var(--accent);flex:0 0 auto}
+.nav{display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:16px}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 6px;font-size:10px;font-weight:500;color:var(--muted)}.nav div.active{color:var(--accent)}
+.ico{width:20px;height:20px;border-radius:5px;background:currentColor;opacity:.75}
+.home{width:110px;height:4px;border-radius:2px;background:var(--fg);opacity:.35;margin:4px auto 6px}
+/* profile connections */
+.panel{margin:10px 12px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px}.prow:last-child{border-bottom:0}.prow small{display:block;color:var(--muted);font-size:10.5px}
+.sw{width:36px;height:20px;border-radius:10px;background:var(--accent);position:relative;flex:0 0 auto}.sw::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.off{background:var(--border-strong)}.sw.off::after{right:auto;left:2px}
+.sec{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:12px 12px 0}
+.consent{margin:10px 12px 0;background:var(--accent-soft);border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.4}
+.btnp{margin:8px 12px 0;background:var(--accent);color:#fff;text-align:center;border-radius:12px;padding:10px;font-weight:600;font-size:13px}
+/* push */
+.push{margin:auto 12px;background:rgba(255,255,255,.92);border-radius:16px;padding:10px 12px;box-shadow:0 10px 30px -14px rgba(0,0,0,.45);font-size:12.5px}
+.push .app{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin-bottom:4px}.push .app i{width:14px;height:14px;border-radius:4px;background:#2aabee;display:inline-block}
+.push b{display:block;font-size:13px;margin-bottom:2px}
+.lock{flex:1;background:linear-gradient(160deg,#1e293b,#0f172a);display:flex;flex-direction:column;padding-top:40px}
+.lock .clock{color:#fff;text-align:center;font-size:44px;font-weight:300;letter-spacing:-1px}.lock .date{color:#cbd5e1;text-align:center;font-size:13px;margin-bottom:16px}
+/* desktop */
+.frame{border:1px solid var(--d-line);border-radius:12px;overflow:hidden;background:var(--d-surface);margin:10px 0 6px}
+.frame .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--d-line);font-family:var(--mono);font-size:12px;color:var(--d-muted)}.frame .bar i{width:10px;height:10px;border-radius:50%;background:var(--d-line);display:inline-block}
+.mock{font-family:var(--app-font);background:var(--bg);color:var(--fg);font-size:14px;line-height:1.45}
+.shell{display:grid;grid-template-columns:76px 1fr 320px;height:660px}
+.side{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:8px}
+.side .brand{width:36px;height:36px;border-radius:10px;margin-bottom:10px}
+.side .nv{width:100%;display:flex;flex-direction:column;gap:2px}.side .nv div{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;font-size:10.5px;font-weight:500;color:var(--muted);border-radius:10px}.side .nv div.active{color:var(--accent);background:var(--accent-soft)}
+.main{display:flex;flex-direction:column;min-width:0}
+.dtop{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border)}.dtop .t{font-weight:700;font-size:16px}.dtop .s{font-size:12px;color:var(--muted)}
+.dchat{flex:1;overflow:hidden;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.dchat .msg{max-width:78%}.dchat .bubble{font-size:14px}.dchat .card{font-size:13px}
+.dpanel{background:var(--surface);border-left:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.dpanel .h2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.dpanel .card{margin:0;background:var(--surface-2)}
+.cap{font-size:13px;color:var(--d-muted);margin:0 0 18px}
+.tbl{overflow-x:auto;border:1px solid var(--d-line);border-radius:10px;background:var(--d-surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--d-line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--d-muted);background:var(--d-surface-2)}tr:last-child td{border-bottom:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="07-integracii-tpu.html">Интеграции ТПУ</a><a href="08-edinoe-okno-maket.html">Единое окно · макет</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Макет · как будет выглядеть «единое окно»</div>
+<h1>Помощник, который ходит по порталам ТПУ за студента</h1>
+<p class="lead">Те же чат и компоненты, что сейчас, плюс новый элемент — <b>карточка из портала</b>: помощник сходил в расписание, Moodle или личный кабинет и принёс результат прямо в переписку. Ничего не нарисовано заново: экраны собраны из существующих токенов, чтобы было видно, как это ляжет в текущий интерфейс.</p>
+</header>
+
+<h2 id="how">Как это работает — на одном экране</h2>
+<div class="flow">
+<div class="box"><b>Студент</b><small>пишет в чат: сайт, Telegram/VK/MAX, Android. Вошёл один раз через единую авторизацию ТПУ.</small></div>
+<div class="arr">→</div>
+<div class="box"><b>Помощник</b><small>понимает вопрос (модель), <b>выбирает инструмент</b> из белого списка, код вызывает его от имени студента, модель пересказывает результат. Запись — только после кнопки «Подтвердить».</small></div>
+<div class="arr">→</div>
+<div class="box"><b>Порталы ТПУ</b><div class="ports"><span>rasp · расписание</span><span>api.tpu.ru · ЛК, заявления</span><span>moodle · дедлайны</span><span>help.tpu.ru · заявки</span><span>devdocs · инструкции</span><span>maps · staff · print</span></div></div>
+</div>
+<div class="note">Правило видно на макетах: над каждой карточкой — серая строка «<i>сходил в расписание группы 8В31</i>». Студент всегда видит, куда помощник обращался. Это и прозрачность, и доверие, и аргумент для ИТ-службы.</div>
+
+<h2 id="m1">Сценарий 1 · «Что у меня завтра?»</h2>
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>21:40</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ · 8В31</div></div></div>
+<div class="body"><div class="chat">
+<div class="msg user"><div class="r"><div class="bubble">что у меня завтра?</div></div><div class="time">21:40</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="tool"><i></i> расписание группы 8В31 · Moodle · мероприятия ЛК</div><div class="r"><div class="avatar">П</div><div class="bubble">Завтра, вторник 15 сентября, чётная неделя. Три пары и один дедлайн:
+<div class="card"><div class="h"><span>Пары</span><span class="src">rasp.tpu.ru</span></div>
+<div class="lesson"><div class="tm">10:25<br>12:00</div><div><div class="nm">Цифровая обработка сигналов · ЛБ</div><div class="mt">Брянцев А. А. · к. 10, ауд. 402А · <a>на карте</a></div></div></div>
+<div class="lesson"><div class="tm">12:40<br>14:15</div><div><div class="nm">Разработка мобильных приложений · ЛБ</div><div class="mt">Коршунов А. Е. · к. 10, ауд. 402</div></div></div>
+<div class="lesson"><div class="tm">14:35<br>16:10</div><div><div class="nm">Разработка мобильных приложений · ЛК</div><div class="mt">Волков М. Ю. · к. 10, ауд. 412</div></div></div>
+</div>
+<div class="card"><div class="h"><span>Дедлайны</span><span class="src">Moodle</span></div>
+<div class="dl"><span><b>Лаб. 2 · Системное программирование</b></span><span class="when">завтра 23:59</span></div>
+<div class="dl"><span>Тест · Предпринимательские финансы</span><span class="when ok">чт, 17.09</span></div>
+</div>
+Первая пара в 10:25 — можно выспаться.</div></div><div class="time">21:40</div></div>
+</div>
+<div class="quick"><span class="pri">Открыть лаб. 2</span><span>Вся неделя</span><span>Где ауд. 402А</span></div>
+<div class="composer"><div class="in">Спросите или опишите проблему…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Два портала в одном ответе.</b> Расписание — из публичного API (доступно уже сейчас), дедлайны — из Moodle (после подключения). Кнопки ведут в конкретное задание и на карту.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>21:41</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ · 8В31</div></div></div>
+<div class="body"><div class="chat">
+<div class="msg user"><div class="r"><div class="bubble">где ауд. 402А?</div></div><div class="time">21:41</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="tool"><i></i> расписание аудитории · карта кампуса</div><div class="r"><div class="avatar">П</div><div class="bubble">Корпус 10 (ИШИТР), пр. Ленина, 2, 4-й этаж. От главного корпуса — 7 минут пешком.
+<div class="card"><div class="h"><span>Ауд. 402А · корпус 10</span><span class="src">maps.tpu.ru</span></div><div style="height:74px;border-radius:8px;background:linear-gradient(135deg,#dbe6fb,#e9dffb);display:grid;place-items:center;color:#2563eb;font-size:11px;font-weight:600">карта кампуса · маршрут</div><div class="kv" style="margin-top:6px"><span>Завтра здесь</span><span>10:25 ЦОС (ЛБ), 12:40 РМП (ЛБ)</span></div></div></div></div><div class="time">21:41</div></div>
+<div class="msg user"><div class="r"><div class="bubble">пропущу пару у Брянцева, кому написать?</div></div><div class="time">21:42</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="tool"><i></i> телефонный справочник ТПУ</div><div class="r"><div class="avatar">П</div><div class="bubble">Брянцев Александр Александрович, ОИТ ИШИТР. Написать можно на корпоративную почту — открою черновик с темой «8В31, пропуск ЛБ 15.09».</div></div><div class="time">21:42</div></div>
+</div>
+<div class="quick"><span class="pri">Открыть черновик письма</span><span>Телефон кафедры</span></div>
+<div class="composer"><div class="in">Спросите или опишите проблему…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Уточнения по цепочке.</b> Аудитория → карта; преподаватель → справочник → черновик письма (сама почта не подключается, только <code>mailto:</code>).</p></div>
+</div>
+
+<h2 id="m2">Сценарий 2 · «Нужна справка» — действие с подтверждением</h2>
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>12:10</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ · 8В31</div></div></div>
+<div class="body"><div class="chat">
+<div class="msg user"><div class="r"><div class="bubble">нужна справка что я учусь, для военкомата</div></div><div class="time">12:10</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="tool"><i></i> личный кабинет · заявления МФЦ</div><div class="r"><div class="avatar">П</div><div class="bubble">Это «Справка об обучении» в Едином деканате, готовится 3 рабочих дня. Проверьте, что отправлю:
+<div class="card"><div class="h"><span>Заявление</span><span class="src">lk.tpu.ru · МФЦ</span></div><div class="kv"><span>Услуга</span><span>Справка об обучении</span><span>Куда</span><span>по месту требования (военкомат)</span><span>Экз.</span><span>1, бумажный</span><span>Получить</span><span>Единый деканат, ГК-131в</span><span>От кого</span><span>Пользователь 1ED2CD · 8В31</span></div></div>
+Ничего не отправлено, пока вы не подтвердите.</div></div><div class="time">12:10</div></div>
+</div>
+<div class="quick"><span class="pri">Отправить заявление</span><span>Изменить</span><span class="danger">Отмена</span></div>
+<div class="composer"><div class="in">Спросите или опишите проблему…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Запись — только по кнопке.</b> Помощник показывает ровно то, что уйдёт в ЛК; поля уточняет так же, как сейчас уточняет корпус и комнату.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>12:11</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Помоги мне</div><div class="s"><span class="dot"></span>ТПУ · 8В31</div></div></div>
+<div class="body"><div class="chat">
+<div class="msg user"><div class="r"><div class="bubble">Отправить заявление</div></div><div class="time">12:11</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="tool"><i></i> личный кабинет · заявления МФЦ</div><div class="r"><div class="avatar">П</div><div class="bubble">Готово. Заявление зарегистрировано, я напишу, когда статус изменится.
+<div class="card"><div class="h"><span>№ 2026-09-4417</span><span class="status new">Новое</span></div><div class="kv"><span>Услуга</span><span>Справка об обучении</span><span>Подано</span><span>18.09, 12:11</span><span>Срок</span><span>до 23.09</span></div></div></div></div><div class="time">12:11</div></div>
+<div class="msg user"><div class="r"><div class="bubble">что с моей заявкой про плиту в общаге?</div></div><div class="time">12:12</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="tool"><i></i> help.tpu.ru · мои запросы</div><div class="r"><div class="avatar">П</div><div class="bubble">Нашёл заявку от 24.11 — она в работе у службы содержания кампуса:
+<div class="card"><div class="h"><span>№ 102723 · Электроприборы</span><span class="status work">В работе</span></div><div class="kv"><span>Исполнитель</span><span>Содержание кампуса и ремонт</span><span>Обновлено</span><span>сегодня, 09:40</span><span>Комментарий</span><span>«Электрик придёт 19.09 после 15:00»</span></div></div>
+Хотите ответить исполнителю?</div></div><div class="time">12:12</div></div>
+</div>
+<div class="quick"><span class="pri">Ответить</span><span>Все мои заявки</span></div>
+<div class="composer"><div class="in">Спросите или опишите проблему…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="home"></div></div><p class="cap"><b>Заявления ЛК и заявки help.tpu.ru — в одном месте.</b> Статусы, комментарии исполнителя, ответ из чата. Пользователю не нужно помнить, в какой системе что лежит.</p></div>
+</div>
+
+<h2 id="m3">Вкладка «Сегодня», подключения, уведомления</h2>
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>08:05</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Сегодня</div><div class="s">пятница, 18 сентября · нечётная (3)</div></div></div>
+<div class="body" style="padding:10px 12px;gap:8px">
+<div class="card" style="margin:0;background:var(--surface)"><div class="h"><span>Пары</span><span class="src">rasp.tpu.ru</span></div>
+<div class="lesson"><div class="tm">08:30<br>10:05</div><div><div class="nm">Теория параллельных вычислений · ЛБ</div><div class="mt">Юдин А. С. · к. 10, ауд. 403Б</div></div></div>
+<div class="lesson"><div class="tm">12:40<br>14:15</div><div><div class="nm">Теория параллельных вычислений · ЛК</div><div class="mt" style="color:var(--warn)">⚠ перенесена в к. 20, ауд. 406</div></div></div>
+</div>
+<div class="card" style="margin:0;background:var(--surface)"><div class="h"><span>Сдать</span><span class="src">Moodle</span></div>
+<div class="dl"><span><b>Лаб. 2 · Системное программирование</b></span><span class="when">сегодня</span></div>
+<div class="dl"><span>Эссе · Предпринимательские финансы</span><span class="when ok">пн, 21.09</span></div>
+</div>
+<div class="card" style="margin:0;background:var(--surface)"><div class="h"><span>Заявки</span><span class="src">ЛК · help.tpu.ru</span></div>
+<div class="dl"><span>Справка об обучении</span><span class="status done">Готова к выдаче</span></div>
+<div class="dl"><span>№102723 · плита в общежитии</span><span class="status work">В работе</span></div>
+</div>
+<div class="card" style="margin:0;background:var(--surface)"><div class="h"><span>Кампус</span><span class="src">ЛК</span></div><div class="dl"><span>Медосмотр 1 курса</span><span class="when ok">21.09 – 23.10</span></div></div>
+</div>
+<div class="nav"><div><span class="ico"></span>Чат</div><div class="active"><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Новая вкладка «Сегодня».</b> То же, что помощник отвечает на «что у меня завтра», но без вопроса — сводка из четырёх порталов на одном экране. Заменяет вкладку «История» в нижней навигации (история переезжает в «Заявки»).</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>08:05</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="topbar"><div class="brand">П</div><div><div class="t">Профиль</div><div class="s">Пользователь 1ED2CD · студент · 8В31</div></div></div>
+<div class="body">
+<div class="sec">Подключённые сервисы ТПУ</div>
+<div class="panel"><div class="prow"><span>Учётная запись ТПУ<small>единая авторизация · группа, роль</small></span><span class="status done">подключено</span></div>
+<div class="prow"><span>Расписание<small>публичное, без входа</small></span><span class="sw"></span></div>
+<div class="prow"><span>Личный кабинет<small>заявления, мероприятия, посещаемость</small></span><span class="sw"></span></div>
+<div class="prow"><span>Moodle<small>дедлайны, оценки, курсы</small></span><span class="sw"></span></div>
+<div class="prow"><span>Техподдержка help.tpu.ru<small>заявки от вашего имени</small></span><span class="sw"></span></div>
+<div class="prow"><span>Облако cloud.tpu.ru<small>файлы, печать</small></span><span class="sw off"></span></div>
+<div class="prow"><span>Почта<small>не подключается — только черновики</small></span><span class="status new">нет</span></div></div>
+<div class="consent">Помощник обращается к сервисам <b>от вашего имени и только по вашему запросу</b>. Данные показываются в чате и не сохраняются. Отключить можно в любой момент.</div>
+<div class="sec">Уведомления</div>
+<div class="panel"><div class="prow"><span>Переносы пар<small>за час до занятия</small></span><span class="sw"></span></div><div class="prow"><span>Дедлайны Moodle<small>вечером за день</small></span><span class="sw"></span></div><div class="prow"><span>Статусы заявок</span><span class="sw"></span></div></div>
+</div>
+<div class="nav"><div><span class="ico"></span>Чат</div><div><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Заявки</div><div class="active"><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Согласие по каждому порталу.</b> Пользователь видит, что подключено и зачем, включает и выключает сам. Это то, что покажут ИТ-службе и юристам.</p></div>
+
+<div class="ph"><div class="phone" style="background:#0f172a"><div class="sb" style="background:transparent;color:#fff"><span>07:30</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="lock"><div class="clock">07:30</div><div class="date">пятница, 18 сентября</div>
+<div class="push"><div class="app"><i></i> Telegram · Помоги мне · сейчас</div><b>Пара перенесена</b>Теория параллельных вычислений в 12:40 — теперь в к. 20, ауд. 406 (было к. 10, ауд. 412).</div>
+<div class="push" style="margin-top:8px"><div class="app"><i></i> Telegram · Помоги мне · вчера, 20:00</div><b>Завтра дедлайн</b>Лаб. 2 по системному программированию — до 23:59. Открыть задание →</div>
+<div class="push" style="margin-top:8px"><div class="app"><i></i> Telegram · Помоги мне · вчера, 16:12</div><b>Справка готова</b>Заявление №2026-09-4417: готово к выдаче в Едином деканате, ГК-131в, пн–пт 9:00–17:00.</div>
+</div>
+<div class="home" style="background:#fff"></div></div><p class="cap"><b>Проактивно.</b> Помощник сравнивает расписание с прошлой версией, смотрит дедлайны и статусы — и пишет первым. Пуши в Telegram/VK/MAX уже есть в проекте.</p></div>
+</div>
+
+<h2 id="desk">Десктоп: чат + панель «Сегодня»</h2>
+<div class="frame"><div class="bar"><i></i><i></i><i></i> помоги-мне.tpu.ru/#/chat · 1280×660</div>
+<div class="mock"><div class="shell">
+<div class="side"><div class="brand">П</div><div class="nv"><div class="active"><span class="ico"></span>Чат</div><div><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>База знаний</div><div><span class="ico"></span>Профиль</div></div></div>
+<div class="main"><div class="dtop"><div><div class="t">Помоги мне</div><div class="s">Томский политехнический университет · 8В31 · вход через ТПУ</div></div></div>
+<div class="dchat">
+<div class="msg user"><div class="r"><div class="bubble">не могу зайти в moodle, пишет неверный пароль, хотя в лк захожу</div></div><div class="time">12:20</div></div>
+<div class="msg"><div class="author">Помощник (ИИ)</div><div class="tool"><i></i> учётная запись ТПУ · инструкции devdocs</div><div class="r"><div class="avatar">П</div><div class="bubble">Учётная запись активна, пароль менялся 3 дня назад — Moodle иногда держит старый пароль в сессии. Попробуйте по шагам:
+<div class="card" style="background:var(--surface)"><div class="h"><span>Вход в Moodle после смены пароля</span><span class="src">devdocs.tpu.ru</span></div><div class="lesson" style="grid-template-columns:20px 1fr"><div class="tm">1</div><div class="nm" style="font-weight:400">Выйдите из Moodle на всех вкладках и очистите cookie для stud.lms.tpu.ru.</div></div><div class="lesson" style="grid-template-columns:20px 1fr"><div class="tm">2</div><div class="nm" style="font-weight:400">Войдите по кнопке «Вход через ТПУ», а не по форме логин/пароль.</div></div><div class="lesson" style="grid-template-columns:20px 1fr"><div class="tm">3</div><div class="nm" style="font-weight:400">Если не помогло — создам заявку в услугу «Доступ к системе электронного обучения» с уже заполненными данными.</div></div></div>
+Напишите, помогло ли.</div></div><div class="time">12:20</div></div>
+</div>
+<div class="quick" style="padding:0 16px 8px"><span class="pri">Помогло</span><span>Не помогло — создать заявку</span></div>
+<div class="composer" style="padding:10px 16px 14px"><div class="in">Спросите или опишите проблему…</div><div class="send"></div></div></div>
+<div class="dpanel"><div class="h2">Сегодня · пятница, нечётная</div>
+<div class="card"><div class="h"><span>Пары</span><span class="src">rasp</span></div><div class="lesson"><div class="tm">08:30</div><div><div class="nm">ТПРВ · ЛБ</div><div class="mt">к. 10, 403Б</div></div></div><div class="lesson"><div class="tm">12:40</div><div><div class="nm">ТПРВ · ЛК</div><div class="mt" style="color:var(--warn)">⚠ к. 20, 406</div></div></div><div class="lesson"><div class="tm">14:35</div><div><div class="nm">ТПРВ · ЛК</div><div class="mt">к. 10, 412</div></div></div></div>
+<div class="card"><div class="h"><span>Сдать</span><span class="src">Moodle</span></div><div class="dl"><span><b>Лаб. 2 · Сист. прогр.</b></span><span class="when">сегодня</span></div><div class="dl"><span>Эссе · Предпр. финансы</span><span class="when ok">21.09</span></div></div>
+<div class="card"><div class="h"><span>Заявки</span><span class="src">ЛК · help</span></div><div class="dl"><span>Справка об обучении</span><span class="status done">готова</span></div><div class="dl"><span>№102723 · плита</span><span class="status work">в работе</span></div></div>
+<div class="card"><div class="h"><span>Подключено</span><span class="src">4 из 6</span></div><div class="kv"><span>ТПУ ID</span><span>✓</span><span>ЛК · Moodle · help</span><span>✓</span><span>Облако · почта</span><span>—</span></div></div>
+</div>
+</div></div></div>
+<p class="cap"><b>Диагностика с доступом к системам.</b> Помощник проверил учётную запись через api.tpu.ru, взял инструкцию из devdocs, и только если не поможет — заявка в правильную услугу help.tpu.ru. Справа — та же панель «Сегодня», что на телефоне.</p>
+
+<h2 id="new">Что нового в интерфейсе — итого</h2>
+<div class="tbl"><table><thead><tr><th>Элемент</th><th>Что это</th><th>Откуда данные</th></tr></thead><tbody>
+<tr><td><b>Строка «сходил в …»</b> над карточкой</td><td>прозрачность: какой портал помощник спросил</td><td>журнал инструментов движка</td></tr>
+<tr><td><b>Карточка портала</b> в пузыре (пары, дедлайны, заявление, заявка, аудитория)</td><td>структурированный результат вместо текста; кнопки ведут в исходную систему</td><td>rasp, Moodle, api.tpu.ru, Naumen, maps</td></tr>
+<tr><td><b>Подтверждение действия</b></td><td>карточка «что отправлю» + кнопки «Отправить / Изменить / Отмена»</td><td>любая запись в портал</td></tr>
+<tr><td><b>Вкладка «Сегодня»</b></td><td>сводка без вопроса: пары, сдать, заявки, кампус</td><td>те же инструменты по расписанию</td></tr>
+<tr><td><b>Вкладка «Заявки»</b></td><td>заявления ЛК + заявки help.tpu.ru + история чатов в одном списке</td><td>api.tpu.ru + Naumen + наша БД</td></tr>
+<tr><td><b>Профиль → подключения</b></td><td>что подключено, согласие, отключить; настройки уведомлений</td><td>токены пользователя (зашифрованы, отзываются)</td></tr>
+<tr><td><b>Пуши первым</b></td><td>перенос пары, дедлайн, статус заявки</td><td>worker сравнивает версии по расписанию</td></tr>
+</tbody></table></div>
+<p>Всё остальное — пузыри, кнопки быстрых ответов, консоль оператора, темы — остаётся как есть. Карточка портала — один новый компонент с шестью вариантами; в Figma добавляется в секцию «Компоненты».</p>
+</div>
+</body>
+</html>
