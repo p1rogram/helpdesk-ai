@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мой ТПУ · четыре интерпретации</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--d-bg:#f5f6f3;--d-surface:#fff;--d-surface-2:#eef0ec;--d-fg:#1b2027;--d-muted:#5c6570;--d-line:#dfe3dd;--d-accent:#0f6e73;--d-accent-soft:rgba(15,110,115,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+--bg:#f3f6fa;--surface:#ffffff;--surface-2:#f7f9fc;--fg:#0f172a;--muted:#64748b;--border:#e4eaf2;--border-strong:#d3dceb;
+--accent:#2563eb;--accent-fg:#fff;--accent-soft:rgba(37,99,235,.10);--ok:#16a34a;--ok-soft:rgba(22,163,74,.12);--warn:#d97706;--warn-soft:rgba(217,119,6,.13);--danger:#dc2626;--danger-soft:rgba(220,38,38,.12);--violet:#7c3aed;--violet-soft:rgba(124,58,237,.12);--teal:#0f766e;--teal-soft:rgba(15,118,110,.12);--green:#1a7a4c;--green-soft:rgba(26,122,76,.12);
+--shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px -16px rgba(15,23,42,.24);--radius:16px;--radius-sm:12px;
+--app-font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--d-bg:#151a1c;--d-surface:#1d2427;--d-surface-2:#242c30;--d-fg:#e6eae5;--d-muted:#9aa5a1;--d-line:#2f393c;--d-accent:#5fbdc1;--d-accent-soft:rgba(95,189,193,.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--d-bg);color:var(--d-fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:1180px;margin:0 auto}
+header.doc{padding:40px 0 20px;border-bottom:1px solid var(--d-line);margin-bottom:24px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--d-muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:22px;margin:48px 0 6px;padding-top:14px;border-top:1px solid var(--d-line)}
+h2 small{display:block;font-size:14px;color:var(--d-muted);font-weight:400;margin-top:2px}
+h3{font-size:15px;margin:22px 0 8px}
+p{margin:0 0 12px;max-width:76ch}.lead{font-size:17px;color:var(--d-muted)}
+ul{margin:0 0 12px;padding-left:22px;max-width:76ch}li{margin:3px 0}
+code{font-family:var(--mono);font-size:13px;background:var(--d-surface-2);padding:1px 5px;border-radius:5px}
+nav.toc{font-size:13.5px;margin:0 0 8px}nav.toc a{color:var(--d-accent);text-decoration:none;margin-right:14px}a{color:var(--d-accent)}
+.note{border-left:3px solid var(--d-accent);background:var(--d-accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;margin:14px 0;max-width:76ch}
+.pm{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0 18px;max-width:900px}
+.pm div{border:1px solid var(--d-line);border-radius:10px;background:var(--d-surface);padding:10px 14px;font-size:13.5px}
+.pm b{display:block;margin-bottom:4px}.pm ul{margin:0;padding-left:18px}
+@media(max-width:700px){.pm{grid-template-columns:1fr}}
+.row-ph{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin:14px 0 6px}
+.ph{width:300px;max-width:100%}.ph .cap{font-size:12.5px;color:var(--d-muted);margin:8px 2px 0;line-height:1.4}.ph .cap b{color:var(--d-fg)}
+.tbl{overflow-x:auto;border:1px solid var(--d-line);border-radius:10px;background:var(--d-surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--d-line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--d-muted);background:var(--d-surface-2)}tr:last-child td{border-bottom:0}
+/* phone base */
+.phone{width:300px;max-width:100%;aspect-ratio:300/760;border:8px solid #1c1f24;border-radius:38px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--app-font);font-size:13px;line-height:1.4;display:flex;flex-direction:column;position:relative;box-shadow:0 14px 40px -20px rgba(0,0,0,.5)}
+.phone *{box-sizing:border-box}
+.sb{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:11px;font-weight:600;background:var(--surface)}
+.sb .notch{position:absolute;left:50%;top:6px;transform:translateX(-50%);width:84px;height:20px;border-radius:12px;background:#1c1f24}
+.body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.nav{display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:16px}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 6px;font-size:10px;font-weight:500;color:var(--muted)}.nav div.active{color:var(--accent)}
+.ico{width:20px;height:20px;border-radius:5px;background:currentColor;opacity:.75}
+.home{width:110px;height:4px;border-radius:2px;background:var(--fg);opacity:.35;margin:4px auto 6px}
+.card{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:10px 12px;font-size:12.5px}
+.card .h{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:12.5px;margin-bottom:6px}
+.src{font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-soft);border-radius:999px;padding:1px 7px}
+.status{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px}
+.status.new{background:var(--warn-soft);color:var(--warn)}.status.work{background:var(--violet-soft);color:var(--violet)}.status.done{background:var(--ok-soft);color:var(--ok)}
+.lesson{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:4px 0;border-top:1px solid var(--border)}.lesson:first-of-type{border-top:0}
+.lesson .tm{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.3}.lesson .nm{font-weight:600;font-size:12.5px}.lesson .mt{font-size:11px;color:var(--muted)}
+.dl{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid var(--border);font-size:12px}.dl:first-of-type{border-top:0}.dl .when{color:var(--danger);font-weight:600;white-space:nowrap}.dl .when.ok{color:var(--muted);font-weight:400}
+/* A: hub */
+.hub-top{background:var(--green);color:#fff;padding:12px 14px 14px}
+.hub-top .hi{font-size:16px;font-weight:700}.hub-top .sub{font-size:11.5px;opacity:.85;margin-bottom:10px}
+.ask{background:#fff;border-radius:12px;padding:9px 12px;color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:8px}.ask i{width:18px;height:18px;border-radius:6px;background:var(--accent);display:inline-block}
+.hub{padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 4px;text-align:center;font-size:9.5px;font-weight:600;color:var(--fg)}
+.tile i{display:block;width:24px;height:24px;border-radius:8px;margin:0 auto 4px;background:var(--accent-soft)}
+.tile.v i{background:var(--violet-soft)}.tile.w i{background:var(--warn-soft)}.tile.g i{background:var(--ok-soft)}
+.alert{display:flex;gap:8px;align-items:flex-start;background:var(--warn-soft);border-radius:12px;padding:8px 10px;font-size:12px}
+.alert b{display:block;font-size:12px}.alert .a{margin-top:4px;display:flex;gap:6px}.alert .a span{font-size:11px;font-weight:600;color:var(--accent);background:var(--surface);border-radius:999px;padding:3px 8px}
+/* B: services */
+.search{margin:10px 12px 0;border:1px solid var(--border-strong);border-radius:12px;padding:9px 12px;color:var(--muted);background:var(--surface);font-size:12.5px;display:flex;gap:8px;align-items:center}
+.chips{display:flex;gap:6px;padding:8px 12px 0;flex-wrap:wrap}.chips span{font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 9px;color:var(--fg)}
+.svc{margin:10px 12px 0;display:flex;flex-direction:column;gap:6px}
+.svc .g{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:4px}
+.svc .it{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 10px;font-size:12.5px}
+.svc .it i{width:28px;height:28px;border-radius:8px;background:var(--accent-soft);flex:0 0 auto}.svc .it small{display:block;color:var(--muted);font-size:10.5px}
+.svc .it .ai{margin-left:auto;font-size:10px;color:var(--teal);background:var(--teal-soft);border-radius:999px;padding:2px 7px;white-space:nowrap}
+.form{margin:10px 12px 0;display:flex;flex-direction:column;gap:8px}
+.form .f{background:var(--surface);border:1px solid var(--border-strong);border-radius:11px;padding:8px 11px;font-size:12.5px}.form .f small{display:block;color:var(--muted);font-size:10px}
+.form .f.ai{border-color:var(--teal);background:var(--teal-soft)}
+.aihint{background:var(--teal-soft);border-radius:11px;padding:8px 10px;font-size:11.5px;color:var(--fg);display:flex;gap:7px;align-items:flex-start}.aihint i{width:16px;height:16px;border-radius:5px;background:var(--teal);flex:0 0 auto;margin-top:1px}
+.btn{background:var(--accent);color:#fff;text-align:center;border-radius:12px;padding:10px;font-weight:600;font-size:13px}
+/* C: feed */
+.feed{padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.ev{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:9px 11px;font-size:12.5px}
+.ev .m{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:3px}
+.ev b{display:block;font-size:12.5px;margin-bottom:2px}
+.ev .a{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}.ev .a span{font-size:11px;font-weight:600;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 9px}.ev .a span.pri{background:var(--accent);color:#fff}
+.ev.warn{border-left:3px solid var(--warn)}.ev.ok{border-left:3px solid var(--ok)}.ev.v{border-left:3px solid var(--violet)}
+.daysep{font-size:10.5px;color:var(--muted);text-align:center;margin:2px 0}
+.composer{display:flex;gap:7px;align-items:center;padding:8px 12px 10px;background:var(--surface);border-top:1px solid var(--border)}
+.composer .in{flex:1;border:1px solid var(--border-strong);border-radius:13px;padding:9px 12px;color:var(--muted);background:var(--bg);font-size:12.5px}
+.composer .send{width:36px;height:36px;border-radius:11px;background:var(--accent);flex:0 0 auto}
+/* D: embedded */
+.lk{flex:1;background:#f0f4f1;position:relative;overflow:hidden;font-size:11px}
+.lk .bar{background:#1a7a4c;color:#fff;padding:10px 12px;font-weight:700;font-size:12.5px}
+.lk .ct{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.lk .row{background:#fff;border-radius:8px;padding:8px 10px;border:1px solid #dfe6e1;display:flex;justify-content:space-between}
+.fab{position:absolute;right:12px;bottom:14px;width:46px;height:46px;border-radius:50%;background:var(--accent);box-shadow:0 8px 20px -8px rgba(37,99,235,.7);display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:58%;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 30px -16px rgba(0,0,0,.4);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--border-strong);margin:0 auto 2px}
+.sheet .ctx{font-size:10.5px;color:var(--muted)}
+.bubble{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:6px;padding:8px 11px;font-size:12px}
+.ub{align-self:flex-end;background:var(--accent);color:#fff;border-radius:14px;border-bottom-right-radius:6px;padding:8px 11px;font-size:12px;max-width:85%}
+.qq{display:flex;gap:6px;flex-wrap:wrap}.qq span{font-size:11px;font-weight:600;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 9px}
+/* desktop frame */
+.frame{border:1px solid var(--d-line);border-radius:12px;overflow:hidden;background:var(--d-surface);margin:10px 0 6px}
+.frame .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--d-line);font-family:var(--mono);font-size:12px;color:var(--d-muted)}.frame .bar i{width:10px;height:10px;border-radius:50%;background:var(--d-line);display:inline-block}
+.mock{font-family:var(--app-font);background:var(--bg);color:var(--fg);font-size:13px;line-height:1.45}
+.dh{background:var(--green);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px}
+.dh .logo{font-weight:800;font-size:16px}.dh .ask{flex:1;max-width:560px}.dh .u{margin-left:auto;font-size:12px;opacity:.9}
+.dgrid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;padding:14px 22px}
+.dgrid .card{padding:12px 14px}
+.dtiles{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:0 22px 14px}
+.dtiles .tile{font-size:11px;padding:10px 6px}.dtiles .tile i{width:28px;height:28px}
+.cap{font-size:13px;color:var(--d-muted);margin:0 0 18px}
+.rec{border:1px solid var(--d-accent);border-radius:12px;padding:14px 18px;background:var(--d-accent-soft);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="07-integracii-tpu.html">Интеграции ТПУ</a><a href="08-edinoe-okno-maket.html">Единое окно · макет</a><a href="09-varianty-produkta.html">Четыре интерпретации</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Продукт · четыре интерпретации интеграции · условное имя «Мой ТПУ»</div>
+<h1>Чем может быть «Мой ТПУ», если стартовая страница — не чат</h1>
+<p class="lead">Сомнение справедливое: чат на главной делает продукт похожим на «ещё один ИИ-чат». Ниже — четыре разных ответа на вопрос «что это за сервис», у каждого — своя стартовая страница и своё место для ИИ. Это не четыре оформления одного экрана, а четыре разных продукта на одной технической базе.</p>
+</header>
+
+<div class="tbl"><table><thead><tr><th></th><th>A · Хаб</th><th>B · Каталог услуг</th><th>C · Лента событий</th><th>D · Помощник внутри порталов</th></tr></thead><tbody>
+<tr><td>Что это</td><td>«Мой день в ТПУ»: сводка + быстрые действия</td><td>«Госуслуги ТПУ»: найти услугу и получить её</td><td>«Что произошло»: события с действиями</td><td>Кнопка помощи внутри ЛК/расписания/Moodle</td></tr>
+<tr><td>Стартовая</td><td>Виджеты сегодняшнего дня</td><td>Поиск + плитки услуг</td><td>Лента уведомлений</td><td>Стартовой нет — существующие порталы</td></tr>
+<tr><td>Где ИИ</td><td>Строка «Спросить или сделать» + подсказки в виджетах</td><td>Умный поиск + «заполнить за меня» внутри услуги</td><td>Кнопки действий у события; «объясни / напиши»</td><td>Шторка снизу, знает текущую страницу</td></tr>
+<tr><td>Похож на</td><td>Банк-приложение, Госуслуги-главная</td><td>Госуслуги-каталог, МФЦ</td><td>Telegram-канал, Inbox</td><td>Интерком-виджет, «помощник» в Битриксе</td></tr>
+</tbody></table></div>
+
+<!-- ========================= A ========================= -->
+<h2 id="a">A · Хаб «Мой день в ТПУ»<small>Стартовая — сводка сегодняшнего дня и плитки сервисов. ИИ — строка «Спросить или сделать…» наверху, как поиск, и подсказки прямо в виджетах.</small></h2>
+<p><b>Идея.</b> Студент открывает приложение не «поговорить», а <i>посмотреть, что сегодня</i>: пары, что сдать, что с заявками, что изменилось. ИИ не занимает экран — он в одной строке сверху и появляется там, где нужен: «пару перенесли — показать маршрут?». Чат существует, но как отдельная вкладка «Помощник», и туда попадают, когда виджета недостаточно.</p>
+<div class="pm"><div><b>Сильные стороны</b><ul><li>Сразу читается как сервис университета, а не чат</li><li>Ценность видна без единого вопроса</li><li>ИИ — «ускоритель», а не «главный герой»; легче объяснить ИТ-службе и вузу</li><li>Естественно ложится на данные rasp / Moodle / ЛК</li></ul></div><div><b>Слабые стороны</b><ul><li>Без подключённых порталов главная пустая — нужен этап 0 (расписание) хотя бы</li><li>Больше UI-работы: виджеты, состояния, персонализация</li><li>Риск превратиться в «ещё один ЛК» — отличие держится на действиях и проактивности</li></ul></div></div>
+
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>08:05</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="body">
+<div class="hub-top"><div class="hi">Доброе утро, Владимир</div><div class="sub">пятница, 18 сентября · нечётная неделя · 8В31</div><div class="ask"><i></i>Спросить или сделать… «справка», «где 403Б»</div></div>
+<div class="hub">
+<div class="alert"><span>⚠</span><div><b>Пара в 12:40 перенесена</b>Теория параллельных вычислений — теперь к. 20, ауд. 406<div class="a"><span>Маршрут</span><span>Почему?</span></div></div></div>
+<div class="card"><div class="h"><span>Сегодня</span><span class="src">rasp</span></div>
+<div class="lesson"><div class="tm">08:30<br>10:05</div><div><div class="nm">ТПРВ · лабораторная</div><div class="mt">Юдин А. С. · к. 10, 403Б</div></div></div>
+<div class="lesson"><div class="tm">12:40<br>14:15</div><div><div class="nm">ТПРВ · лекция</div><div class="mt" style="color:var(--warn)">к. 20, 406 · перенос</div></div></div>
+<div class="lesson"><div class="tm">14:35<br>16:10</div><div><div class="nm">ТПРВ · лекция</div><div class="mt">к. 10, 412</div></div></div></div>
+<div class="card"><div class="h"><span>Сдать</span><span class="src">Moodle</span></div><div class="dl"><span><b>Лаб. 2 · Системное прогр.</b></span><span class="when">сегодня 23:59</span></div><div class="dl"><span>Эссе · Предпр. финансы</span><span class="when ok">пн, 21.09</span></div></div>
+<div class="tiles"><div class="tile"><i></i>Справка</div><div class="tile v"><i></i>Заявка в поддержку</div><div class="tile w"><i></i>Оплата</div><div class="tile g"><i></i>Пропуск</div></div>
+<div class="card"><div class="h"><span>Заявки</span><span class="src">ЛК · help</span></div><div class="dl"><span>Справка об обучении</span><span class="status done">готова</span></div><div class="dl"><span>№102723 · плита в общежитии</span><span class="status work">в работе</span></div></div>
+</div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Сервисы</div><div><span class="ico"></span>Помощник</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Главная A.</b> Приветствие и строка «Спросить или сделать» в шапке; тревожное событие — первым; сводка по порталам; четыре самых частых действия плитками. Чат — третья вкладка.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>08:06</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="body">
+<div class="hub-top" style="padding-bottom:10px"><div class="hi" style="font-size:14px">Спросить или сделать</div><div class="ask" style="color:var(--fg)"><i></i>нужна справка для военкомата</div></div>
+<div class="hub">
+<div class="card" style="border-color:var(--teal)"><div class="h"><span>Понял: справка об обучении</span><span class="src">ЛК · МФЦ</span></div>
+<div style="font-size:12px;margin-bottom:6px">Готовится 3 рабочих дня, получить в Едином деканате (ГК-131в). Проверьте и отправьте:</div>
+<div class="dl"><span style="color:var(--muted)">Куда</span><span>по месту требования</span></div><div class="dl"><span style="color:var(--muted)">Экземпляров</span><span>1, бумажный</span></div><div class="dl"><span style="color:var(--muted)">От кого</span><span>Пользователь 1ED2CD · 8В31</span></div>
+<div style="display:flex;gap:6px;margin-top:8px"><div class="btn" style="flex:1;padding:8px">Отправить</div><div class="btn" style="flex:1;padding:8px;background:var(--surface);color:var(--fg);border:1px solid var(--border-strong)">Изменить</div></div></div>
+<div style="font-size:10.5px;color:var(--muted);text-align:center">Похожие: справка о стипендии · выписка из приказа · копия студенческого</div>
+<div class="card"><div class="h"><span>Сегодня</span><span class="src">rasp</span></div><div class="lesson"><div class="tm">08:30</div><div><div class="nm">ТПРВ · лабораторная</div><div class="mt">к. 10, 403Б</div></div></div></div>
+</div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Сегодня</div><div><span class="ico"></span>Сервисы</div><div><span class="ico"></span>Помощник</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Строка «Спросить или сделать» в работе.</b> Ответ — не чат, а карточка действия прямо на главной; ниже остаются виджеты. Если нужен диалог (уточнения) — открывается вкладка «Помощник» с этой карточкой.</p></div>
+</div>
+
+<div class="frame"><div class="bar"><i></i><i></i><i></i> A · десктоп · 1280×620</div>
+<div class="mock">
+<div class="dh"><div class="logo">Мой ТПУ</div><div class="ask"><i></i>Спросить или сделать: «справка», «дедлайны», «где ауд. 403Б», «не работает VPN»…</div><div class="u">Пользователь 1ED2CD · 8В31</div></div>
+<div class="dgrid">
+<div class="card"><div class="h"><span>Сегодня · пятница, нечётная</span><span class="src">rasp</span></div>
+<div class="lesson"><div class="tm">08:30<br>10:05</div><div><div class="nm">Теория параллельных вычислений · ЛБ</div><div class="mt">Юдин А. С. · к. 10, ауд. 403Б</div></div></div>
+<div class="lesson"><div class="tm">12:40<br>14:15</div><div><div class="nm">Теория параллельных вычислений · ЛК</div><div class="mt" style="color:var(--warn)">⚠ перенесена: к. 20, ауд. 406 · маршрут</div></div></div>
+<div class="lesson"><div class="tm">14:35<br>16:10</div><div><div class="nm">Теория параллельных вычислений · ЛК</div><div class="mt">Юдин А. С. · к. 10, ауд. 412</div></div></div></div>
+<div class="card"><div class="h"><span>Сдать</span><span class="src">Moodle</span></div><div class="dl"><span><b>Лаб. 2 · Системное программирование</b></span><span class="when">сегодня</span></div><div class="dl"><span>Эссе · Предпринимательские финансы</span><span class="when ok">21.09</span></div><div class="dl"><span>Тест · ЦОС</span><span class="when ok">24.09</span></div></div>
+<div class="card"><div class="h"><span>Заявки и заявления</span><span class="src">ЛК · help</span></div><div class="dl"><span>Справка об обучении</span><span class="status done">готова</span></div><div class="dl"><span>№102723 · плита в общежитии</span><span class="status work">в работе</span></div><div class="dl"><span>Доступ к VPN</span><span class="status new">новая</span></div></div>
+</div>
+<div class="dtiles"><div class="tile"><i></i>Справка</div><div class="tile v"><i></i>Заявка в поддержку</div><div class="tile w"><i></i>Оплата</div><div class="tile g"><i></i>Пропуск</div><div class="tile"><i></i>Печать</div><div class="tile"><i></i>Все сервисы</div></div>
+</div></div>
+<p class="cap">На десктопе — три колонки виджетов и ряд плиток. Чата на экране нет вообще; он открывается как панель справа по строке «Спросить».</p>
+
+<!-- ========================= B ========================= -->
+<h2 id="b">B · Каталог услуг «Госуслуги ТПУ»<small>Стартовая — поиск и каталог услуг. ИИ — понимает запрос своими словами, ведёт к нужной услуге и заполняет форму за пользователя.</small></h2>
+<p><b>Идея.</b> Студент приходит за <i>результатом</i>: справка, доступ, пропуск, починить, оплатить. Продукт — каталог всех услуг вуза (собранный из МФЦ личного кабинета, help.tpu.ru и инструкций), где у каждой услуги есть понятная карточка «что, сколько ждать, что нужно». ИИ делает две вещи: превращает «мне для военкомата бумажка» в правильную услугу и заполняет форму по диалогу. Чат — запасной выход «не нашли? спросите».</p>
+<div class="pm"><div><b>Сильные стороны</b><ul><li>Понятная модель «услуга → результат», привычная по Госуслугам</li><li>Закрывает главную боль: «в какой системе это делается»</li><li>ИИ ограничен рамками услуги — минимальные риски, легко согласовать</li><li>Работает даже без персонализации (каталог — публичный)</li></ul></div><div><b>Слабые стороны</b><ul><li>Нет «сегодня»: расписание и дедлайны — сбоку, а это самое частое</li><li>Каталог надо собрать и поддерживать руками</li><li>Слабее проактивность — продукт «по запросу»</li></ul></div></div>
+
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>12:10</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="body">
+<div style="padding:12px 12px 0;font-weight:700;font-size:17px">Сервисы ТПУ</div>
+<div class="search"><span>⌕</span>Что нужно сделать? Своими словами</div>
+<div class="chips"><span>справка</span><span>VPN</span><span>пропуск</span><span>общежитие</span><span>оплата</span><span>Moodle</span></div>
+<div class="svc">
+<div class="g">Часто</div>
+<div class="it"><i></i><div>Справка об обучении<small>Единый деканат · 3 дня</small></div><span class="ai">заполню за вас</span></div>
+<div class="it"><i style="background:var(--violet-soft)"></i><div>Проблема в общежитии<small>ремонт, электрика, вода · help.tpu.ru</small></div><span class="ai">помогу описать</span></div>
+<div class="it"><i style="background:var(--ok-soft)"></i><div>Доступ к VPN и ресурсам<small>ИТ-служба · 1 день</small></div></div>
+<div class="g">Учёба</div>
+<div class="it"><i></i><div>Смена формата обучения<small>ЛК · заявление</small></div></div>
+<div class="it"><i></i><div>Индивидуальная траектория<small>ЛК</small></div></div>
+<div class="g">Кампус и быт</div>
+<div class="it"><i style="background:var(--warn-soft)"></i><div>Оплата общежития<small>wildfly.tpu.ru</small></div></div>
+<div class="it"><i style="background:var(--warn-soft)"></i><div>Пропуск и СКУД<small>бюро пропусков</small></div></div>
+</div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Сервисы</div><div><span class="ico"></span>Мои заявки</div><div><span class="ico"></span>Расписание</div><div><span class="ico"></span>Помощник</div></div>
+<div class="home"></div></div><p class="cap"><b>Главная B.</b> Поиск своими словами, подсказки-чипы, услуги группами. Метка «заполню за вас» показывает, где ИИ участвует. Расписание — отдельная вкладка, а не главная.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>12:11</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="body">
+<div style="padding:12px 12px 0"><div style="font-size:10.5px;color:var(--muted)">Сервисы › Документы</div><div style="font-weight:700;font-size:16px">Справка об обучении</div><div style="font-size:11.5px;color:var(--muted)">Единый деканат · готовится 3 рабочих дня · бесплатно</div></div>
+<div class="form">
+<div class="aihint"><i></i>Вы написали «для военкомата» — поставил «по месту требования» и 1 экземпляр. Проверьте, остальное заполнено из профиля.</div>
+<div class="f ai"><small>Куда предоставляется</small>По месту требования (военкомат)</div>
+<div class="f ai"><small>Количество экземпляров</small>1, бумажный</div>
+<div class="f"><small>Группа</small>8В31 · очная · бакалавриат</div>
+<div class="f"><small>Получить</small>Единый деканат, ГК-131в, пн–пт 9:00–17:00</div>
+<div class="btn">Подать заявление</div>
+<div style="font-size:10.5px;color:var(--muted);text-align:center">Уйдёт в личный кабинет → «Мои заявления». Ничего не отправлено, пока не нажмёте.</div>
+</div>
+<div style="margin:12px 12px 0" class="card"><div class="h"><span>Не то?</span></div><div style="font-size:12px">Справка о стипендии · Выписка из приказа · Копия студенческого билета · <span style="color:var(--accent)">Спросить помощника</span></div></div>
+</div>
+<div class="nav"><div class="active"><span class="ico"></span>Сервисы</div><div><span class="ico"></span>Мои заявки</div><div><span class="ico"></span>Расписание</div><div><span class="ico"></span>Помощник</div></div>
+<div class="home"></div></div><p class="cap"><b>Карточка услуги.</b> ИИ подсветил поля, которые заполнил сам (зелёные), объяснил почему; остальное — из профиля. Форма — обычная, с одной кнопкой.</p></div>
+</div>
+
+<!-- ========================= C ========================= -->
+<h2 id="c">C · Лента событий «Что произошло»<small>Стартовая — хронологическая лента событий из всех порталов, у каждого события — действия. ИИ объясняет событие и выполняет действие по кнопке.</small></h2>
+<p><b>Идея.</b> Университет постоянно что-то присылает: перенос пары, новый дедлайн, ответ по заявке, приказ, опрос, медосмотр. Сейчас это разбросано по почте, ЛК, Moodle и Telegram-каналам. Продукт — одна лента, где каждое событие пришло из конкретного портала и имеет кнопки: «маршрут», «открыть задание», «ответить исполнителю», «объясни, что это значит». ИИ — обработчик событий, а не собеседник. Поле «написать помощнику» есть внизу, но лента — главное.</p>
+<div class="pm"><div><b>Сильные стороны</b><ul><li>Максимально проактивный формат — ценность приходит сама</li><li>Прекрасно ложится в мессенджеры: Mini App = лента, пуш = событие</li><li>ИИ отвечает на конкретный контекст — точнее и дешевле</li><li>Отличается и от ЛК, и от чата</li></ul></div><div><b>Слабые стороны</b><ul><li>Без доступа к Moodle/ЛК/help лента полупустая (только расписание)</li><li>Нужен worker, который следит за изменениями во всех системах</li><li>«Хочу справку» — не событие; инициатива пользователя вторична</li></ul></div></div>
+
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>08:05</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="body">
+<div style="padding:12px 12px 4px;display:flex;justify-content:space-between;align-items:baseline"><div style="font-weight:700;font-size:17px">Мой ТПУ</div><div style="font-size:11px;color:var(--muted)">8В31 · 3 новых</div></div>
+<div class="feed">
+<div class="daysep">сегодня</div>
+<div class="ev warn"><div class="m"><span>Расписание · 07:30</span><span>новое</span></div><b>Пара в 12:40 перенесена</b>Теория параллельных вычислений — к. 20, ауд. 406 вместо к. 10, 412.<div class="a"><span class="pri">Маршрут</span><span>Что ещё изменилось</span></div></div>
+<div class="ev"><div class="m"><span>Moodle · 07:00</span><span>новое</span></div><b>Сегодня дедлайн: Лаб. 2</b>Системное программирование, до 23:59. Не сдано.<div class="a"><span class="pri">Открыть задание</span><span>Что требуется?</span></div></div>
+<div class="ev ok"><div class="m"><span>Личный кабинет · вчера, 16:12</span></div><b>Справка об обучении готова</b>Забрать в Едином деканате, ГК-131в, пн–пт 9:00–17:00.<div class="a"><span>Где это</span><span>Напомнить завтра</span></div></div>
+<div class="daysep">вчера</div>
+<div class="ev v"><div class="m"><span>help.tpu.ru · 09:40</span></div><b>Исполнитель ответил по заявке №102723</b>«Электрик придёт 19.09 после 15:00».<div class="a"><span class="pri">Ответить</span><span>Открыть заявку</span></div></div>
+<div class="ev"><div class="m"><span>Личный кабинет · 08:00</span></div><b>Медосмотр 1 курса: 21.09 – 23.10</b>Записаться можно в ЛК → Мероприятия.<div class="a"><span>Объясни</span><span>Скрыть</span></div></div>
+</div></div>
+<div class="composer"><div class="in">Написать помощнику…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Лента</div><div><span class="ico"></span>Расписание</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Главная C.</b> События по времени, источник и действия у каждого; цветная полоска — тип (перенос / готово / ответ человека). Поле помощника — внизу, как в мессенджере, но оно не главное.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>08:06</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="body">
+<div style="padding:12px 12px 4px"><div style="font-size:10.5px;color:var(--muted)">Лента › событие</div><div style="font-weight:700;font-size:15px">Пара в 12:40 перенесена</div></div>
+<div class="feed" style="padding-top:4px">
+<div class="ev warn"><div class="m"><span>Расписание · сегодня 07:30</span></div>Теория параллельных вычислений (ЛК), Юдин А. С.<br><b style="margin-top:4px">к. 20, ауд. 406</b><span style="color:var(--muted)">было: к. 10, ауд. 412</span></div>
+<div class="bubble" style="margin-left:0">Корпус 20 — это ул. Усова, 7, десять минут пешком от корпуса 10. Пара перед этим у вас в к. 10 (403Б) до 10:05, так что успеете спокойно. В корпусе 20 аудитория 406 на 4-м этаже, правое крыло.</div>
+<div class="qq"><span>Маршрут на карте</span><span>Напомнить в 12:20</span><span>Расписание аудитории</span></div>
+<div class="ub">а почему перенесли?</div>
+<div class="bubble">В расписании причина не указана — так бывает при занятости аудитории. Могу спросить диспетчера ИШИТР: телефон +7 (3822) 606-198 или письмо на raspisanie@tpu.ru.</div>
+<div class="qq"><span>Черновик письма</span></div>
+</div></div>
+<div class="composer"><div class="in">Спросить об этом событии…</div><div class="send"></div></div>
+<div class="nav"><div class="active"><span class="ico"></span>Лента</div><div><span class="ico"></span>Расписание</div><div><span class="ico"></span>Заявки</div><div><span class="ico"></span>Профиль</div></div>
+<div class="home"></div></div><p class="cap"><b>Событие раскрыто.</b> Диалог с помощником живёт внутри события и знает его контекст. Нет «пустого чата» — есть разговор о конкретной вещи.</p></div>
+</div>
+
+<!-- ========================= D ========================= -->
+<h2 id="d">D · Помощник внутри существующих порталов<small>Своего главного экрана нет. Кнопка «Помощь» в личном кабинете, расписании, Moodle, help.tpu.ru — открывает шторку, которая знает, где пользователь находится.</small></h2>
+<p><b>Идея.</b> Не создавать ещё один вход, а встроиться туда, где студент уже есть. Один скрипт-виджет (как чат поддержки на сайтах) подключается к порталам ТПУ; помощник получает контекст страницы — «пользователь на странице заявлений» или «смотрит расписание 8В31» — и отвечает по месту. Все сценарии те же, но «дом» помощника — чужие страницы. Mini App в Telegram остаётся как «карман» для пушей и быстрых вопросов.</p>
+<div class="pm"><div><b>Сильные стороны</b><ul><li>Нулевой порог: не надо ставить и открывать ещё что-то</li><li>Контекст страницы делает ответы точнее без единого уточнения</li><li>Для вуза — «улучшили существующие порталы», а не «новая система»</li><li>Меньше UI, больше интеграционной работы — под нашу команду</li></ul></div><div><b>Слабые стороны</b><ul><li>Нужно согласие владельца каждого портала на встраивание скрипта</li><li>Нет своего «лица» — сложнее показать как продукт на защите</li><li>Кросс-портальные сценарии («что завтра» = rasp + Moodle) не имеют естественного места</li></ul></div></div>
+
+<div class="row-ph">
+<div class="ph"><div class="phone"><div class="sb"><span>12:10</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="lk"><div class="bar">ТПУ · Личный кабинет</div>
+<div class="ct"><div style="font-weight:700;font-size:12px;margin:2px 0">Мои заявления</div><div class="row"><span>Наименование</span><span>Статус</span></div><div class="row"><span style="color:#889">— пусто —</span><span></span></div><div style="font-weight:700;font-size:12px;margin:8px 0 2px">Создать документ</div><div class="row"><span>Согласование ВКР</span><span>›</span></div><div class="row"><span>Смена формата обучения</span><span>›</span></div></div>
+<div class="fab">?</div>
+</div>
+<div class="home"></div></div><p class="cap"><b>Кнопка в ЛК.</b> Обычная страница lk.tpu.ru с плавающей кнопкой помощника — как виджет поддержки на сайтах.</p></div>
+
+<div class="ph"><div class="phone"><div class="sb"><span>12:11</span><span class="notch"></span><span>●●● ▮</span></div>
+<div class="lk"><div class="bar">ТПУ · Личный кабинет</div>
+<div class="ct" style="opacity:.45"><div style="font-weight:700;font-size:12px;margin:2px 0">Мои заявления</div><div class="row"><span>Наименование</span><span>Статус</span></div><div class="row"><span style="color:#889">— пусто —</span><span></span></div></div>
+<div class="sheet"><div class="grab"></div><div class="ctx">Помощник · вы на странице «Мои заявления»</div>
+<div class="ub">нужна справка что я учусь</div>
+<div class="bubble">В этом разделе её нет — справка об обучении заказывается через Единый деканат. Могу подать заявление отсюда: «по месту требования», 1 экземпляр, получить в ГК-131в через 3 дня.</div>
+<div class="qq"><span>Подать заявление</span><span>Другая справка</span><span>Где деканат</span></div>
+<div class="composer" style="padding:6px 0 0;border:0;background:none"><div class="in">Спросить…</div><div class="send"></div></div></div>
+</div>
+<div class="home"></div></div><p class="cap"><b>Шторка с контекстом.</b> Помощник знает, что пользователь в «Моих заявлениях», и говорит по делу; действие выполняется тут же. Тот же движок, те же инструменты.</p></div>
+</div>
+
+<!-- ========================= comparison ========================= -->
+<h2 id="cmp">Сравнение и что выбрать</h2>
+<div class="tbl"><table><thead><tr><th>Критерий</th><th>A · Хаб</th><th>B · Каталог</th><th>C · Лента</th><th>D · Встроенный</th></tr></thead><tbody>
+<tr><td>Выглядит как сервис, а не ИИ-чат</td><td>да</td><td>да</td><td>да</td><td>да (вообще незаметен)</td></tr>
+<tr><td>Ценность без единого вопроса</td><td>высокая</td><td>средняя</td><td>высокая</td><td>низкая</td></tr>
+<tr><td>Работает уже на этапе 0 (только расписание + инструкции)</td><td>частично</td><td>да (каталог публичный)</td><td>слабо</td><td>да</td></tr>
+<tr><td>Использует сильную сторону нашего движка (уточнения, действия с подтверждением)</td><td>да</td><td>полностью</td><td>частично</td><td>да</td></tr>
+<tr><td>Проактивность (пуши, переносы, дедлайны)</td><td>есть</td><td>слабая</td><td>это суть</td><td>через Mini App</td></tr>
+<tr><td>Согласований с вузом</td><td>API порталов</td><td>API + каталог услуг</td><td>API всех порталов</td><td>API + встраивание в чужие сайты</td></tr>
+<tr><td>Объём фронтенда</td><td>большой</td><td>средний</td><td>средний</td><td>малый</td></tr>
+<tr><td>Показательность на защите</td><td>высокая</td><td>высокая</td><td>средняя</td><td>низкая</td></tr>
+</tbody></table></div>
+
+<div class="rec"><b>Рекомендация: A как основа, B как вторая вкладка, C как механика уведомлений.</b>
+<p style="margin-top:6px">Главная — «Сегодня» (A): пары, сдать, заявки, перенос — так продукт с первого экрана читается как «Мой ТПУ», а не как чат. Вторая вкладка — «Сервисы» (B): каталог услуг с умным поиском и «заполню за вас» — это то место, где наш движок уточнений и подтверждений работает целиком. События (C) не делаются отдельной лентой: они живут в виджете «Сегодня» (тревожная плашка сверху) и в пушах. Чат становится <b>третьей вкладкой «Помощник»</b> — и туда же ведёт строка «Спросить или сделать» с главной, когда нужен диалог. D — не сейчас: сначала свой продукт, потом виджет в ЛК как расширение.</p>
+<p style="margin:0">Навигация: <b>Сегодня · Сервисы · Помощник · Профиль</b>. Всё, что уже сделано (движок, каталог, консоль оператора, эскалация), переезжает без изменений: чат никуда не делся, он перестал быть входной дверью.</p></div>
+
+<h3>Что это меняет в проекте</h3>
+<ul>
+<li>Один новый экран «Сегодня» (виджеты по инструментам порталов) и один экран «Сервисы» (каталог из МФЦ ЛК + услуг help.tpu.ru + наших статей; карточка услуги с формой).</li>
+<li>Строка «Спросить или сделать» — тот же <code>engine.handle()</code>, но ответ рендерится карточкой на главной, а не в чате; при необходимости уточнений — переход в «Помощник».</li>
+<li>Тревожная плашка и пуши — worker сравнивает версии расписания и статусы (уже есть шина событий).</li>
+<li>Название: «Помоги мне» остаётся именем помощника внутри; продукт целиком — «Мой ТПУ» (или как решит вуз).</li>
+</ul>
+</div>
+</body>
+</html>
