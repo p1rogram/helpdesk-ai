@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Единое окно ТПУ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--bg:#f5f6f3;--surface:#ffffff;--surface-2:#eef0ec;--fg:#1b2027;--muted:#5c6570;--line:#dfe3dd;--line-strong:#c7cdc4;
+--accent:#0f6e73;--accent-soft:rgba(15,110,115,.10);--warn:#a1620a;--warn-soft:rgba(161,98,10,.12);--ok:#2f7d4f;--ok-soft:rgba(47,125,79,.12);--danger:#b3362a;--danger-soft:rgba(179,54,42,.10);
+--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Consolas,'Courier New',monospace;--radius:10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151a1c;--surface:#1d2427;--surface-2:#242c30;--fg:#e6eae5;--muted:#9aa5a1;--line:#2f393c;--line-strong:#42504f;--accent:#5fbdc1;--accent-soft:rgba(95,189,193,.14);--warn:#e0a44b;--warn-soft:rgba(224,164,75,.14);--ok:#6fc48f;--ok-soft:rgba(111,196,143,.14);--danger:#e8796d;--danger-soft:rgba(232,121,109,.14)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;padding-block:0 64px;padding-inline:16px}
+.wrap{max-width:1000px;margin:0 auto}
+header.doc{padding:40px 0 24px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-size:30px;line-height:1.15;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:21px;margin:44px 0 12px;padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
+h3{font-size:16px;margin:26px 0 8px}
+p{margin:0 0 12px;max-width:76ch}.lead{font-size:17px;color:var(--muted);max-width:72ch}
+ul,ol{margin:0 0 12px;padding-left:22px;max-width:76ch}li{margin:3px 0}
+code{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px}
+pre{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;overflow-x:auto;line-height:1.5;margin:8px 0 14px}
+pre code{background:none;padding:0;white-space:pre}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:600}tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.warn{background:var(--warn-soft);color:var(--warn)}.tag.danger{background:var(--danger-soft);color:var(--danger)}.tag.acc{background:var(--accent-soft);color:var(--accent)}.tag.muted{background:var(--surface-2);color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0;max-width:76ch}
+.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+nav.toc{font-size:13.5px;color:var(--muted);margin:0 0 8px}nav.toc a{color:var(--accent);text-decoration:none;margin-right:14px}a{color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:12px 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.card h4{margin:0 0 6px;font-size:14px}.card p{font-size:13.5px;color:var(--muted);margin:0}
+.scn{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:12px 16px;margin:10px 0}
+.scn b{display:block;margin-bottom:4px}.scn .q{font-style:italic;color:var(--muted)}
+.scn ol{margin:6px 0 0;font-size:13.5px}
+.map{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:14px;overflow-x:auto;line-height:1.55;white-space:pre}
+footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+<a href="00-obzor.html">Обзор</a><a href="01-server-java.html">Сервер · Java</a><a href="02-engine-kotlin.html">Движок · Kotlin</a>
+<a href="03-ai-search-kotlin.html">ИИ и поиск · Kotlin</a><a href="04-shared-kotlin.html">shared · Kotlin</a><a href="05-web-typescript.html">Веб · TS</a>
+<a href="06-android-compose.html">Android · Compose</a><a href="07-integracii-tpu.html">Интеграции ТПУ</a><a href="design-web.html">Дизайн · веб</a><a href="design-mobile.html">Дизайн · мобильный</a>
+</nav>
+<header class="doc">
+<div class="eyebrow">Анализ · интеграции с порталами ТПУ · 18 сентября 2026</div>
+<h1>От бота техподдержки к единому окну студента</h1>
+<p class="lead">Что есть у ТПУ технически (обход 15 порталов, найденные API и точки входа), как это соединить с помощником, какие сценарии это открывает и как это обосновать перед ИТ-службой и менеджером.</p>
+</header>
+
+<h2 id="thesis">Тезис в одном абзаце</h2>
+<p>У студента ТПУ — <b>пятнадцать порталов</b>: личный кабинет, расписание, Moodle, почта, облако, печать, техподдержка, заявления, библиотека, оплата, трафик, карта… У каждого свой вход, своя логика, свой поиск. Большая часть обращений в поддержку — не «сломалось», а <i>«где это?», «как получить?», «что мне делать?»</i>. Помощник, который уже умеет понимать вопрос и вести диалог, становится ценным не тогда, когда отвечает по статье, а когда <b>сам ходит в нужный портал</b>: смотрит расписание группы, находит дедлайн в Moodle, создаёт заявление на справку, показывает статус заявки в help.tpu.ru — и всё это через один вход (единая авторизация ТПУ) и в одном чате. Это и есть схема с доски: пользователь → помощник → «хаб» с инструментами → порталы.</p>
+<div class="note">Ключевой факт: у ТПУ уже есть всё, что нужно для этого, — <b>единая авторизация по стандарту OpenID Connect</b> (oauth.tpu.ru), <b>центральный REST API</b> (api.tpu.ru, на котором работает сам личный кабинет), <b>открытое API расписания</b> и стандартные API у Moodle, Nextcloud, SOGo, BookStack, GitLab. Ничего не нужно «взламывать» или парсить — нужно попросить доступ и подключиться.</div>
+
+<h2 id="map">Что нашли: карта экосистемы</h2>
+<div class="map">                     ┌──────────────── oauth.tpu.ru ────────────────┐
+                     │  единая авторизация · OpenID Connect         │
+                     │  scopes: openid profile email phone address  │
+                     └──────────────┬───────────────────────────────┘
+                                    │ один вход для всего
+   ┌──────────────┬─────────────────┼─────────────────┬──────────────────┐
+   │              │                 │                 │                  │
+ lk.tpu.ru     api.tpu.ru      rasp.tpu.ru      help.tpu.ru      stud.lms.tpu.ru
+ личный        RESTful API v2  расписание       Naumen SD        Moodle
+ кабинет       (ЛК работает    открытое API +   каталог услуг,   веб-сервисы
+ (SPA на       на нём)         iCal + поиск     заявки, REST     включены
+  api.tpu.ru)
+   │              │                 │                 │                  │
+ ex2.tpu.ru    cloud.tpu.ru    devdocs.tpu.ru   codelab.tpu.ru    aichat.tpu.ru
+ SOGo:         Nextcloud 33    BookStack:       GitLab            «портал ИИ ТПУ»
+ почта,        WebDAV + OCS    инструкции       API v4, CI        (уже есть!)
+ CalDAV        API             + REST API
+
+ + print.tpu.ru (MyQ) · netflow.tpu.ru (трафик) · maps.tpu.ru · staff.tpu.ru (справочник)
+ + wildfly.tpu.ru/pay (оплата) · exam.tpu.ru · lib.tpu.ru · portal.tpu.ru (старый портал)</div>
+
+<h3>Подробно по каждому порталу</h3>
+<div class="tbl"><table><thead><tr><th>Портал</th><th>Что это технически</th><th>Как подключаться</th><th>Что даёт помощнику</th><th>Доступ</th></tr></thead><tbody>
+<tr><td><b>oauth.tpu.ru</b><br>единая авторизация</td><td>Полноценный OpenID Connect-провайдер: <code>/.well-known/openid-configuration</code>, authorization code, userinfo с ФИО/почтой/телефоном, JWKS. Плюс вход через Госуслуги/VK.</td><td>Зарегистрировать наше приложение как OIDC-клиента (client_id/secret). В проекте уже есть <code>OidcProvider</code> — нужен только <code>OIDC_ISSUER=https://oauth.tpu.ru</code>.</td><td>Настоящая личность студента вместо «демо-входа»: группа, роль (студент/сотрудник), почта. Один вход — и помощник может ходить в другие порталы от имени пользователя.</td><td><span class="tag warn">запрос в ОКП</span> Центр «Электронный университет», отдел корпоративных приложений</td></tr>
+<tr><td><b>api.tpu.ru</b><br>RESTful API ТПУ</td><td>«Сервер для разработчиков приложений». Личный кабинет — это SPA поверх него: <code>/v2/portal/menu</code>, <code>/v2/portal/page/*</code>, <code>/v2/client/service/service/tree</code> (дерево заявлений), <code>/v2/client/service/application/list</code>, <code>/v2/client/user/auth/info</code>. Авторизация — JWT после oauth.</td><td>Кабинет разработчика на <code>api.tpu.ru/dashboard</code> (вход по единой авторизации). Методы вызываются с токеном пользователя.</td><td>Всё, что видит ЛК: профиль, группа, успеваемость и посещаемость (СКУД), стипендия, приказы, <b>заявления МФЦ</b> (создать/статус), опросы, мероприятия. Это главный источник персонализации.</td><td><span class="tag warn">запрос в ОКП</span> + согласие пользователя (ПД)</td></tr>
+<tr><td><b>rasp.tpu.ru</b><br>расписание</td><td>ИПК «Расписание». Без входа: поиск группы/аудитории/преподавателя (<code>/select/search/main.html?q=</code>, JSON), страница группы по хэшу, недели чёт/нечёт, звонки, календарные графики, экспорт <b>iCal</b>. Есть <b>«Открытое API»</b> (тестовый режим) — по заявке на raspisanie@tpu.ru.</td><td>1) Открытое API — заявка (ФИО, логин, описание приложения, скриншоты). 2) iCal-экспорт группы — стандарт, читается любой библиотекой. 3) Публичный поиск — уже работает без ключей.</td><td>«Что у меня завтра?», «где следующая пара?», «когда сессия?», «какая неделя?», «в какой аудитории Иванов?», «пара перенесена» (сравнение версий), связка с картой корпусов.</td><td><span class="tag ok">частично уже</span> поиск и iCal публичны; API — заявка</td></tr>
+<tr><td><b>help.tpu.ru</b><br>техподдержка</td><td><b>Naumen Service Desk</b> (пути <code>/sd/</code>, портал самообслуживания). Каталог услуг: вопросы/жалобы, документы, доступ к ресурсам (VPN, Moodle, папки, MyQ), ИТ-сервисы, НТБ, публикации, содержание кампуса и ремонт, студентам (Единый деканат), электронное обучение. «Мои запросы» со статусами.</td><td>Naumen REST API (<code>/sd/services/rest/create/...</code>, <code>/find/...</code>) с ключом доступа — в проекте уже реализован <code>NaumenHelpdesk</code>. Каталог услуг → наш каталог категорий (маппинг <code>NAUMEN_SERVICE_BY_CATEGORY</code>).</td><td>Заявка создаётся <b>от имени студента</b> в правильной услуге с заполненными полями; статус и ответы специалиста видны в чате; «что с моей заявкой №102723?».</td><td><span class="tag warn">accessKey от ИТ-службы</span></td></tr>
+<tr><td><b>stud.lms.tpu.ru</b><br>Moodle (ЭИОС)</td><td>Moodle; <b>мобильные веб-сервисы включены</b> (endpoint <code>login/token.php?service=moodle_mobile_app</code> отвечает, значит REST доступен). Функции: курсы пользователя, задания и дедлайны, оценки, календарь, форумы, уведомления.</td><td>Токен пользователя через <code>login/token.php</code> (или админ-сервис с внешним токеном). Вызовы <code>webservice/rest/server.php?wsfunction=core_calendar_get_calendar_upcoming_view</code> и т.п.</td><td>«Какие дедлайны на неделе?», «что не сдано?», «есть ли новые оценки?», «где лекции по …?». Самый ценный источник для студента после расписания.</td><td><span class="tag ok">технически доступно</span> согласовать с ЭУ политику токенов</td></tr>
+<tr><td><b>ex2.tpu.ru / mail.tpu.ru</b><br>почта</td><td><b>SOGo</b> (groupware): почта, календарь, контакты. Стандартные протоколы: IMAP, CalDAV, CardDAV (<code>/SOGo/dav/</code> отвечает 401 — есть).</td><td>CalDAV для календаря, IMAP для писем — по учётной записи пользователя (нужно хранить токен/пароль — <b>не хотим</b>) либо через OAuth, если SOGo его поддерживает у ТПУ.</td><td>Ограниченно: «письмо от преподавателя со ссылкой на вебинар», события календаря. Осторожно: почта — самое чувствительное.</td><td><span class="tag danger">отложить</span> высокий риск ПД, низкая ценность</td></tr>
+<tr><td><b>cloud.tpu.ru</b><br>файлы</td><td><b>Nextcloud 33.0.9</b>. WebDAV, OCS API, публичные ссылки, шаринг.</td><td>App-password пользователя или OAuth2-приложение Nextcloud; WebDAV для файлов.</td><td>«Пришли мне методичку по курсу», «сохрани справку в облако», отправить файл на печать.</td><td><span class="tag muted">вторая очередь</span></td></tr>
+<tr><td><b>devdocs.tpu.ru</b><br>инструкции</td><td><b>BookStack</b> «Документация ТПУ»: полки/книги/страницы инструкций пользователей. Есть REST API (<code>/api/docs</code>).</td><td>API-токен на чтение → регулярная выгрузка страниц в наш RAG.</td><td><b>Готовая база знаний</b> для ответов: официальные инструкции вместо самописных статей. Это заменяет наш ручной сбор с help.tpu.ru.</td><td><span class="tag ok">легко</span> токен на чтение</td></tr>
+<tr><td><b>aichat.tpu.ru</b><br>«портал ИИ ТПУ»</td><td>Уже существующий чат с моделью (по виду — Open WebUI), вход по логину ТПУ. Общий ассистент «спроси что угодно».</td><td>Не конкурент, а сосед: там — общая модель, у нас — агент с инструментами и правилами. Возможно, там же можно взять модель по OpenAI-совместимому API вместо своего vLLM.</td><td>Позиционирование: «aichat — поговорить с ИИ; Помоги мне — чтобы ИИ сделал что-то в системах ТПУ».</td><td><span class="tag acc">выяснить</span> кто владелец, какая модель</td></tr>
+<tr><td><b>codelab.tpu.ru</b><br>GitLab</td><td>GitLab, API v4 работает, публичные проекты видны.</td><td>Хостинг нашего кода, CI-раннеры, Container Registry внутри вуза.</td><td>Не для пользователя — для нас: CI/CD внутри контура, что решает проблему «деплой без внешнего доступа».</td><td><span class="tag ok">есть аккаунт</span> проверить раннеры и registry</td></tr>
+<tr><td><b>print.tpu.ru</b> (MyQ), <b>netflow.tpu.ru</b> (трафик), <b>maps.tpu.ru</b>, <b>staff.tpu.ru</b> (справочник), <b>wildfly.tpu.ru/pay</b>, <b>exam.tpu.ru</b>, <b>lib.tpu.ru</b></td><td>Отдельные сервисы; у MyQ есть REST API, у остальных — веб.</td><td>Сначала — глубокие ссылки из чата («открыть оплату», «моя статистика трафика»); API — по мере надобности.</td><td>«Сколько трафика осталось?», «где корпус 10?», «телефон деканата ИШИТР», «напечатать файл».</td><td><span class="tag muted">третья очередь</span></td></tr>
+</tbody></table></div>
+
+<h2 id="why">Зачем это вузу и менеджеру — обоснование</h2>
+<div class="grid">
+<div class="card"><h4>Меньше обращений в поддержку</h4><p>Значительная доля заявок — «как/где». Если помощник сам показывает расписание, дедлайн, статус заявки или создаёт заявление, обращение не возникает. Это измеримо: доля диалогов, закрытых без заявки.</p></div>
+<div class="card"><h4>Один вход вместо пятнадцати</h4><p>Единая авторизация ТПУ уже есть; помощник становится тем местом, где студенту не нужно помнить, в какой системе что лежит. Особенно для первокурсников — на доске это и было «Помочь первокурснику».</p></div>
+<div class="card"><h4>Персонализация без хранения данных</h4><p>Помощник не копирует базы вуза: он спрашивает системы «на лету» от имени пользователя и ничего не сохраняет. Это проще согласовать по 152-ФЗ, чем любую витрину данных.</p></div>
+<div class="card"><h4>Проактивность</h4><p>Не только отвечать, но и предупреждать: «завтра первая пара перенесена», «дедлайн через 2 дня», «по вашей заявке ответил специалист». Пуш в Telegram/VK/MAX уже есть.</p></div>
+<div class="card"><h4>Официальные API, а не парсинг</h4><p>Всё, что мы нашли, — либо документированные API, либо стандарты (OIDC, iCal, CalDAV, WebDAV, Moodle WS). Решение устойчиво к редизайну порталов и не нарушает их правил.</p></div>
+<div class="card"><h4>Отличие от aichat.tpu.ru</h4><p>Там — общая модель для разговоров. У нас — агент, который действует в системах вуза по правилам, с подтверждениями и журналом. Это не дубль, а следующая ступень.</p></div>
+</div>
+
+<h2 id="scenarios">Сценарии — что студент сможет сделать в одном чате</h2>
+<p>Каждый сценарий — цепочка: понять намерение (уже умеем) → вызвать инструмент портала → ответить. Инструменты помечены <code>так</code>.</p>
+
+<div class="scn"><b>1. «Что у меня завтра?»</b><span class="q">— самый частый вопрос первокурсника.</span>
+<ol><li><code>rasp.schedule(group, date)</code> — пары, аудитории, преподаватели (группа известна из профиля oauth/api.tpu.ru).</li><li><code>moodle.upcoming(days=1)</code> — дедлайны и тесты.</li><li><code>lk.events()</code> — мероприятия из ЛК.</li><li>Ответ одним списком с ссылками «открыть аудиторию на карте», «открыть задание».</li></ol></div>
+
+<div class="scn"><b>2. «Нужна справка об обучении» / «Хочу сменить формат обучения»</b><span class="q">— «Получить справку» с доски.</span>
+<ol><li><code>lk.services.tree()</code> — найти нужное заявление в дереве МФЦ (сегодня там «Согласование ВКР», «Смена формата обучения»; у других ролей — больше).</li><li>Уточнить недостающие поля тем же механизмом, что для заявок в поддержку.</li><li><code>lk.services.create(...)</code> — создать заявление от имени студента; вернуть номер и статус; следить за статусом и пушить изменения.</li></ol></div>
+
+<div class="scn"><b>3. «Не могу зайти в Moodle / VPN / почту»</b><span class="q">— то, что уже умеем, но с доступом к системам.</span>
+<ol><li>Диагностика по базе знаний (devdocs + наш каталог) — как сейчас.</li><li><code>api.auth.info()</code> — проверить, активна ли учётная запись, не истёк ли пароль (если API отдаёт).</li><li>Не помогло — <code>naumen.create(service="Доступ к ресурсам ТПУ", …)</code> в правильную услугу от имени студента; статус — в чате.</li></ol></div>
+
+<div class="scn"><b>4. «Что с моей заявкой?»</b>
+<ol><li><code>naumen.myRequests()</code> + <code>lk.applications()</code> — заявки в поддержку и заявления МФЦ одним списком.</li><li>Комментарии специалиста — прямо в чат; «уточнить» → ответ уходит в заявку.</li></ol></div>
+
+<div class="scn"><b>5. «Пропущу пару, кому написать?»</b>
+<ol><li><code>rasp.schedule</code> → преподаватель следующей пары.</li><li><code>staff.lookup(ФИО)</code> → кафедра, почта (телефонный справочник публичен).</li><li>Черновик письма — открыть в почте по <code>mailto:</code> (без доступа к самой почте).</li></ol></div>
+
+<div class="scn"><b>6. «Где корпус 10, ауд. 403Б?» / «Как добраться до общежития 12?»</b>
+<ol><li><code>rasp.audience("403Б")</code> — корпус и расписание аудитории; <code>maps.link(корпус)</code> — ссылка на карту кампуса.</li></ol></div>
+
+<div class="scn"><b>7. «Сколько интернета осталось?», «Напечатай файл», «Оплатить общежитие»</b>
+<ol><li>Первая очередь — глубокие ссылки в нужный раздел с уже выполненным входом (SSO). Вторая — API MyQ (печать из облака), netflow.</li></ol></div>
+
+<div class="scn"><b>8. Проактивные уведомления (без вопроса)</b>
+<ol><li>Раз в час: сравнить расписание группы с прошлой версией → «пара в 8:30 перенесена в к. 20, ауд. 406».</li><li>Вечером: дедлайны Moodle на завтра, непрочитанные ответы по заявкам.</li><li>Для первокурсников в сентябре: «завтра медосмотр 1 курса», «как получить пропуск» — из событий rasp.</li></ol></div>
+
+<h2 id="arch">Как это устроить в проекте</h2>
+<p>Схема с доски — центральный «хаб» с инструментами (там написано MCP). В терминах проекта это модуль <code>integrations/</code> с одним интерфейсом на портал; движок диалога вызывает их как инструменты, решение — по-прежнему в коде.</p>
+<pre><code>Пользователь ──► Помощник (движок) ──► ToolHub ──► RaspTool      (Открытое API / iCal / поиск)
+                      │                     ├──► LkTool        (api.tpu.ru: профиль, заявления МФЦ, события)
+                      │                     ├──► MoodleTool    (веб-сервисы: дедлайны, оценки)
+                      │                     ├──► NaumenTool    (help.tpu.ru: создать / статус / комментарии)
+                      │                     ├──► DocsTool      (devdocs BookStack → RAG)
+                      │                     └──► LinksTool     (maps, print, pay, netflow — глубокие ссылки)
+                      ▼
+               Модель: «понять» → какой инструмент и с какими аргументами (JSON), «объяснить» результат</code></pre>
+<ul>
+<li><b>Модель выбирает инструмент, код его вызывает.</b> Как сейчас с категориями: JSON от модели вида <code>{tool:"rasp.schedule", args:{date:"tomorrow"}}</code> проходит валидацию (белый список инструментов, схема аргументов), и только тогда выполняется. Модель не получает токенов и не ходит в сеть сама.</li>
+<li><b>Действия — только с подтверждением.</b> Чтение (расписание, дедлайны) — сразу; запись (создать заявление, заявку) — показать, что будет отправлено, и кнопка «Отправить». Это уже принцип эскалации «по согласию».</li>
+<li><b>Токены пользователя — на лету, не в базе.</b> После входа через oauth.tpu.ru у нас есть access-token с коротким сроком; им подписываются запросы к api.tpu.ru. Для Moodle/Nextcloud — отдельное подключение по кнопке «Подключить Moodle» с хранением только refresh-токена в зашифрованном виде и возможностью отозвать в профиле. Почту — не подключаем.</li>
+<li><b>Минимизация данных.</b> Помощник хранит только то, что нужно для диалога (группа, роль); оценки, приказы, письма — показываются и не сохраняются. В логи — никогда.</li>
+<li><b>Деградация.</b> Портал недоступен → помощник говорит об этом и даёт прямую ссылку. Ничего не ломается: как с моделью в «упрощённом режиме».</li>
+<li><b>Аудит.</b> Каждое действие от имени пользователя — запись «кто, что, куда, когда» без содержимого. Для ИТ-службы это главный аргумент «мы контролируем».</li>
+</ul>
+
+<h2 id="roadmap">Порядок внедрения — от бесплатного к согласуемому</h2>
+<div class="tbl"><table><thead><tr><th>Этап</th><th>Что подключаем</th><th>Что нужно от вуза</th><th>Что получает студент</th><th>Объём</th></tr></thead><tbody>
+<tr><td><b>0 · сейчас</b></td><td>Расписание через публичный поиск + страницы групп + iCal; devdocs как источник RAG (публичные страницы); глубокие ссылки на все порталы; справочник staff.tpu.ru</td><td>ничего</td><td>«что завтра», «где аудитория», «кому написать», ответы по официальным инструкциям</td><td>1–2 недели</td></tr>
+<tr><td><b>1 · SSO</b></td><td>Вход через oauth.tpu.ru (OIDC) вместо демо-входа; из userinfo — ФИО, почта, роль</td><td>регистрация OIDC-клиента (ОКП)</td><td>вход тот же, что везде; помощник знает, кто ты</td><td>2–3 дня (код есть)</td></tr>
+<tr><td><b>2 · api.tpu.ru</b></td><td>Профиль/группа, заявления МФЦ (дерево, создание, статус), мероприятия, СКУД-посещаемость</td><td>доступ к API для приложения, перечень методов, согласие пользователя на ПД в интерфейсе</td><td>справки и заявления из чата, статусы, персональное «завтра»</td><td>2–3 недели</td></tr>
+<tr><td><b>3 · help.tpu.ru</b></td><td>Naumen REST: заявки от имени студента в нужную услугу, статусы, комментарии</td><td>accessKey Naumen, маппинг услуг</td><td>заявка без входа на портал, ответ специалиста в чат</td><td>1 неделя (коннектор есть)</td></tr>
+<tr><td><b>4 · Moodle</b></td><td>Дедлайны, оценки, курсы, календарь</td><td>согласовать выдачу токенов веб-сервисов (или отдельный сервис для приложения)</td><td>«что не сдано», «когда тест»</td><td>1–2 недели</td></tr>
+<tr><td><b>5 · Проактивность</b></td><td>Слежение за изменениями расписания, дедлайнами, статусами → пуши</td><td>ничего нового</td><td>предупреждения вместо вопросов</td><td>1 неделя</td></tr>
+<tr><td><b>6 · Остальное</b></td><td>Nextcloud, MyQ, netflow, оплата — по запросу</td><td>по каждому отдельно</td><td>«напечатай», «сколько трафика»</td><td>по мере надобности</td></tr>
+</tbody></table></div>
+
+<h2 id="ask">Что спросить у ИТ-службы (один список)</h2>
+<ol>
+<li><b>oauth.tpu.ru</b>: как зарегистрировать OIDC-клиента для студенческого приложения; какие scopes дадут; есть ли claim с группой/ролью (иначе — через api.tpu.ru).</li>
+<li><b>api.tpu.ru</b>: процедура доступа в кабинет разработчика; какие методы открыты сторонним приложениям (профиль, группа, заявления МФЦ, мероприятия); лимиты.</li>
+<li><b>rasp.tpu.ru</b>: заявка на Открытое API на raspisanie@tpu.ru (ФИО, телефон, логин, описание, скриншоты — у нас есть); пока — публичный поиск и iCal.</li>
+<li><b>help.tpu.ru</b>: accessKey Naumen для создания заявок от имени пользователя; список услуг и обязательных полей.</li>
+<li><b>Moodle</b>: разрешён ли сервис <code>moodle_mobile_app</code> для сторонних приложений или нужен свой веб-сервис.</li>
+<li><b>devdocs.tpu.ru</b>: API-токен на чтение для индексации инструкций.</li>
+<li><b>aichat.tpu.ru</b>: кто владелец, какая модель, есть ли OpenAI-совместимый endpoint — чтобы не поднимать свой vLLM параллельно.</li>
+<li><b>codelab.tpu.ru</b>: есть ли раннеры и Container Registry — тогда CI/CD целиком внутри контура.</li>
+</ol>
+
+<h2 id="risks">Риски и как они закрываются</h2>
+<div class="tbl"><table><thead><tr><th>Риск</th><th>Ответ</th></tr></thead><tbody>
+<tr><td>Персональные данные (152-ФЗ): помощник видит оценки, приказы, заявки</td><td>Данные не хранятся, только показываются в сессии; согласие при подключении каждого портала; отзыв в профиле; журнал действий без содержимого; почту не подключаем.</td></tr>
+<tr><td>Модель «сделает что-нибудь не то» в системах вуза</td><td>Модель только выбирает инструмент; белый список, схема аргументов, подтверждение для любой записи, лимиты на действия в сутки — тот же подход, что с заявками сейчас.</td></tr>
+<tr><td>Порталы поменяются / упадут</td><td>Только официальные API и стандарты, без парсинга HTML; недоступный портал → ссылка и честное сообщение.</td></tr>
+<tr><td>Дублирование aichat.tpu.ru</td><td>Разные задачи: общий чат vs агент по системам с правилами. Можно использовать их модель как провайдера.</td></tr>
+<tr><td>Нагрузка на API вуза</td><td>Кэш чтений (расписание — 10 мин, дерево услуг — час), лимиты на пользователя уже есть.</td></tr>
+<tr><td>Согласования затянутся</td><td>Этап 0 не требует ничего и уже даёт «что завтра» и инструкции; каждый следующий этап независим.</td></tr>
+</tbody></table></div>
+
+<h2 id="pitch">Как это сформулировать менеджеру — три предложения</h2>
+<p><b>Было:</b> бот, который отвечает на вопросы о технике и передаёт заявки специалисту.<br>
+<b>Стало:</b> единое окно студента — один чат в Telegram/VK/MAX/на сайте, который через единый вход ТПУ сам смотрит расписание, дедлайны и статусы заявок, создаёт справки и заявки в нужную систему и предупреждает о переносах пар и сроках.<br>
+<b>Почему это реально:</b> у ТПУ уже есть единая авторизация по OpenID Connect, центральный REST API личного кабинета, открытое API расписания и стандартные API у Moodle, облака и документации — нужно не строить, а подключаться, по одному порталу за раз, начиная с тех, что доступны без согласований.</p>
+
+<footer>Обход порталов выполнен 18.09.2026 с учётной записью студента; личные данные не копировались — только структура меню, каталоги услуг, адреса API и технические сигнатуры (заголовки, discovery-документы, статусы ответов).</footer>
+</div>
+</body>
+</html>
