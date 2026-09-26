@@ -97,8 +97,8 @@ dependencies {
 }
 ```
 
-**Проверенная связка версий:** Gradle **8.14.3** (в `gradle/wrapper/gradle-wrapper.properties`), Kotlin-плагин **2.2.0**,
-`jvmToolchain(21)`. Gradle 9.0 пока не брать: он требует Java 17+ даже для запуска и не дружит с Kotlin-плагином 2.1.
+**Проверенная связка версий:** Gradle **9.0.0** (или 8.14.3), Kotlin-плагин **2.2.0** (с 2.1 Gradle 9 не работает),
+`jvmToolchain(21)`.
 
 `settings.gradle.kts` обязателен, с плагином, который сам скачает JDK 21 для `jvmToolchain(21)`:
 
@@ -110,15 +110,16 @@ rootProject.name = "ml-server"
 ```
 
 **На какой Java запускается сам Gradle.** `jvmToolchain(21)` выбирает Java только для компиляции и запуска кода.
-Сам Gradle стартует раньше и берёт Java из `JAVA_HOME`/PATH; если там Java 8 — ошибка «Gradle requires JVM 17».
+Сам Gradle стартует раньше и берёт Java из `JAVA_HOME`/PATH; если там Java 8, Gradle 9 падает с ошибкой «Gradle requires JVM 17».
 Чтобы не трогать `JAVA_HOME`, укажи Java для Gradle в файле `C:/Users/<ты>/.gradle/gradle.properties`
 (действует на все проекты, не попадает в git):
 
 ```properties
-org.gradle.java.home=C:/Users/<ты>/.jdks/graalvm-jdk-24.0.2
+org.gradle.java.home=C:/Users/<ты>/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2
 ```
 
-Проверка: `./gradlew --version` → строка `Daemon JVM: ...graalvm-jdk-24... (from org.gradle.java.home)`.
+Путь — любой JDK 17+ на компьютере; установленные IntelliJ лежат в `.jdks`, скачанные Gradle — в `.gradle/jdks`.
+Проверка: `./gradlew --version` → строка `Daemon JVM: ...adoptium-21... (from org.gradle.java.home)`.
 В IntelliJ то же самое: Settings → Build Tools → Gradle → Gradle JVM.
 
 ### Что нужно знать из Kotlin (минимум)
