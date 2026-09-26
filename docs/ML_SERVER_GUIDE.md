@@ -98,6 +98,30 @@ dependencies {
 
 Проверка: `./gradlew run` (Windows: `gradlew.bat run`) стартует без ошибок.
 
+**Проверенная связка версий:** Gradle **8.14.3** (в `gradle/wrapper/gradle-wrapper.properties`), Kotlin-плагин **2.2.0**,
+`jvmToolchain(21)`. Gradle 9.0 пока не брать: он требует Java 17+ даже для запуска и не дружит с Kotlin-плагином 2.1.
+
+`settings.gradle.kts` обязателен, с плагином, который сам скачает JDK 21 для `jvmToolchain(21)`:
+
+```kotlin
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
+}
+rootProject.name = "ml-server"
+```
+
+**На какой Java запускается сам Gradle.** `jvmToolchain(21)` выбирает Java только для компиляции и запуска кода.
+Сам Gradle стартует раньше и берёт Java из `JAVA_HOME`/PATH; если там Java 8 — ошибка «Gradle requires JVM 17».
+Чтобы не трогать `JAVA_HOME`, укажи Java для Gradle в файле `C:/Users/<ты>/.gradle/gradle.properties`
+(действует на все проекты, не попадает в git):
+
+```properties
+org.gradle.java.home=C:/Users/<ты>/.jdks/graalvm-jdk-24.0.2
+```
+
+Проверка: `./gradlew --version` → строка `Daemon JVM: ...graalvm-jdk-24... (from org.gradle.java.home)`.
+В IntelliJ то же самое: Settings → Build Tools → Gradle → Gradle JVM.
+
 ### Что нужно знать из Kotlin (минимум)
 
 | Понятие | Что это | Где встретишь |
@@ -164,14 +188,14 @@ fun main() {
 }
 
 fun Application.module() {
-    install(ContentNegotiation) { json(AppJson) }   // AppJson объявим в шаге 3
+    install(ContentNegotiation) { json() }   // в шаге 3 заменишь на json(AppJson)
     routing {
         get("/health") { call.respond(mapOf("status" to "ok")) }
     }
 }
 ```
 
-Проверка: `curl http://localhost:8080/health` → `{"status":"ok"}`.
+Проверка: `curl http://localhost:8080/health` → `{"status":"ok"}` (в PowerShell пиши `curl.exe` — просто `curl` там другая команда; или открой адрес в браузере).
 
 ### Шаг 2. Настройки (полчаса)
 
