@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="P07_defs" targetNamespace="http://tpu.ru/pomogi-mne" exporter="pomogi-mne" exporterVersion="1">
+  <bpmn:collaboration id="P07_collab">
+    <bpmn:participant id="P07_pool" name="Авторизация: только вход через ТПУ, агент действует от имени пользователя" processRef="P07_proc" />
+  </bpmn:collaboration>
+  <bpmn:process id="P07_proc" isExecutable="false">
+    <bpmn:laneSet id="P07_ls">
+      <bpmn:lane id="P07_U" name="Пользователь">
+        <bpmn:flowNodeRef>P07_s</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_lg</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P07_A" name="Приложение (мобилка / сайт / Mini App)">
+        <bpmn:flowNodeRef>P07_gs</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_rd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_rq</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_e</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P07_B" name="Бэк">
+        <bpmn:flowNodeRef>P07_ex</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_pr</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_ck</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_gx</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P07_O" name="oauth.tpu.ru (OpenID Connect)">
+        <bpmn:flowNodeRef>P07_cd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P07_rf</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P07_P" name="MCP-сервер ТПУ">
+        <bpmn:flowNodeRef>P07_tc</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P07_S" name="Сервис ТПУ">
+        <bpmn:flowNodeRef>P07_sv</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="P07_s" name="Открыл приложение">
+      <bpmn:outgoing>P07_f1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="P07_gs" name="Есть действующая сессия?">
+      <bpmn:incoming>P07_f1</bpmn:incoming>
+      <bpmn:outgoing>P07_f2</bpmn:outgoing>
+      <bpmn:outgoing>P07_f3</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="P07_rd" name="Перенаправить на oauth.tpu.ru (код + PKCE)">
+      <bpmn:incoming>P07_f2</bpmn:incoming>
+      <bpmn:outgoing>P07_f4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:userTask id="P07_lg" name="Вход: учётная запись ТПУ / Госуслуги">
+      <bpmn:incoming>P07_f4</bpmn:incoming>
+      <bpmn:outgoing>P07_f5</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="P07_cd" name="Выдать код авторизации">
+      <bpmn:incoming>P07_f5</bpmn:incoming>
+      <bpmn:outgoing>P07_f6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="P07_ex" name="Обменять код на токены, получить userinfo">
+      <bpmn:incoming>P07_f6</bpmn:incoming>
+      <bpmn:outgoing>P07_f7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="P07_pr" name="Профиль: роль, группа (api.tpu.ru); выдать сессию">
+      <bpmn:incoming>P07_f7</bpmn:incoming>
+      <bpmn:outgoing>P07_f8</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="P07_rq" name="Запрос с сессией">
+      <bpmn:incoming>P07_f3</bpmn:incoming>
+      <bpmn:incoming>P07_f8</bpmn:incoming>
+      <bpmn:outgoing>P07_f9</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="P07_ck" name="Проверить сессию и лимиты пользователя; без сессии — 401">
+      <bpmn:incoming>P07_f9</bpmn:incoming>
+      <bpmn:outgoing>P07_f10</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="P07_gx" name="Токен ТПУ истёк?">
+      <bpmn:incoming>P07_f10</bpmn:incoming>
+      <bpmn:outgoing>P07_f11</bpmn:outgoing>
+      <bpmn:outgoing>P07_f12</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="P07_rf" name="Обновить токен">
+      <bpmn:incoming>P07_f11</bpmn:incoming>
+      <bpmn:outgoing>P07_f13</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="P07_tc" name="tools/call: политика приложения и права пользователя">
+      <bpmn:incoming>P07_f12</bpmn:incoming>
+      <bpmn:incoming>P07_f13</bpmn:incoming>
+      <bpmn:outgoing>P07_f14</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="P07_sv" name="Запрос от имени пользователя, журнал">
+      <bpmn:incoming>P07_f14</bpmn:incoming>
+      <bpmn:outgoing>P07_f15</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="P07_e" name="Данные в приложении">
+      <bpmn:incoming>P07_f15</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="P07_f1" sourceRef="P07_s" targetRef="P07_gs" />
+    <bpmn:sequenceFlow id="P07_f2" name="нет" sourceRef="P07_gs" targetRef="P07_rd" />
+    <bpmn:sequenceFlow id="P07_f3" name="да" sourceRef="P07_gs" targetRef="P07_rq" />
+    <bpmn:sequenceFlow id="P07_f4" sourceRef="P07_rd" targetRef="P07_lg" />
+    <bpmn:sequenceFlow id="P07_f5" sourceRef="P07_lg" targetRef="P07_cd" />
+    <bpmn:sequenceFlow id="P07_f6" sourceRef="P07_cd" targetRef="P07_ex" />
+    <bpmn:sequenceFlow id="P07_f7" sourceRef="P07_ex" targetRef="P07_pr" />
+    <bpmn:sequenceFlow id="P07_f8" sourceRef="P07_pr" targetRef="P07_rq" />
+    <bpmn:sequenceFlow id="P07_f9" sourceRef="P07_rq" targetRef="P07_ck" />
+    <bpmn:sequenceFlow id="P07_f10" sourceRef="P07_ck" targetRef="P07_gx" />
+    <bpmn:sequenceFlow id="P07_f11" name="да" sourceRef="P07_gx" targetRef="P07_rf" />
+    <bpmn:sequenceFlow id="P07_f12" name="нет" sourceRef="P07_gx" targetRef="P07_tc" />
+    <bpmn:sequenceFlow id="P07_f13" sourceRef="P07_rf" targetRef="P07_tc" />
+    <bpmn:sequenceFlow id="P07_f14" sourceRef="P07_tc" targetRef="P07_sv" />
+    <bpmn:sequenceFlow id="P07_f15" sourceRef="P07_sv" targetRef="P07_e" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="P07_diagram">
+    <bpmndi:BPMNPlane id="P07_plane" bpmnElement="P07_collab">
+      <bpmndi:BPMNShape id="P07_pool_di" bpmnElement="P07_pool" isHorizontal="true"><dc:Bounds x="100" y="60" width="2665" height="1045" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_U_di" bpmnElement="P07_U" isHorizontal="true"><dc:Bounds x="130" y="60" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_A_di" bpmnElement="P07_A" isHorizontal="true"><dc:Bounds x="130" y="215" width="2635" height="270" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_B_di" bpmnElement="P07_B" isHorizontal="true"><dc:Bounds x="130" y="485" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_O_di" bpmnElement="P07_O" isHorizontal="true"><dc:Bounds x="130" y="640" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_P_di" bpmnElement="P07_P" isHorizontal="true"><dc:Bounds x="130" y="795" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_S_di" bpmnElement="P07_S" isHorizontal="true"><dc:Bounds x="130" y="950" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_s_di" bpmnElement="P07_s"><dc:Bounds x="212.0" y="119.5" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="170.0" y="161.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_gs_di" bpmnElement="P07_gs" isMarkerVisible="true"><dc:Bounds x="390.0" y="267.5" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="355.0" y="323.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_rd_di" bpmnElement="P07_rd"><dc:Bounds x="530.0" y="369.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_lg_di" bpmnElement="P07_lg"><dc:Bounds x="715.0" y="99.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_cd_di" bpmnElement="P07_cd"><dc:Bounds x="900.0" y="679.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_ex_di" bpmnElement="P07_ex"><dc:Bounds x="1085.0" y="524.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_pr_di" bpmnElement="P07_pr"><dc:Bounds x="1270.0" y="524.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_rq_di" bpmnElement="P07_rq"><dc:Bounds x="1455.0" y="254.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_ck_di" bpmnElement="P07_ck"><dc:Bounds x="1640.0" y="524.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_gx_di" bpmnElement="P07_gx" isMarkerVisible="true"><dc:Bounds x="1870.0" y="537.5" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1835.0" y="593.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_rf_di" bpmnElement="P07_rf"><dc:Bounds x="2010.0" y="679.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_tc_di" bpmnElement="P07_tc"><dc:Bounds x="2195.0" y="834.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_sv_di" bpmnElement="P07_sv"><dc:Bounds x="2380.0" y="989.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P07_e_di" bpmnElement="P07_e"><dc:Bounds x="2617.0" y="274.5" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="2575.0" y="316.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="P07_f1_di" bpmnElement="P07_f1"><di:waypoint x="248.0" y="137.5" /><di:waypoint x="319.0" y="137.5" /><di:waypoint x="319.0" y="292.5" /><di:waypoint x="390.0" y="292.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f2_di" bpmnElement="P07_f2"><di:waypoint x="415" y="317.5" /><di:waypoint x="415" y="407.5" /><di:waypoint x="530.0" y="407.5" /><bpmndi:BPMNLabel><dc:Bounds x="421" y="354.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f3_di" bpmnElement="P07_f3"><di:waypoint x="440.0" y="292.5" /><di:waypoint x="1455.0" y="292.5" /><bpmndi:BPMNLabel><dc:Bounds x="917.5" y="272.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f4_di" bpmnElement="P07_f4"><di:waypoint x="670.0" y="407.5" /><di:waypoint x="692.5" y="407.5" /><di:waypoint x="692.5" y="137.5" /><di:waypoint x="715.0" y="137.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f5_di" bpmnElement="P07_f5"><di:waypoint x="855.0" y="137.5" /><di:waypoint x="877.5" y="137.5" /><di:waypoint x="877.5" y="717.5" /><di:waypoint x="900.0" y="717.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f6_di" bpmnElement="P07_f6"><di:waypoint x="1040.0" y="717.5" /><di:waypoint x="1062.5" y="717.5" /><di:waypoint x="1062.5" y="562.5" /><di:waypoint x="1085.0" y="562.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f7_di" bpmnElement="P07_f7"><di:waypoint x="1225.0" y="562.5" /><di:waypoint x="1270.0" y="562.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f8_di" bpmnElement="P07_f8"><di:waypoint x="1410.0" y="562.5" /><di:waypoint x="1432.5" y="562.5" /><di:waypoint x="1432.5" y="292.5" /><di:waypoint x="1455.0" y="292.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f9_di" bpmnElement="P07_f9"><di:waypoint x="1595.0" y="292.5" /><di:waypoint x="1617.5" y="292.5" /><di:waypoint x="1617.5" y="562.5" /><di:waypoint x="1640.0" y="562.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f10_di" bpmnElement="P07_f10"><di:waypoint x="1780.0" y="562.5" /><di:waypoint x="1870.0" y="562.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f11_di" bpmnElement="P07_f11"><di:waypoint x="1895" y="587.5" /><di:waypoint x="1895" y="717.5" /><di:waypoint x="2010.0" y="717.5" /><bpmndi:BPMNLabel><dc:Bounds x="1901" y="644.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f12_di" bpmnElement="P07_f12"><di:waypoint x="1895" y="587.5" /><di:waypoint x="1895" y="872.5" /><di:waypoint x="2195.0" y="872.5" /><bpmndi:BPMNLabel><dc:Bounds x="1901" y="722.0" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f13_di" bpmnElement="P07_f13"><di:waypoint x="2150.0" y="717.5" /><di:waypoint x="2172.5" y="717.5" /><di:waypoint x="2172.5" y="872.5" /><di:waypoint x="2195.0" y="872.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f14_di" bpmnElement="P07_f14"><di:waypoint x="2335.0" y="872.5" /><di:waypoint x="2357.5" y="872.5" /><di:waypoint x="2357.5" y="1027.5" /><di:waypoint x="2380.0" y="1027.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P07_f15_di" bpmnElement="P07_f15"><di:waypoint x="2520.0" y="1027.5" /><di:waypoint x="2568.5" y="1027.5" /><di:waypoint x="2568.5" y="292.5" /><di:waypoint x="2617.0" y="292.5" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

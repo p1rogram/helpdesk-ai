@@ -33,7 +33,7 @@
     <bpmn:startEvent id="P01_s" name="Сообщение в чате">
       <bpmn:outgoing>P01_f1</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:task id="P01_lim" name="Лимиты, бюджет гостя, блокировка обращения">
+    <bpmn:task id="P01_lim" name="Проверка сессии ТПУ, лимиты пользователя, блокировка обращения">
       <bpmn:incoming>P01_f1</bpmn:incoming>
       <bpmn:outgoing>P01_f2</bpmn:outgoing>
     </bpmn:task>

@@ -36,7 +36,7 @@
     <bpmn:startEvent id="P05_s" name="Сообщение пользователя">
       <bpmn:outgoing>P05_f1</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:task id="P05_ctl" name="Принять: авторизация, trace-id, лимиты">
+    <bpmn:task id="P05_ctl" name="Принять: проверка сессии ТПУ (без неё — 401), trace-id, лимиты">
       <bpmn:incoming>P05_f1</bpmn:incoming>
       <bpmn:outgoing>P05_f2</bpmn:outgoing>
     </bpmn:task>
