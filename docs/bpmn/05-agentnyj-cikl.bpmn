@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="P05_defs" targetNamespace="http://tpu.ru/pomogi-mne" exporter="pomogi-mne" exporterVersion="1">
+  <bpmn:collaboration id="P05_collab">
+    <bpmn:participant id="P05_pool" name="Агентный цикл: ChatClient ведёт, модель выбирает, MCP выполняет" processRef="P05_proc" />
+  </bpmn:collaboration>
+  <bpmn:process id="P05_proc" isExecutable="false">
+    <bpmn:laneSet id="P05_ls">
+      <bpmn:lane id="P05_A" name="Мобилка / сайт">
+        <bpmn:flowNodeRef>P05_s</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_cf</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_e</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P05_C" name="ChatController">
+        <bpmn:flowNodeRef>P05_ctl</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_str</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P05_L" name="ChatClient (оркестратор)">
+        <bpmn:flowNodeRef>P05_sel</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_gt</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_val</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_gw</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_gok</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_cn</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>P05_res</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P05_M" name="ML-сервер · Spark (vLLM)">
+        <bpmn:flowNodeRef>P05_llm</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P05_P" name="MCP-сервер ТПУ">
+        <bpmn:flowNodeRef>P05_mcp</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="P05_S" name="Сервисы ТПУ: rasp, Moodle, help, ЛК, RAG">
+        <bpmn:flowNodeRef>P05_svc</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="P05_s" name="Сообщение пользователя">
+      <bpmn:outgoing>P05_f1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="P05_ctl" name="Принять: авторизация, trace-id, лимиты">
+      <bpmn:incoming>P05_f1</bpmn:incoming>
+      <bpmn:outgoing>P05_f2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="P05_sel" name="Подобрать инструменты: права приложения и пользователя, контекст">
+      <bpmn:incoming>P05_f2</bpmn:incoming>
+      <bpmn:outgoing>P05_f3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="P05_llm" name="Сообщение + история + инструменты → модель">
+      <bpmn:incoming>P05_f3</bpmn:incoming>
+      <bpmn:incoming>P05_f15</bpmn:incoming>
+      <bpmn:incoming>P05_f16</bpmn:incoming>
+      <bpmn:outgoing>P05_f4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="P05_gt" name="Модель просит инструмент?">
+      <bpmn:incoming>P05_f4</bpmn:incoming>
+      <bpmn:outgoing>P05_f5</bpmn:outgoing>
+      <bpmn:outgoing>P05_f6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="P05_val" name="Проверка: схема аргументов, права, лимит итераций (≤ 4)">
+      <bpmn:incoming>P05_f5</bpmn:incoming>
+      <bpmn:outgoing>P05_f7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="P05_gw" name="Меняет данные?">
+      <bpmn:incoming>P05_f7</bpmn:incoming>
+      <bpmn:outgoing>P05_f8</bpmn:outgoing>
+      <bpmn:outgoing>P05_f9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="P05_cf" name="Карточка «что сделаем» — подтвердить">
+      <bpmn:incoming>P05_f8</bpmn:incoming>
+      <bpmn:outgoing>P05_f10</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="P05_gok" name="Подтвердил?">
+      <bpmn:incoming>P05_f10</bpmn:incoming>
+      <bpmn:outgoing>P05_f11</bpmn:outgoing>
+      <bpmn:outgoing>P05_f12</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="P05_cn" name="Отмена → сообщить модели «пользователь отказался»">
+      <bpmn:incoming>P05_f12</bpmn:incoming>
+      <bpmn:outgoing>P05_f16</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="P05_mcp" name="tools/call">
+      <bpmn:incoming>P05_f9</bpmn:incoming>
+      <bpmn:incoming>P05_f11</bpmn:incoming>
+      <bpmn:outgoing>P05_f13</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="P05_svc" name="Запрос к сервису с токеном пользователя, кэш, журнал">
+      <bpmn:incoming>P05_f13</bpmn:incoming>
+      <bpmn:outgoing>P05_f14</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="P05_res" name="Результат: обрезать, пометить как данные">
+      <bpmn:incoming>P05_f14</bpmn:incoming>
+      <bpmn:outgoing>P05_f15</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="P05_str" name="Поток ответа, reasoning вырезан, статусы">
+      <bpmn:incoming>P05_f6</bpmn:incoming>
+      <bpmn:outgoing>P05_f17</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="P05_e" name="Ответ на экране">
+      <bpmn:incoming>P05_f17</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="P05_f1" sourceRef="P05_s" targetRef="P05_ctl" />
+    <bpmn:sequenceFlow id="P05_f2" sourceRef="P05_ctl" targetRef="P05_sel" />
+    <bpmn:sequenceFlow id="P05_f3" sourceRef="P05_sel" targetRef="P05_llm" />
+    <bpmn:sequenceFlow id="P05_f4" sourceRef="P05_llm" targetRef="P05_gt" />
+    <bpmn:sequenceFlow id="P05_f5" name="да" sourceRef="P05_gt" targetRef="P05_val" />
+    <bpmn:sequenceFlow id="P05_f6" name="нет — готовый текст" sourceRef="P05_gt" targetRef="P05_str" />
+    <bpmn:sequenceFlow id="P05_f7" sourceRef="P05_val" targetRef="P05_gw" />
+    <bpmn:sequenceFlow id="P05_f8" name="да" sourceRef="P05_gw" targetRef="P05_cf" />
+    <bpmn:sequenceFlow id="P05_f9" name="нет" sourceRef="P05_gw" targetRef="P05_mcp" />
+    <bpmn:sequenceFlow id="P05_f10" sourceRef="P05_cf" targetRef="P05_gok" />
+    <bpmn:sequenceFlow id="P05_f11" name="да" sourceRef="P05_gok" targetRef="P05_mcp" />
+    <bpmn:sequenceFlow id="P05_f12" name="нет" sourceRef="P05_gok" targetRef="P05_cn" />
+    <bpmn:sequenceFlow id="P05_f13" sourceRef="P05_mcp" targetRef="P05_svc" />
+    <bpmn:sequenceFlow id="P05_f14" sourceRef="P05_svc" targetRef="P05_res" />
+    <bpmn:sequenceFlow id="P05_f15" name="следующий шаг" sourceRef="P05_res" targetRef="P05_llm" />
+    <bpmn:sequenceFlow id="P05_f16" sourceRef="P05_cn" targetRef="P05_llm" />
+    <bpmn:sequenceFlow id="P05_f17" sourceRef="P05_str" targetRef="P05_e" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="P05_diagram">
+    <bpmndi:BPMNPlane id="P05_plane" bpmnElement="P05_collab">
+      <bpmndi:BPMNShape id="P05_pool_di" bpmnElement="P05_pool" isHorizontal="true"><dc:Bounds x="100" y="60" width="2665" height="1045" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_A_di" bpmnElement="P05_A" isHorizontal="true"><dc:Bounds x="130" y="60" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_C_di" bpmnElement="P05_C" isHorizontal="true"><dc:Bounds x="130" y="215" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_L_di" bpmnElement="P05_L" isHorizontal="true"><dc:Bounds x="130" y="370" width="2635" height="270" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_M_di" bpmnElement="P05_M" isHorizontal="true"><dc:Bounds x="130" y="640" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_P_di" bpmnElement="P05_P" isHorizontal="true"><dc:Bounds x="130" y="795" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_S_di" bpmnElement="P05_S" isHorizontal="true"><dc:Bounds x="130" y="950" width="2635" height="155" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_s_di" bpmnElement="P05_s"><dc:Bounds x="212.0" y="119.5" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="170.0" y="161.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_ctl_di" bpmnElement="P05_ctl"><dc:Bounds x="345.0" y="254.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_sel_di" bpmnElement="P05_sel"><dc:Bounds x="530.0" y="409.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_llm_di" bpmnElement="P05_llm"><dc:Bounds x="715.0" y="679.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_gt_di" bpmnElement="P05_gt" isMarkerVisible="true"><dc:Bounds x="945.0" y="422.5" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="910.0" y="478.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_val_di" bpmnElement="P05_val"><dc:Bounds x="1085.0" y="409.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_gw_di" bpmnElement="P05_gw" isMarkerVisible="true"><dc:Bounds x="1315.0" y="422.5" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1280.0" y="478.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_cf_di" bpmnElement="P05_cf"><dc:Bounds x="1455.0" y="99.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_gok_di" bpmnElement="P05_gok" isMarkerVisible="true"><dc:Bounds x="1685.0" y="422.5" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1650.0" y="478.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_cn_di" bpmnElement="P05_cn"><dc:Bounds x="1825.0" y="524.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_mcp_di" bpmnElement="P05_mcp"><dc:Bounds x="1825.0" y="834.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_svc_di" bpmnElement="P05_svc"><dc:Bounds x="2010.0" y="989.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_res_di" bpmnElement="P05_res"><dc:Bounds x="2195.0" y="409.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_str_di" bpmnElement="P05_str"><dc:Bounds x="2380.0" y="254.5" width="140" height="76" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P05_e_di" bpmnElement="P05_e"><dc:Bounds x="2617.0" y="119.5" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="2575.0" y="161.5" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="P05_f1_di" bpmnElement="P05_f1"><di:waypoint x="248.0" y="137.5" /><di:waypoint x="296.5" y="137.5" /><di:waypoint x="296.5" y="292.5" /><di:waypoint x="345.0" y="292.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f2_di" bpmnElement="P05_f2"><di:waypoint x="485.0" y="292.5" /><di:waypoint x="507.5" y="292.5" /><di:waypoint x="507.5" y="447.5" /><di:waypoint x="530.0" y="447.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f3_di" bpmnElement="P05_f3"><di:waypoint x="670.0" y="447.5" /><di:waypoint x="692.5" y="447.5" /><di:waypoint x="692.5" y="717.5" /><di:waypoint x="715.0" y="717.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f4_di" bpmnElement="P05_f4"><di:waypoint x="855.0" y="717.5" /><di:waypoint x="900.0" y="717.5" /><di:waypoint x="900.0" y="447.5" /><di:waypoint x="945.0" y="447.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f5_di" bpmnElement="P05_f5"><di:waypoint x="995.0" y="447.5" /><di:waypoint x="1085.0" y="447.5" /><bpmndi:BPMNLabel><dc:Bounds x="1010.0" y="427.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f6_di" bpmnElement="P05_f6"><di:waypoint x="970" y="422.5" /><di:waypoint x="970" y="292.5" /><di:waypoint x="2380.0" y="292.5" /><bpmndi:BPMNLabel><dc:Bounds x="976" y="349.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f7_di" bpmnElement="P05_f7"><di:waypoint x="1225.0" y="447.5" /><di:waypoint x="1315.0" y="447.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f8_di" bpmnElement="P05_f8"><di:waypoint x="1340" y="422.5" /><di:waypoint x="1340" y="137.5" /><di:waypoint x="1455.0" y="137.5" /><bpmndi:BPMNLabel><dc:Bounds x="1346" y="272.0" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f9_di" bpmnElement="P05_f9"><di:waypoint x="1340" y="472.5" /><di:waypoint x="1340" y="872.5" /><di:waypoint x="1825.0" y="872.5" /><bpmndi:BPMNLabel><dc:Bounds x="1346" y="664.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f10_di" bpmnElement="P05_f10"><di:waypoint x="1595.0" y="137.5" /><di:waypoint x="1640.0" y="137.5" /><di:waypoint x="1640.0" y="447.5" /><di:waypoint x="1685.0" y="447.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f11_di" bpmnElement="P05_f11"><di:waypoint x="1710" y="472.5" /><di:waypoint x="1710" y="872.5" /><di:waypoint x="1825.0" y="872.5" /><bpmndi:BPMNLabel><dc:Bounds x="1716" y="664.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f12_di" bpmnElement="P05_f12"><di:waypoint x="1710" y="472.5" /><di:waypoint x="1710" y="562.5" /><di:waypoint x="1825.0" y="562.5" /><bpmndi:BPMNLabel><dc:Bounds x="1716" y="509.5" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f13_di" bpmnElement="P05_f13"><di:waypoint x="1965.0" y="872.5" /><di:waypoint x="1987.5" y="872.5" /><di:waypoint x="1987.5" y="1027.5" /><di:waypoint x="2010.0" y="1027.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f14_di" bpmnElement="P05_f14"><di:waypoint x="2150.0" y="1027.5" /><di:waypoint x="2172.5" y="1027.5" /><di:waypoint x="2172.5" y="447.5" /><di:waypoint x="2195.0" y="447.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f15_di" bpmnElement="P05_f15"><di:waypoint x="2265" y="485.5" /><di:waypoint x="2265" y="1093" /><di:waypoint x="785" y="1093" /><di:waypoint x="785" y="755.5" /><bpmndi:BPMNLabel><dc:Bounds x="2271" y="781.25" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f16_di" bpmnElement="P05_f16"><di:waypoint x="1895" y="600.5" /><di:waypoint x="1895" y="1093" /><di:waypoint x="785" y="1093" /><di:waypoint x="785" y="755.5" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P05_f17_di" bpmnElement="P05_f17"><di:waypoint x="2520.0" y="292.5" /><di:waypoint x="2568.5" y="292.5" /><di:waypoint x="2568.5" y="137.5" /><di:waypoint x="2617.0" y="137.5" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
